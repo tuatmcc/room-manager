@@ -1,4 +1,6 @@
 #![warn(clippy::all)]
+mod transport;
+
 use std::{time::Duration, vec};
 
 use anyhow::{bail, ensure, Context as _};
