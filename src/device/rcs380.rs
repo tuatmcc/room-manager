@@ -49,6 +49,21 @@ where
         Ok(())
     }
 
+    pub async fn in_set_rf(&self, bitrate: Bitrate) -> anyhow::Result<()> {
+        let bitrate = bitrate as u32;
+        let cmd_data = &[
+            (bitrate & 0xff) as u8,
+            ((bitrate >> 8) & 0xff) as u8,
+            ((bitrate >> 16) & 0xff) as u8,
+            ((bitrate >> 24) & 0xff) as u8,
+        ];
+
+        let data = self.send_packet(CmdCode::InSetRF, cmd_data).await?;
+
+        ensure!(data == [0], "set rf failed");
+        Ok(())
+    }
+
     pub async fn in_set_protocol(&self, config: &ProtocolConfig) -> anyhow::Result<()> {
         let cmd_data = config.to_vec();
         if cmd_data.is_empty() {
@@ -95,6 +110,13 @@ where
             Packet::Ack => bail!("ack packet"),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Bitrate {
+    B212F = 0x01_01_0f_01,
+    B106A = 0x02_03_0f_03,
+    B106B = 0x03_07_0f_07,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
