@@ -49,6 +49,18 @@ where
         Ok(())
     }
 
+    pub async fn in_set_protocol(&self, config: &ProtocolConfig) -> anyhow::Result<()> {
+        let cmd_data = config.to_vec();
+        if cmd_data.is_empty() {
+            return Ok(());
+        }
+
+        let data = self.send_packet(CmdCode::InSetProtocol, &cmd_data).await?;
+
+        ensure!(data == [0], "set protocol failed");
+        Ok(())
+    }
+
     pub async fn get_firmware_version(&self) -> anyhow::Result<String> {
         let data = self.send_packet(CmdCode::GetFirmwareVersion, &[]).await?;
 
@@ -82,6 +94,190 @@ where
             Packet::Err => bail!("error packet"),
             Packet::Ack => bail!("ack packet"),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ProtocolConfig {
+    initial_guard_time: Option<u8>,
+    add_crc: Option<u8>,
+    check_crc: Option<u8>,
+    multi_card: Option<u8>,
+    add_parity: Option<u8>,
+    check_parity: Option<u8>,
+    bitwise_anticoll: Option<u8>,
+    last_byte_bit_count: Option<u8>,
+    mifare_crypto: Option<u8>,
+    add_sof: Option<u8>,
+    check_sof: Option<u8>,
+    add_eof: Option<u8>,
+    check_eof: Option<u8>,
+    rfu: Option<u8>,
+    deaf_time: Option<u8>,
+    continuous_receive_mode: Option<u8>,
+    min_len_for_crm: Option<u8>,
+    type_1_tag_rrdd: Option<u8>,
+    rfca: Option<u8>,
+    guard_time: Option<u8>,
+}
+
+impl Default for ProtocolConfig {
+    fn default() -> Self {
+        Self {
+            initial_guard_time: Some(0x18),
+            add_crc: Some(0x01),
+            check_crc: Some(0x01),
+            multi_card: Some(0x00),
+            add_parity: Some(0x00),
+            check_parity: Some(0x00),
+            bitwise_anticoll: Some(0x00),
+            last_byte_bit_count: Some(0x08),
+            mifare_crypto: Some(0x00),
+            add_sof: Some(0x00),
+            check_sof: Some(0x00),
+            add_eof: Some(0x00),
+            check_eof: Some(0x00),
+            rfu: None,
+            deaf_time: Some(0x00),
+            continuous_receive_mode: Some(0x00),
+            min_len_for_crm: Some(0x00),
+            type_1_tag_rrdd: Some(0x00),
+            rfca: Some(0x00),
+            guard_time: Some(0x06),
+        }
+    }
+}
+
+impl ProtocolConfig {
+    fn new() -> Self {
+        Self {
+            initial_guard_time: None,
+            add_crc: None,
+            check_crc: None,
+            multi_card: None,
+            add_parity: None,
+            check_parity: None,
+            bitwise_anticoll: None,
+            last_byte_bit_count: None,
+            mifare_crypto: None,
+            add_sof: None,
+            check_sof: None,
+            add_eof: None,
+            check_eof: None,
+            rfu: None,
+            deaf_time: None,
+            continuous_receive_mode: None,
+            min_len_for_crm: None,
+            type_1_tag_rrdd: None,
+            rfca: None,
+            guard_time: None,
+        }
+    }
+
+    fn to_vec(&self) -> Vec<u8> {
+        let mut data = vec![];
+
+        if let Some(v) = self.initial_guard_time {
+            data.push(0x00);
+            data.push(v);
+        }
+
+        if let Some(v) = self.add_crc {
+            data.push(0x01);
+            data.push(v);
+        }
+
+        if let Some(v) = self.check_crc {
+            data.push(0x02);
+            data.push(v);
+        }
+
+        if let Some(v) = self.multi_card {
+            data.push(0x03);
+            data.push(v);
+        }
+
+        if let Some(v) = self.add_parity {
+            data.push(0x04);
+            data.push(v);
+        }
+
+        if let Some(v) = self.check_parity {
+            data.push(0x05);
+            data.push(v);
+        }
+
+        if let Some(v) = self.bitwise_anticoll {
+            data.push(0x06);
+            data.push(v);
+        }
+
+        if let Some(v) = self.last_byte_bit_count {
+            data.push(0x07);
+            data.push(v);
+        }
+
+        if let Some(v) = self.mifare_crypto {
+            data.push(0x08);
+            data.push(v);
+        }
+
+        if let Some(v) = self.add_sof {
+            data.push(0x09);
+            data.push(v);
+        }
+
+        if let Some(v) = self.check_sof {
+            data.push(0x0a);
+            data.push(v);
+        }
+
+        if let Some(v) = self.add_eof {
+            data.push(0x0b);
+            data.push(v);
+        }
+
+        if let Some(v) = self.check_eof {
+            data.push(0x0c);
+            data.push(v);
+        }
+
+        if let Some(v) = self.rfu {
+            data.push(0x0d);
+            data.push(v);
+        }
+
+        if let Some(v) = self.deaf_time {
+            data.push(0x0e);
+            data.push(v);
+        }
+
+        if let Some(v) = self.continuous_receive_mode {
+            data.push(0x0f);
+            data.push(v);
+        }
+
+        if let Some(v) = self.min_len_for_crm {
+            data.push(0x10);
+            data.push(v);
+        }
+
+        if let Some(v) = self.type_1_tag_rrdd {
+            data.push(0x11);
+            data.push(v);
+        }
+
+        if let Some(v) = self.rfca {
+            data.push(0x12);
+            data.push(v);
+        }
+
+        if let Some(v) = self.guard_time {
+            data.push(0x13);
+            data.push(v);
+        }
+
+        data
     }
 }
 
