@@ -52,10 +52,10 @@ where
     pub async fn in_set_rf(&self, bitrate: Bitrate) -> anyhow::Result<()> {
         let bitrate = bitrate as u32;
         let cmd_data = &[
-            (bitrate & 0xff) as u8,
-            ((bitrate >> 8) & 0xff) as u8,
-            ((bitrate >> 16) & 0xff) as u8,
             ((bitrate >> 24) & 0xff) as u8,
+            ((bitrate >> 16) & 0xff) as u8,
+            ((bitrate >> 8) & 0xff) as u8,
+            (bitrate & 0xff) as u8,
         ];
 
         let data = self.send_packet(CmdCode::InSetRF, cmd_data).await?;
@@ -74,6 +74,45 @@ where
 
         ensure!(data == [0], "set protocol failed");
         Ok(())
+    }
+
+    pub async fn in_comm_rf(
+        &self,
+        request: PollingRequest,
+        timeout: Duration,
+    ) -> anyhow::Result<PollingResponse> {
+        let timeout = if timeout.as_millis() == 0 {
+            0
+        } else {
+            (((timeout.as_millis() + 1) * 10) as u16).min(0xffff)
+        };
+
+        let request = request.to_vec();
+        let mut cmd_data = vec![0; 3 + request.len()];
+        cmd_data[0] = (timeout & 0xff) as u8;
+        cmd_data[1] = (timeout >> 8) as u8;
+        cmd_data[2] = request.len() as u8 + 1;
+        cmd_data[3..].copy_from_slice(&request);
+
+        let data = self.send_packet(CmdCode::InCommRF, &cmd_data).await?;
+        ensure!(data[0..4] == [0, 0, 0, 0], "comm rf failed");
+
+        println!("{:?}", &data[7..]);
+
+        let idm = data[7..15].try_into().unwrap();
+        let pmm = data[15..23].try_into().unwrap();
+
+        let request_result = if data.len() == 25 {
+            Some(data[23..25].try_into().unwrap())
+        } else {
+            None
+        };
+
+        Ok(PollingResponse {
+            idm,
+            pmm,
+            request_result,
+        })
     }
 
     pub async fn get_firmware_version(&self) -> anyhow::Result<String> {
@@ -113,34 +152,82 @@ where
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Bitrate {
+pub struct PollingResponse {
+    idm: [u8; 8],
+    pmm: [u8; 8],
+    request_result: Option<[u8; 2]>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PollingRequest {
+    pub system_code: Option<u16>,
+    pub request_code: PollingRequestCode,
+    pub time_slot: PollingTimeSlot,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PollingRequestCode {
+    None = 0x00,
+    #[default]
+    SystemCode = 0x01,
+    TransmissionCapability = 0x02,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PollingTimeSlot {
+    #[default]
+    Slot0 = 0x00,
+    Slot1 = 0x01,
+    Slot3 = 0x03,
+    Slot7 = 0x07,
+    Slot15 = 0x0f,
+}
+
+impl PollingRequest {
+    fn to_vec(&self) -> Vec<u8> {
+        // data = 0x00 system_code(L) system_code(H) request_code time_slot
+        let mut data = vec![0; 5];
+
+        let system_code = self.system_code.unwrap_or(0xffff);
+        data[1] = (system_code & 0xff) as u8;
+        data[2] = (system_code >> 8) as u8;
+
+        data[3] = self.request_code as u8;
+        data[4] = self.time_slot as u8;
+
+        data
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Bitrate {
     B212F = 0x01_01_0f_01,
     B106A = 0x02_03_0f_03,
     B106B = 0x03_07_0f_07,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ProtocolConfig {
-    initial_guard_time: Option<u8>,
-    add_crc: Option<u8>,
-    check_crc: Option<u8>,
-    multi_card: Option<u8>,
-    add_parity: Option<u8>,
-    check_parity: Option<u8>,
-    bitwise_anticoll: Option<u8>,
-    last_byte_bit_count: Option<u8>,
-    mifare_crypto: Option<u8>,
-    add_sof: Option<u8>,
-    check_sof: Option<u8>,
-    add_eof: Option<u8>,
-    check_eof: Option<u8>,
-    rfu: Option<u8>,
-    deaf_time: Option<u8>,
-    continuous_receive_mode: Option<u8>,
-    min_len_for_crm: Option<u8>,
-    type_1_tag_rrdd: Option<u8>,
-    rfca: Option<u8>,
-    guard_time: Option<u8>,
+pub struct ProtocolConfig {
+    pub initial_guard_time: Option<u8>,
+    pub add_crc: Option<u8>,
+    pub check_crc: Option<u8>,
+    pub multi_card: Option<u8>,
+    pub add_parity: Option<u8>,
+    pub check_parity: Option<u8>,
+    pub bitwise_anticoll: Option<u8>,
+    pub last_byte_bit_count: Option<u8>,
+    pub mifare_crypto: Option<u8>,
+    pub add_sof: Option<u8>,
+    pub check_sof: Option<u8>,
+    pub add_eof: Option<u8>,
+    pub check_eof: Option<u8>,
+    pub rfu: Option<u8>,
+    pub deaf_time: Option<u8>,
+    pub continuous_receive_mode: Option<u8>,
+    pub min_len_for_crm: Option<u8>,
+    pub type_1_tag_rrdd: Option<u8>,
+    pub rfca: Option<u8>,
+    pub guard_time: Option<u8>,
 }
 
 impl Default for ProtocolConfig {
@@ -171,7 +258,7 @@ impl Default for ProtocolConfig {
 }
 
 impl ProtocolConfig {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             initial_guard_time: None,
             add_crc: None,
