@@ -1,28 +1,19 @@
 {
 	"name": "@mcc-room-manager/nfc",
-	"version": "0.0.0",
-	"license": "MIT",
-	"packageManager": "pnpm@9.5.0",
+	"version": "0.1.0",
+	"license": "UNLICENSED",
+	"private": true,
 	"engines": {
 		"node": ">= 10"
 	},
 	"main": "index.js",
 	"types": "index.d.ts",
 	"scripts": {
-		"artifacts": "napi artifacts",
 		"build": "napi build --platform --release",
-		"build:debug": "napi build --platform",
-		"prepublishOnly": "napi prepublish -t npm",
-		"test": "ava",
-		"universal": "napi universal",
-		"version": "napi version"
+		"build:debug": "napi build --platform"
 	},
 	"devDependencies": {
-		"@napi-rs/cli": "^2.18.4",
-		"ava": "^6.0.1"
-	},
-	"ava": {
-		"timeout": "3m"
+		"@napi-rs/cli": "2.18.4"
 	},
 	"napi": {
 		"name": "nfc",

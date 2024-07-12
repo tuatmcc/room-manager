@@ -1,0 +1,26 @@
+{
+	"name": "@mcc-room-manager/app",
+	"version": "0.1.0",
+	"type": "module",
+	"license": "UNLICENSED",
+	"private": true,
+	"main": "./dist/index.js",
+	"scripts": {
+		"dev": "tsx ./src/index.ts | pino-pretty",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"lint": "eslint",
+		"lint:fix": "eslint --fix",
+		"type-check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"discord.js": "14.15.3",
+		"pino": "9.2.0",
+		"zod": "3.23.8"
+	},
+	"devDependencies": {
+		"@types/node": "20.14.10",
+		"pino-pretty": "11.2.1",
+		"tsx": "4.16.2"
+	}
+}

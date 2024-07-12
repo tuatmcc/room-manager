@@ -7,6 +7,24 @@ settings:
 importers:
 
   .:
+    devDependencies:
+      '@shun-shobon/eslint-config':
+        specifier: 0.13.3
+        version: 0.13.3(@typescript-eslint/parser@7.13.1(eslint@9.6.0)(typescript@5.5.3))(eslint-plugin-import@2.29.1(@typescript-eslint/parser@7.13.1(eslint@9.6.0)(typescript@5.5.3))(eslint@9.6.0))(eslint@9.6.0)(typescript@5.5.3)
+      '@shun-shobon/prettier-config':
+        specifier: 0.4.6
+        version: 0.4.6(prettier@3.3.2)
+      eslint:
+        specifier: 9.6.0
+        version: 9.6.0
+      prettier:
+        specifier: 3.3.2
+        version: 3.3.2
+      typescript:
+        specifier: 5.5.3
+        version: 5.5.3
+
+  packages/app:
     dependencies:
       discord.js:
         specifier: 14.15.3
@@ -18,30 +36,21 @@ importers:
         specifier: 3.23.8
         version: 3.23.8
     devDependencies:
-      '@shun-shobon/eslint-config':
-        specifier: 0.13.3
-        version: 0.13.3(@typescript-eslint/parser@7.13.1(eslint@9.6.0)(typescript@5.5.3))(eslint-plugin-import@2.29.1(@typescript-eslint/parser@7.13.1(eslint@9.6.0)(typescript@5.5.3))(eslint@9.6.0))(eslint@9.6.0)(typescript@5.5.3)
-      '@shun-shobon/prettier-config':
-        specifier: 0.4.6
-        version: 0.4.6(prettier@3.3.2)
       '@types/node':
         specifier: 20.14.10
         version: 20.14.10
-      eslint:
-        specifier: 9.6.0
-        version: 9.6.0
       pino-pretty:
         specifier: 11.2.1
         version: 11.2.1
-      prettier:
-        specifier: 3.3.2
-        version: 3.3.2
       tsx:
         specifier: 4.16.2
         version: 4.16.2
-      typescript:
-        specifier: 5.5.3
-        version: 5.5.3
+
+  packages/nfc:
+    devDependencies:
+      '@napi-rs/cli':
+        specifier: 2.18.4
+        version: 2.18.4
 
 packages:
 
@@ -273,6 +282,11 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.5.0':
     resolution: {integrity: sha512-gv3ZRaISU3fjPAgNsriBRqGWQL6quFx04YMPW/zD8XMLsU32mhCCbfbO6KZFLjvYpCZ8zyDEgqsgf+PwPaM7GQ==}
+
+  '@napi-rs/cli@2.18.4':
+    resolution: {integrity: sha512-SgJeA4df9DE2iAEpr3M2H0OKl/yjtg1BnRI5/JyowS71tUWhrfSu2LT0V3vlHET+g1hBVlrO60PmEXwUEKp8Mg==}
+    engines: {node: '>= 10'}
+    hasBin: true
 
   '@next/eslint-plugin-next@14.2.4':
     resolution: {integrity: sha512-svSFxW9f3xDaZA3idQmlFw7SusOuWTpDTAeBlO3AEPDltrraV+lqs7mAc6A27YdnpQVVIA3sODqUAAHdWhVWsA==}
@@ -2395,6 +2409,8 @@ snapshots:
       wrap-ansi-cjs: wrap-ansi@7.0.0
 
   '@jridgewell/sourcemap-codec@1.5.0': {}
+
+  '@napi-rs/cli@2.18.4': {}
 
   '@next/eslint-plugin-next@14.2.4':
     dependencies:
