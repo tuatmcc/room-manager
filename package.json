@@ -1,0 +1,32 @@
+{
+	"name": "room-manager",
+	"version": "0.1.0",
+	"type": "module",
+	"license": "UNLICENSED",
+	"private": true,
+	"packageManager": "pnpm@9.5.0",
+	"main": "./dist/index.js",
+	"scripts": {
+		"dev": "tsx ./src/index.ts | pino-pretty",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"lint": "eslint",
+		"lint:fix": "eslint --fix",
+		"type-check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"discord.js": "14.15.3",
+		"pino": "9.2.0",
+		"zod": "3.23.8"
+	},
+	"devDependencies": {
+		"@shun-shobon/eslint-config": "0.13.3",
+		"@shun-shobon/prettier-config": "0.4.6",
+		"@types/node": "20.14.10",
+		"eslint": "9.6.0",
+		"pino-pretty": "11.2.1",
+		"prettier": "3.3.2",
+		"tsx": "4.16.2",
+		"typescript": "5.5.3"
+	}
+}

@@ -1,0 +1,29 @@
+{
+	"compilerOptions": {
+		"target": "es2023",
+		"lib": ["es2023"],
+		"moduleDetection": "force",
+		"module": "esnext",
+		"moduleResolution": "bundler",
+		"baseUrl": "./",
+		"paths": {
+			"@/*": ["src/*"],
+		},
+
+		"noEmit": true,
+		"isolatedModules": true,
+		"verbatimModuleSyntax": true,
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"preserveSymlinks": true,
+		"forceConsistentCasingInFileNames": true,
+
+		"strict": true,
+		"exactOptionalPropertyTypes": true,
+		"noUncheckedIndexedAccess": true,
+		"noImplicitOverride": true,
+		"noPropertyAccessFromIndexSignature": true,
+
+		"skipDefaultLibCheck": true,
+	},
+}
