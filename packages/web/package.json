@@ -9,6 +9,7 @@
 	},
 	"dependencies": {
 		"@discordjs/rest": "2.3.0",
+		"@js-temporal/polyfill": "0.4.4",
 		"@resvg/resvg-wasm": "2.4.1",
 		"discord-interactions": "4.0.0",
 		"drizzle-orm": "0.32.1",
