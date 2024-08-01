@@ -1,0 +1,25 @@
+{
+	"name": "@mcc-room-manager/web",
+	"type": "module",
+	"scripts": {
+		"build": "wrangler deploy --minify src/index.ts --dry-run --outdir dist",
+		"deploy": "wrangler deploy --minify src/index.ts",
+		"dev": "wrangler dev src/index.ts",
+		"register": "tsx scripts/register.ts"
+	},
+	"dependencies": {
+		"@discordjs/rest": "2.3.0",
+		"@resvg/resvg-wasm": "2.4.1",
+		"discord-interactions": "4.0.0",
+		"hono": "4.5.3"
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "4.20240725.0",
+		"@types/node": "20.14.9",
+		"@types/react": "18.3.3",
+		"discord-api-types": "0.37.93",
+		"tsx": "4.16.4",
+		"typescript": "5.5.4",
+		"wrangler": "3.67.1"
+	}
+}
