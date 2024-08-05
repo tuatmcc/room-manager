@@ -1,5 +1,5 @@
 {
-	"name": "@mcc-room-manager/nfc",
+	"name": "@room-manager/nfc",
 	"version": "0.1.0",
 	"license": "UNLICENSED",
 	"private": true,

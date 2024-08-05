@@ -1,0 +1,8 @@
+name = "room-manager"
+compatibility_date = "2024-06-20"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "room-manager"
+database_id = "7faafe6d-c63f-49f3-be9b-2415c0ff75be"
+migrations_dir = "./drizzle"

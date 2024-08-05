@@ -1,5 +1,5 @@
 {
-	"name": "@mcc-room-manager/web",
+	"name": "@room-manager/api",
 	"type": "module",
 	"scripts": {
 		"build": "wrangler deploy --minify src/index.ts --dry-run --outdir dist",
