@@ -13,6 +13,10 @@ export class User {
 		return new User(id, discordId, studentId, isInRoom);
 	}
 
+	updateStudentId(studentId: string): User {
+		return User.of(this.id, this.discordId, studentId, this.isInRoom);
+	}
+
 	withIsInRoom(isInRoom: boolean): User {
 		return User.of(this.id, this.discordId, this.studentId, isInRoom);
 	}
