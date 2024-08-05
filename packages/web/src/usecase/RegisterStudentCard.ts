@@ -24,7 +24,12 @@ export class RegisterStudentCardUseCase {
 		} catch (error) {
 			const cause = error instanceof Error ? error : undefined;
 
-			return err(new AppError("学生証の登録に失敗しました。", { cause }));
+			return err(
+				new AppError("Failed to register student card.", {
+					cause,
+					userMessage: "学生証の登録に失敗しました。",
+				}),
+			);
 		}
 	}
 }
