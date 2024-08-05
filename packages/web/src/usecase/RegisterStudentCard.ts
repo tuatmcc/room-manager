@@ -11,7 +11,7 @@ export class RegisterStudentCardUseCase {
 	async execute(
 		discordId: string,
 		studentId: string,
-	): Promise<Result<void, Error>> {
+	): Promise<Result<void, AppError>> {
 		try {
 			const oldUser = await this.userRepository.findByDiscordId(discordId);
 
