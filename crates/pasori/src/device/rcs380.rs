@@ -219,7 +219,6 @@ pub struct ProtocolConfig {
     pub check_sof: Option<u8>,
     pub add_eof: Option<u8>,
     pub check_eof: Option<u8>,
-    pub rfu: Option<u8>,
     pub deaf_time: Option<u8>,
     pub continuous_receive_mode: Option<u8>,
     pub min_len_for_crm: Option<u8>,
@@ -244,7 +243,6 @@ impl Default for ProtocolConfig {
             check_sof: Some(0x00),
             add_eof: Some(0x00),
             check_eof: Some(0x00),
-            rfu: None,
             deaf_time: Some(0x00),
             continuous_receive_mode: Some(0x00),
             min_len_for_crm: Some(0x00),
@@ -256,32 +254,7 @@ impl Default for ProtocolConfig {
 }
 
 impl ProtocolConfig {
-    pub fn new() -> Self {
-        Self {
-            initial_guard_time: None,
-            add_crc: None,
-            check_crc: None,
-            multi_card: None,
-            add_parity: None,
-            check_parity: None,
-            bitwise_anticoll: None,
-            last_byte_bit_count: None,
-            mifare_crypto: None,
-            add_sof: None,
-            check_sof: None,
-            add_eof: None,
-            check_eof: None,
-            rfu: None,
-            deaf_time: None,
-            continuous_receive_mode: None,
-            min_len_for_crm: None,
-            type_1_tag_rrdd: None,
-            rfca: None,
-            guard_time: None,
-        }
-    }
-
-    fn to_vec(&self) -> Vec<u8> {
+    fn to_vec(self) -> Vec<u8> {
         let mut data = vec![];
 
         if let Some(v) = self.initial_guard_time {
@@ -346,11 +319,6 @@ impl ProtocolConfig {
 
         if let Some(v) = self.check_eof {
             data.push(0x0c);
-            data.push(v);
-        }
-
-        if let Some(v) = self.rfu {
-            data.push(0x0d);
             data.push(v);
         }
 
