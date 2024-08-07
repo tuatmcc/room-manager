@@ -22,7 +22,8 @@ where
 
     fn init(&self) -> anyhow::Result<()> {
         // ACK送信でソフトリセット
-        self.transport.write(Packet::Ack.into_vec(), None)?;
+        self.transport
+            .write(Packet::Ack.into_vec().as_ref(), None)?;
 
         // 空読み込みで直前のデータなどをクリア
         let _ = self.transport.read(Some(Duration::from_millis(10)));
@@ -119,8 +120,10 @@ where
     }
 
     fn send_packet(&self, cmd_code: CmdCode, cmd_data: &[u8]) -> anyhow::Result<Vec<u8>> {
-        self.transport
-            .write(Packet::data(cmd_code as u8, cmd_data).into_vec(), None)?;
+        self.transport.write(
+            Packet::data(cmd_code as u8, cmd_data).into_vec().as_ref(),
+            None,
+        )?;
 
         let ack = self.transport.read(None)?;
         let ack = Packet::parse(&ack)?;

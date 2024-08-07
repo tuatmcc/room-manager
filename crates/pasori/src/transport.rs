@@ -3,13 +3,15 @@ use std::time::Duration;
 use anyhow::Context as _;
 use rusb::{Context, DeviceHandle, Direction, TransferType, UsbContext};
 
-const DEFAULT_TIMEOUT: Duration = Duration::from_millis(1000);
+// デフォルトではタイムアウトしない(ゼロだと無限)
+const DEFAULT_TIMEOUT: Duration = Duration::ZERO;
 // nfcpyより
+// https://github.com/nfcpy/nfcpy/blob/8a195262fe86167845d282ba5bc9cdaadf6441c4/src/nfc/clf/transport.py#L314
 const DATA_SIZE: usize = 300;
 
 pub trait Transport {
     fn read(&self, timeout: Option<Duration>) -> anyhow::Result<Vec<u8>>;
-    fn write(&self, data: Vec<u8>, timeout: Option<Duration>) -> anyhow::Result<()>;
+    fn write(&self, data: &[u8], timeout: Option<Duration>) -> anyhow::Result<()>;
 }
 
 pub struct Usb {
@@ -102,10 +104,10 @@ impl Transport for Usb {
         Ok(buf)
     }
 
-    fn write(&self, data: Vec<u8>, timeout: Option<Duration>) -> anyhow::Result<()> {
+    fn write(&self, data: &[u8], timeout: Option<Duration>) -> anyhow::Result<()> {
         let timeout = timeout.unwrap_or(DEFAULT_TIMEOUT);
 
-        self.handle.write_bulk(self.addr_bulk_out, &data, timeout)?;
+        self.handle.write_bulk(self.addr_bulk_out, data, timeout)?;
 
         Ok(())
     }
