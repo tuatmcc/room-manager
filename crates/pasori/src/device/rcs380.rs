@@ -12,44 +12,42 @@ impl<T> Chipset<T>
 where
     T: Transport,
 {
-    pub async fn new(transport: T) -> anyhow::Result<Self> {
+    pub fn new(transport: T) -> anyhow::Result<Self> {
         let chipset = Self { transport };
 
-        chipset.init().await?;
+        chipset.init()?;
 
         Ok(chipset)
     }
 
-    async fn init(&self) -> anyhow::Result<()> {
+    fn init(&self) -> anyhow::Result<()> {
         // ACK送信でソフトリセット
-        self.transport.write(Packet::Ack.into_vec(), None).await?;
+        self.transport.write(Packet::Ack.into_vec(), None)?;
 
         // 空読み込みで直前のデータなどをクリア
-        let _ = self.transport.read(Some(Duration::from_millis(10))).await;
+        let _ = self.transport.read(Some(Duration::from_millis(10)));
 
-        self.set_command_type(1).await?;
-        self.switch_rf(false).await?;
+        self.set_command_type(1)?;
+        self.switch_rf(false)?;
 
         Ok(())
     }
 
-    pub async fn set_command_type(&self, command_type: u8) -> anyhow::Result<()> {
-        let data = self
-            .send_packet(CmdCode::SetCommandType, &[command_type])
-            .await?;
+    pub fn set_command_type(&self, command_type: u8) -> anyhow::Result<()> {
+        let data = self.send_packet(CmdCode::SetCommandType, &[command_type])?;
 
         ensure!(data == [0], "set command type failed");
         Ok(())
     }
 
-    pub async fn switch_rf(&self, rf: bool) -> anyhow::Result<()> {
-        let data = self.send_packet(CmdCode::SwitchRF, &[rf as u8]).await?;
+    pub fn switch_rf(&self, rf: bool) -> anyhow::Result<()> {
+        let data = self.send_packet(CmdCode::SwitchRF, &[rf as u8])?;
 
         ensure!(data == [0], "switch rf failed");
         Ok(())
     }
 
-    pub async fn in_set_rf(&self, bitrate: Bitrate) -> anyhow::Result<()> {
+    pub fn in_set_rf(&self, bitrate: Bitrate) -> anyhow::Result<()> {
         let bitrate = bitrate as u32;
         let cmd_data = &[
             ((bitrate >> 24) & 0xff) as u8,
@@ -58,25 +56,25 @@ where
             (bitrate & 0xff) as u8,
         ];
 
-        let data = self.send_packet(CmdCode::InSetRF, cmd_data).await?;
+        let data = self.send_packet(CmdCode::InSetRF, cmd_data)?;
 
         ensure!(data == [0], "set rf failed");
         Ok(())
     }
 
-    pub async fn in_set_protocol(&self, config: &ProtocolConfig) -> anyhow::Result<()> {
+    pub fn in_set_protocol(&self, config: &ProtocolConfig) -> anyhow::Result<()> {
         let cmd_data = config.to_vec();
         if cmd_data.is_empty() {
             return Ok(());
         }
 
-        let data = self.send_packet(CmdCode::InSetProtocol, &cmd_data).await?;
+        let data = self.send_packet(CmdCode::InSetProtocol, &cmd_data)?;
 
         ensure!(data == [0], "set protocol failed");
         Ok(())
     }
 
-    pub async fn in_comm_rf(
+    pub fn in_comm_rf(
         &self,
         request: PollingRequest,
         timeout: Duration,
@@ -94,10 +92,8 @@ where
         cmd_data[2] = request.len() as u8 + 1;
         cmd_data[3..].copy_from_slice(&request);
 
-        let data = self.send_packet(CmdCode::InCommRF, &cmd_data).await?;
+        let data = self.send_packet(CmdCode::InCommRF, &cmd_data)?;
         ensure!(data[0..4] == [0, 0, 0, 0], "comm rf failed");
-
-        println!("{:?}", &data[7..]);
 
         let idm = data[7..15].try_into().unwrap();
         let pmm = data[15..23].try_into().unwrap();
@@ -115,23 +111,22 @@ where
         })
     }
 
-    pub async fn get_firmware_version(&self) -> anyhow::Result<String> {
-        let data = self.send_packet(CmdCode::GetFirmwareVersion, &[]).await?;
+    pub fn get_firmware_version(&self) -> anyhow::Result<String> {
+        let data = self.send_packet(CmdCode::GetFirmwareVersion, &[])?;
 
         let version = format!("{:x}.{:02x}", data[1], data[0]);
         Ok(version)
     }
 
-    async fn send_packet(&self, cmd_code: CmdCode, cmd_data: &[u8]) -> anyhow::Result<Vec<u8>> {
+    fn send_packet(&self, cmd_code: CmdCode, cmd_data: &[u8]) -> anyhow::Result<Vec<u8>> {
         self.transport
-            .write(Packet::data(cmd_code as u8, cmd_data).into_vec(), None)
-            .await?;
+            .write(Packet::data(cmd_code as u8, cmd_data).into_vec(), None)?;
 
-        let ack = self.transport.read(None).await?;
+        let ack = self.transport.read(None)?;
         let ack = Packet::parse(&ack)?;
         ensure!(ack == Packet::Ack, "ack failed");
 
-        let recv = self.transport.read(None).await?;
+        let recv = self.transport.read(None)?;
         let recv = Packet::parse(&recv)?;
 
         match recv {
