@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{borrow::Cow, time::Duration};
 
 use anyhow::{bail, ensure};
 
@@ -404,10 +404,10 @@ impl<'a> Packet<'a> {
         }
     }
 
-    fn into_vec(self) -> Vec<u8> {
+    fn into_vec(self) -> Cow<'static, [u8]> {
         match self {
-            Self::Ack => Self::ACK.to_vec(),
-            Self::Err => Self::ERR.to_vec(),
+            Self::Ack => Cow::Borrowed(&Self::ACK),
+            Self::Err => Cow::Borrowed(&Self::ERR),
             Self::Data { cmd_code, cmd_data } => {
                 // data = cmd_code cmd_data
                 // body = 0xd6 data
@@ -437,7 +437,7 @@ impl<'a> Packet<'a> {
                 let body_checksum = Self::checksum(&packet[8..8 + cmd_data.len() + 2]);
                 packet[10 + cmd_data.len()] = body_checksum;
 
-                packet
+                Cow::Owned(packet)
             }
         }
     }
