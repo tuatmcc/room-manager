@@ -23,7 +23,7 @@ where
     fn init(&self) -> anyhow::Result<()> {
         // ACK送信でソフトリセット
         self.transport
-            .write(Packet::Ack.into_vec().as_ref(), None)?;
+            .write(Packet::Ack.serialize().as_ref(), None)?;
 
         // 空読み込みで直前のデータなどをクリア
         let _ = self.transport.read(Some(Duration::from_millis(10)));
@@ -64,7 +64,7 @@ where
     }
 
     pub fn in_set_protocol(&self, config: &ProtocolConfig) -> anyhow::Result<()> {
-        let cmd_data = config.to_vec();
+        let cmd_data = config.serialize();
         if cmd_data.is_empty() {
             return Ok(());
         }
@@ -121,7 +121,7 @@ where
 
     fn send_packet(&self, cmd_code: CmdCode, cmd_data: &[u8]) -> anyhow::Result<Vec<u8>> {
         self.transport.write(
-            Packet::data(cmd_code as u8, cmd_data).into_vec().as_ref(),
+            Packet::data(cmd_code as u8, cmd_data).serialize().as_ref(),
             None,
         )?;
 
@@ -206,151 +206,77 @@ pub enum Bitrate {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProtocolConfig {
-    pub initial_guard_time: Option<u8>,
-    pub add_crc: Option<u8>,
-    pub check_crc: Option<u8>,
-    pub multi_card: Option<u8>,
-    pub add_parity: Option<u8>,
-    pub check_parity: Option<u8>,
-    pub bitwise_anticoll: Option<u8>,
-    pub last_byte_bit_count: Option<u8>,
-    pub mifare_crypto: Option<u8>,
-    pub add_sof: Option<u8>,
-    pub check_sof: Option<u8>,
-    pub add_eof: Option<u8>,
-    pub check_eof: Option<u8>,
-    pub deaf_time: Option<u8>,
-    pub continuous_receive_mode: Option<u8>,
-    pub min_len_for_crm: Option<u8>,
-    pub type_1_tag_rrdd: Option<u8>,
-    pub rfca: Option<u8>,
-    pub guard_time: Option<u8>,
+    pub initial_guard_time: u8,
+    pub add_crc: u8,
+    pub check_crc: u8,
+    pub multi_card: u8,
+    pub add_parity: u8,
+    pub check_parity: u8,
+    pub bitwise_anticoll: u8,
+    pub last_byte_bit_count: u8,
+    pub mifare_crypto: u8,
+    pub add_sof: u8,
+    pub check_sof: u8,
+    pub add_eof: u8,
+    pub check_eof: u8,
+    pub deaf_time: u8,
+    pub continuous_receive_mode: u8,
+    pub min_len_for_crm: u8,
+    pub type_1_tag_rrdd: u8,
+    pub rfca: u8,
+    pub guard_time: u8,
 }
 
 impl Default for ProtocolConfig {
     fn default() -> Self {
         Self {
-            initial_guard_time: Some(0x18),
-            add_crc: Some(0x01),
-            check_crc: Some(0x01),
-            multi_card: Some(0x00),
-            add_parity: Some(0x00),
-            check_parity: Some(0x00),
-            bitwise_anticoll: Some(0x00),
-            last_byte_bit_count: Some(0x08),
-            mifare_crypto: Some(0x00),
-            add_sof: Some(0x00),
-            check_sof: Some(0x00),
-            add_eof: Some(0x00),
-            check_eof: Some(0x00),
-            deaf_time: Some(0x00),
-            continuous_receive_mode: Some(0x00),
-            min_len_for_crm: Some(0x00),
-            type_1_tag_rrdd: Some(0x00),
-            rfca: Some(0x00),
-            guard_time: Some(0x06),
+            initial_guard_time: 0x18,
+            add_crc: 0x01,
+            check_crc: 0x01,
+            multi_card: 0x00,
+            add_parity: 0x00,
+            check_parity: 0x00,
+            bitwise_anticoll: 0x00,
+            last_byte_bit_count: 0x08,
+            mifare_crypto: 0x00,
+            add_sof: 0x00,
+            check_sof: 0x00,
+            add_eof: 0x00,
+            check_eof: 0x00,
+            deaf_time: 0x00,
+            continuous_receive_mode: 0x00,
+            min_len_for_crm: 0x00,
+            type_1_tag_rrdd: 0x00,
+            rfca: 0x00,
+            guard_time: 0x06,
         }
     }
 }
 
 impl ProtocolConfig {
-    fn to_vec(self) -> Vec<u8> {
-        let mut data = vec![];
-
-        if let Some(v) = self.initial_guard_time {
-            data.push(0x00);
-            data.push(v);
-        }
-
-        if let Some(v) = self.add_crc {
-            data.push(0x01);
-            data.push(v);
-        }
-
-        if let Some(v) = self.check_crc {
-            data.push(0x02);
-            data.push(v);
-        }
-
-        if let Some(v) = self.multi_card {
-            data.push(0x03);
-            data.push(v);
-        }
-
-        if let Some(v) = self.add_parity {
-            data.push(0x04);
-            data.push(v);
-        }
-
-        if let Some(v) = self.check_parity {
-            data.push(0x05);
-            data.push(v);
-        }
-
-        if let Some(v) = self.bitwise_anticoll {
-            data.push(0x06);
-            data.push(v);
-        }
-
-        if let Some(v) = self.last_byte_bit_count {
-            data.push(0x07);
-            data.push(v);
-        }
-
-        if let Some(v) = self.mifare_crypto {
-            data.push(0x08);
-            data.push(v);
-        }
-
-        if let Some(v) = self.add_sof {
-            data.push(0x09);
-            data.push(v);
-        }
-
-        if let Some(v) = self.check_sof {
-            data.push(0x0a);
-            data.push(v);
-        }
-
-        if let Some(v) = self.add_eof {
-            data.push(0x0b);
-            data.push(v);
-        }
-
-        if let Some(v) = self.check_eof {
-            data.push(0x0c);
-            data.push(v);
-        }
-
-        if let Some(v) = self.deaf_time {
-            data.push(0x0e);
-            data.push(v);
-        }
-
-        if let Some(v) = self.continuous_receive_mode {
-            data.push(0x0f);
-            data.push(v);
-        }
-
-        if let Some(v) = self.min_len_for_crm {
-            data.push(0x10);
-            data.push(v);
-        }
-
-        if let Some(v) = self.type_1_tag_rrdd {
-            data.push(0x11);
-            data.push(v);
-        }
-
-        if let Some(v) = self.rfca {
-            data.push(0x12);
-            data.push(v);
-        }
-
-        if let Some(v) = self.guard_time {
-            data.push(0x13);
-            data.push(v);
-        }
+    fn serialize(self) -> [u8; 38] {
+        #[rustfmt::skip]
+        let data = [
+            0x00, self.initial_guard_time,
+            0x01, self.add_crc,
+            0x02, self.check_crc,
+            0x03, self.multi_card,
+            0x04, self.add_parity,
+            0x05, self.check_parity,
+            0x06, self.bitwise_anticoll,
+            0x07, self.last_byte_bit_count,
+            0x08, self.mifare_crypto,
+            0x09, self.add_sof,
+            0x0a, self.check_sof,
+            0x0b, self.add_eof,
+            0x0c, self.check_eof,
+            0x0e, self.deaf_time,
+            0x0f, self.continuous_receive_mode,
+            0x10, self.min_len_for_crm,
+            0x11, self.type_1_tag_rrdd,
+            0x12, self.rfca,
+            0x13, self.guard_time,
+        ];
 
         data
     }
@@ -404,7 +330,7 @@ impl<'a> Packet<'a> {
         }
     }
 
-    fn into_vec(self) -> Cow<'static, [u8]> {
+    fn serialize(self) -> Cow<'static, [u8]> {
         match self {
             Self::Ack => Cow::Borrowed(&Self::ACK),
             Self::Err => Cow::Borrowed(&Self::ERR),

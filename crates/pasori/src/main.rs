@@ -22,7 +22,7 @@ fn main() -> anyhow::Result<()> {
 
     chipset.in_set_rf(Bitrate::B212F)?;
     chipset.in_set_protocol(&ProtocolConfig {
-        initial_guard_time: Some(24),
+        initial_guard_time: 24,
         ..Default::default()
     })?;
     let polling_res = chipset.in_comm_rf(PollingRequest::default(), Duration::from_millis(10))?;
