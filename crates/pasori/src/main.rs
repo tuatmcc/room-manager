@@ -1,8 +1,10 @@
 #![warn(clippy::all)]
 mod device;
+mod tag;
 mod transport;
 
 use device::rcs380::{Bitrate, Device, PollingRequest};
+use tag::tt3::{BlockCode, ServiceCode};
 use transport::Usb;
 
 const VENDER_ID: u16 = 0x054c;
@@ -16,7 +18,11 @@ fn main() -> anyhow::Result<()> {
     let response = device.sense_ttf(Bitrate::B212F, PollingRequest::default())?;
     println!("{:02x?}", response);
 
-    let response = device.read_without_encryption(&response.idm, 0x200b, 0)?;
+    let response = device.read_without_encryption(
+        &response.idm,
+        &[ServiceCode::new(0x200b)],
+        &[BlockCode::new(0, 0, 0)],
+    )?;
 
     let read_data = &response[14..];
     let student_id = std::str::from_utf8(&read_data[7..15]).unwrap();

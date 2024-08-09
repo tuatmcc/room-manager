@@ -3,7 +3,10 @@ use std::{borrow::Cow, time::Duration};
 
 use anyhow::{bail, ensure};
 
-use crate::transport::Transport;
+use crate::{
+    tag::tt3::{BlockCode, ServiceCode},
+    transport::Transport,
+};
 
 pub struct Device<T: Transport> {
     chipset: Chipset<T>,
@@ -61,8 +64,8 @@ impl<T: Transport> Device<T> {
     pub fn read_without_encryption(
         &self,
         idm: &[u8; 8],
-        service_code: u16,
-        block_code: u16,
+        service_codes: &[ServiceCode],
+        block_codes: &[BlockCode],
     ) -> anyhow::Result<Vec<u8>> {
         let mut send_data = Vec::new();
 
@@ -73,24 +76,17 @@ impl<T: Transport> Device<T> {
         send_data.extend_from_slice(idm);
 
         // サービス数
-        send_data.push(0x01);
+        send_data.push(service_codes.len() as u8);
         // サービスコード (リトルエンディアン)
-        send_data.push(service_code as u8);
-        send_data.push((service_code >> 8) as u8);
+        for service_code in service_codes {
+            send_data.extend_from_slice(&service_code.to_bytes());
+        }
 
         // ブロック数
-        send_data.push(0x01);
+        send_data.push(service_codes.len() as u8);
         // ブロックコード
-        let access_mode = 0x00u8;
-        let service_code_list_order = 0x00u8;
-        send_data.push(
-            ((block_code < 256) as u8) << 7
-                | (access_mode & 0x07) << 4
-                | (service_code_list_order & 0x0f),
-        );
-        send_data.push(block_code as u8);
-        if block_code >= 256 {
-            send_data.push((block_code >> 8) as u8);
+        for block_code in block_codes {
+            send_data.extend_from_slice(&block_code.to_bytes());
         }
 
         // TODO: タイムアウトの値を動的にする
