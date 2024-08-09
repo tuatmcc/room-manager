@@ -20,6 +20,7 @@ impl<T: Transport> Device<T> {
         self.chipset.switch_rf(false)
     }
 
+    // polling
     pub fn sense_ttf(
         &self,
         bitrate: Bitrate,
