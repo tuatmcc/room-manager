@@ -20,7 +20,7 @@ impl<T: Transport> Device<T> {
         self.chipset.switch_rf(false)
     }
 
-    // polling
+    /// FelicaのPollingコマンドと同等の処理を行う
     pub fn sense_ttf(
         &self,
         bitrate: Bitrate,
@@ -35,11 +35,25 @@ impl<T: Transport> Device<T> {
             initial_guard_time: Some(0x18),
             ..Default::default()
         })?;
-        let response = self
-            .chipset
-            .in_comm_rf(request, Duration::from_millis(10))?;
 
-        Ok(response)
+        let data = self
+            .chipset
+            .in_comm_rf(request.serialize().as_ref(), Duration::from_millis(10))?;
+
+        let idm = data[7..15].try_into().unwrap();
+        let pmm = data[15..23].try_into().unwrap();
+
+        let request_result = if data.len() == 25 {
+            Some(data[23..25].try_into().unwrap())
+        } else {
+            None
+        };
+
+        Ok(PollingResponse {
+            idm,
+            pmm,
+            request_result,
+        })
     }
 }
 
@@ -84,41 +98,26 @@ impl<T: Transport> Chipset<T> {
         Ok(())
     }
 
-    pub fn in_comm_rf(
-        &self,
-        request: PollingRequest,
-        timeout: Duration,
-    ) -> anyhow::Result<PollingResponse> {
+    /// InCommRF
+    /// Felicaの各種コマンドを実行する
+    /// 詳細は https://www.sony.co.jp/Products/felica/business/tech-support/data/card_usersmanual_2.21j.pdf の4.4コマンド仕様を参照
+    pub fn in_comm_rf(&self, send_data: &[u8], timeout: Duration) -> anyhow::Result<Vec<u8>> {
         let timeout = if timeout.as_millis() == 0 {
             0
         } else {
             (((timeout.as_millis() + 1) * 10) as u16).min(0xffff)
         };
 
-        let request = request.serialize();
-        let mut cmd_data = vec![0; 3 + request.len()];
+        let mut cmd_data = vec![0; 3 + send_data.len()];
         cmd_data[0] = (timeout & 0xff) as u8;
         cmd_data[1] = (timeout >> 8) as u8;
-        cmd_data[2] = request.len() as u8 + 1;
-        cmd_data[3..].copy_from_slice(&request);
+        cmd_data[2] = send_data.len() as u8 + 1;
+        cmd_data[3..].copy_from_slice(send_data);
 
         let data = self.send_packet(CmdCode::InCommRF, &cmd_data)?;
         ensure!(data[0..4] == [0, 0, 0, 0], "comm rf failed");
 
-        let idm = data[7..15].try_into().unwrap();
-        let pmm = data[15..23].try_into().unwrap();
-
-        let request_result = if data.len() == 25 {
-            Some(data[23..25].try_into().unwrap())
-        } else {
-            None
-        };
-
-        Ok(PollingResponse {
-            idm,
-            pmm,
-            request_result,
-        })
+        Ok(data)
     }
 
     pub fn switch_rf(&self, rf: bool) -> anyhow::Result<()> {
