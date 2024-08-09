@@ -5,6 +5,43 @@ use anyhow::{bail, ensure};
 
 use crate::transport::Transport;
 
+pub struct Device<T: Transport> {
+    chipset: Chipset<T>,
+}
+
+impl<T: Transport> Device<T> {
+    pub fn new(transport: T) -> anyhow::Result<Self> {
+        let chipset = Chipset::new(transport)?;
+
+        Ok(Self { chipset })
+    }
+
+    pub fn mute(&self) -> anyhow::Result<()> {
+        self.chipset.switch_rf(false)
+    }
+
+    pub fn sense_ttf(
+        &self,
+        bitrate: Bitrate,
+        request: PollingRequest,
+    ) -> anyhow::Result<PollingResponse> {
+        if bitrate != Bitrate::B212F && bitrate != Bitrate::B424F {
+            bail!("unsupported bitrate");
+        }
+
+        self.chipset.in_set_rf(bitrate, None)?;
+        self.chipset.in_set_protocol(&InProtocolConfig {
+            initial_guard_time: 0x18,
+            ..Default::default()
+        })?;
+        let response = self
+            .chipset
+            .in_comm_rf(request, Duration::from_millis(10))?;
+
+        Ok(response)
+    }
+}
+
 pub struct Chipset<T: Transport> {
     transport: T,
 }
@@ -24,9 +61,9 @@ impl<T: Transport> Chipset<T> {
         recv_bitrate: Option<Bitrate>,
     ) -> anyhow::Result<()> {
         let mut cmd_data = [0; 4];
-        cmd_data[0..2].copy_from_slice(&send_bitrate.to_in_set_rf_settings());
+        cmd_data[0..2].copy_from_slice(&send_bitrate.to_in_set_rf_settings()[0..2]);
         cmd_data[2..4]
-            .copy_from_slice(&recv_bitrate.unwrap_or(send_bitrate).to_in_set_rf_settings());
+            .copy_from_slice(&recv_bitrate.unwrap_or(send_bitrate).to_in_set_rf_settings()[2..4]);
 
         let data = self.send_packet(CmdCode::InSetRF, &cmd_data)?;
 
