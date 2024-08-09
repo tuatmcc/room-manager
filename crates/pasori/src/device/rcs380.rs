@@ -55,6 +55,53 @@ impl<T: Transport> Device<T> {
             request_result,
         })
     }
+
+    // TODO: 実装場所は要検討
+    // TODO: サービスコード・ブロックコードを型にする & 複数対応にする
+    pub fn read_without_encryption(
+        &self,
+        idm: &[u8; 8],
+        service_code: u16,
+        block_code: u16,
+    ) -> anyhow::Result<Vec<u8>> {
+        let mut send_data = Vec::new();
+
+        // Read Without Encryptionのコマンドコード
+        send_data.push(0x06);
+
+        // IDm
+        send_data.extend_from_slice(idm);
+
+        // サービス数
+        send_data.push(0x01);
+        // サービスコード (リトルエンディアン)
+        send_data.push(service_code as u8);
+        send_data.push((service_code >> 8) as u8);
+
+        // ブロック数
+        send_data.push(0x01);
+        // ブロックコード
+        let access_mode = 0x00u8;
+        let service_code_list_order = 0x00u8;
+        send_data.push(
+            ((block_code < 256) as u8) << 7
+                | (access_mode & 0x07) << 4
+                | (service_code_list_order & 0x0f),
+        );
+        send_data.push(block_code as u8);
+        if block_code >= 256 {
+            send_data.push((block_code >> 8) as u8);
+        }
+
+        // TODO: タイムアウトの値を動的にする
+        let recv_data = self
+            .chipset
+            .in_comm_rf(&send_data, Duration::from_millis(100))?;
+
+        let data = recv_data[4..].to_vec();
+
+        Ok(data)
+    }
 }
 
 struct Chipset<T: Transport> {
@@ -201,9 +248,9 @@ impl<T: Transport> Drop for Chipset<T> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PollingResponse {
-    idm: [u8; 8],
-    pmm: [u8; 8],
-    request_result: Option<[u8; 2]>,
+    pub idm: [u8; 8],
+    pub pmm: [u8; 8],
+    pub request_result: Option<[u8; 2]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

@@ -14,7 +14,13 @@ fn main() -> anyhow::Result<()> {
     let device = Device::new(transport)?;
 
     let response = device.sense_ttf(Bitrate::B212F, PollingRequest::default())?;
-    println!("{:x?}", response);
+    println!("{:02x?}", response);
+
+    let response = device.read_without_encryption(&response.idm, 0x200b, 0)?;
+
+    let read_data = &response[14..];
+    let student_id = std::str::from_utf8(&read_data[7..15]).unwrap();
+    println!("学籍番号: {}", student_id);
 
     Ok(())
 }
