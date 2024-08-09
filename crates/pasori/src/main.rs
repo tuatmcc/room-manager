@@ -4,7 +4,7 @@ mod transport;
 
 use std::time::Duration;
 
-use device::rcs380::{Bitrate, Chipset, PollingRequest, ProtocolConfig};
+use device::rcs380::{Bitrate, Chipset, InProtocolConfig, PollingRequest};
 use transport::Usb;
 
 const VENDER_ID: u16 = 0x054c;
@@ -20,8 +20,8 @@ fn main() -> anyhow::Result<()> {
 
     chipset.switch_rf(false)?;
 
-    chipset.in_set_rf(Bitrate::B212F)?;
-    chipset.in_set_protocol(&ProtocolConfig {
+    chipset.in_set_rf(Bitrate::B212F, None)?;
+    chipset.in_set_protocol(&InProtocolConfig {
         initial_guard_time: 0x18,
         ..Default::default()
     })?;

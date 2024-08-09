@@ -34,11 +34,8 @@ impl<T: Transport> Chipset<T> {
         Ok(())
     }
 
-    pub fn in_set_protocol(&self, config: &ProtocolConfig) -> anyhow::Result<()> {
+    pub fn in_set_protocol(&self, config: &InProtocolConfig) -> anyhow::Result<()> {
         let cmd_data = config.serialize();
-        if cmd_data.is_empty() {
-            return Ok(());
-        }
 
         let data = self.send_packet(CmdCode::InSetProtocol, &cmd_data)?;
 
@@ -96,6 +93,15 @@ impl<T: Transport> Chipset<T> {
         let data = self.send_packet(CmdCode::TgSetRF, &cmd_data)?;
 
         ensure!(data == [0], "set rf failed");
+        Ok(())
+    }
+
+    pub fn tg_set_protocol(&self, config: &TgProtocolConfig) -> anyhow::Result<()> {
+        let cmd_data = config.serialize();
+
+        let data = self.send_packet(CmdCode::TgSetProtocol, &cmd_data)?;
+
+        ensure!(data == [0], "set protocol failed");
         Ok(())
     }
 
@@ -257,7 +263,7 @@ impl Bitrate {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ProtocolConfig {
+pub struct InProtocolConfig {
     pub initial_guard_time: u8,
     pub add_crc: u8,
     pub check_crc: u8,
@@ -279,7 +285,7 @@ pub struct ProtocolConfig {
     pub guard_time: u8,
 }
 
-impl Default for ProtocolConfig {
+impl Default for InProtocolConfig {
     fn default() -> Self {
         Self {
             initial_guard_time: 0x18,
@@ -305,7 +311,7 @@ impl Default for ProtocolConfig {
     }
 }
 
-impl ProtocolConfig {
+impl InProtocolConfig {
     fn serialize(self) -> [u8; 38] {
         #[rustfmt::skip]
         let data = [
@@ -328,6 +334,36 @@ impl ProtocolConfig {
             0x11, self.type_1_tag_rrdd,
             0x12, self.rfca,
             0x13, self.guard_time,
+        ];
+
+        data
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TgProtocolConfig {
+    send_timeout_time_unit: u8,
+    rf_off_error: u8,
+    continuous_receive_mode: u8,
+}
+
+impl Default for TgProtocolConfig {
+    fn default() -> Self {
+        Self {
+            send_timeout_time_unit: 0x01,
+            rf_off_error: 0x01,
+            continuous_receive_mode: 0x07,
+        }
+    }
+}
+
+impl TgProtocolConfig {
+    fn serialize(self) -> [u8; 6] {
+        #[rustfmt::skip]
+        let data = [
+            0x00, self.send_timeout_time_unit,
+            0x01, self.rf_off_error,
+            0x02, self.continuous_receive_mode,
         ];
 
         data
