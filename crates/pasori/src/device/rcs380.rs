@@ -86,7 +86,7 @@ where
             (((timeout.as_millis() + 1) * 10) as u16).min(0xffff)
         };
 
-        let request = request.to_vec();
+        let request = request.serialize();
         let mut cmd_data = vec![0; 3 + request.len()];
         cmd_data[0] = (timeout & 0xff) as u8;
         cmd_data[1] = (timeout >> 8) as u8;
@@ -182,9 +182,9 @@ pub enum PollingTimeSlot {
 }
 
 impl PollingRequest {
-    fn to_vec(&self) -> Vec<u8> {
+    fn serialize(&self) -> [u8; 5] {
         // data = 0x00 system_code(L) system_code(H) request_code time_slot
-        let mut data = vec![0; 5];
+        let mut data = [0; 5];
 
         let system_code = self.system_code.unwrap_or(0xffff);
         data[1] = (system_code & 0xff) as u8;

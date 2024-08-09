@@ -71,7 +71,10 @@ impl Usb {
             anyhow::bail!("no bulk endpoints for read and write");
         };
 
-        if handle.kernel_driver_active(interface_desc.interface_number())? {
+        if handle
+            .kernel_driver_active(interface_desc.interface_number())
+            .unwrap_or(false)
+        {
             handle.detach_kernel_driver(interface_desc.interface_number())?;
         }
 
