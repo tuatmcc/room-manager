@@ -18,16 +18,17 @@ impl<T: Transport> Chipset<T> {
         Ok(chipset)
     }
 
-    pub fn in_set_rf(&self, bitrate: Bitrate) -> anyhow::Result<()> {
-        let bitrate = bitrate as u32;
-        let cmd_data = &[
-            ((bitrate >> 24) & 0xff) as u8,
-            ((bitrate >> 16) & 0xff) as u8,
-            ((bitrate >> 8) & 0xff) as u8,
-            (bitrate & 0xff) as u8,
-        ];
+    pub fn in_set_rf(
+        &self,
+        send_bitrate: Bitrate,
+        recv_bitrate: Option<Bitrate>,
+    ) -> anyhow::Result<()> {
+        let mut cmd_data = [0; 4];
+        cmd_data[0..2].copy_from_slice(&send_bitrate.to_in_set_rf_settings());
+        cmd_data[2..4]
+            .copy_from_slice(&recv_bitrate.unwrap_or(send_bitrate).to_in_set_rf_settings());
 
-        let data = self.send_packet(CmdCode::InSetRF, cmd_data)?;
+        let data = self.send_packet(CmdCode::InSetRF, &cmd_data)?;
 
         ensure!(data == [0], "set rf failed");
         Ok(())
@@ -86,6 +87,15 @@ impl<T: Transport> Chipset<T> {
         let data = self.send_packet(CmdCode::SwitchRF, &[rf as u8])?;
 
         ensure!(data == [0], "switch rf failed");
+        Ok(())
+    }
+
+    pub fn tg_set_rf(&self, bitrate: Bitrate) -> anyhow::Result<()> {
+        let cmd_data = bitrate.to_tg_set_rf_settings();
+
+        let data = self.send_packet(CmdCode::TgSetRF, &cmd_data)?;
+
+        ensure!(data == [0], "set rf failed");
         Ok(())
     }
 
@@ -211,9 +221,39 @@ impl PollingRequest {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bitrate {
-    B212F = 0x01_01_0f_01,
-    B106A = 0x02_03_0f_03,
-    B106B = 0x03_07_0f_07,
+    B212F,
+    B424F,
+    B106A,
+    B212A,
+    B424A,
+    B106B,
+    B212B,
+    B424B,
+}
+
+impl Bitrate {
+    fn to_in_set_rf_settings(self) -> [u8; 4] {
+        match self {
+            Bitrate::B212F => [0x01, 0x01, 0x0f, 0x01],
+            Bitrate::B424F => [0x01, 0x02, 0x0f, 0x02],
+            Bitrate::B106A => [0x02, 0x03, 0x0f, 0x03],
+            Bitrate::B212A => [0x04, 0x04, 0x0f, 0x04],
+            Bitrate::B424A => [0x05, 0x05, 0x0f, 0x05],
+            Bitrate::B106B => [0x03, 0x07, 0x0f, 0x07],
+            Bitrate::B212B => [0x03, 0x08, 0x0f, 0x08],
+            Bitrate::B424B => [0x03, 0x09, 0x0f, 0x09],
+        }
+    }
+    fn to_tg_set_rf_settings(self) -> [u8; 2] {
+        match self {
+            Bitrate::B106A => [0x08, 0x0b],
+            Bitrate::B212F => [0x08, 0x0c],
+            Bitrate::B424F => [0x08, 0x0d],
+            Bitrate::B212A => [0x08, 0x0e],
+            Bitrate::B424A => [0x08, 0x0f],
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
