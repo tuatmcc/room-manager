@@ -18,42 +18,6 @@ impl<T: Transport> Chipset<T> {
         Ok(chipset)
     }
 
-    fn init(&self) -> anyhow::Result<()> {
-        // ACK送信でソフトリセット
-        self.transport
-            .write(Packet::Ack.serialize().as_ref(), None)?;
-
-        // 空読み込みで直前のデータなどをクリア
-        let _ = self.transport.read(Some(Duration::from_millis(10)));
-
-        self.set_command_type(1)?;
-        self.switch_rf(false)?;
-
-        Ok(())
-    }
-
-    fn close(&self) -> anyhow::Result<()> {
-        self.switch_rf(false)?;
-        self.transport
-            .write(Packet::Ack.serialize().as_ref(), None)?;
-
-        Ok(())
-    }
-
-    pub fn set_command_type(&self, command_type: u8) -> anyhow::Result<()> {
-        let data = self.send_packet(CmdCode::SetCommandType, &[command_type])?;
-
-        ensure!(data == [0], "set command type failed");
-        Ok(())
-    }
-
-    pub fn switch_rf(&self, rf: bool) -> anyhow::Result<()> {
-        let data = self.send_packet(CmdCode::SwitchRF, &[rf as u8])?;
-
-        ensure!(data == [0], "switch rf failed");
-        Ok(())
-    }
-
     pub fn in_set_rf(&self, bitrate: Bitrate) -> anyhow::Result<()> {
         let bitrate = bitrate as u32;
         let cmd_data = &[
@@ -118,11 +82,47 @@ impl<T: Transport> Chipset<T> {
         })
     }
 
+    pub fn switch_rf(&self, rf: bool) -> anyhow::Result<()> {
+        let data = self.send_packet(CmdCode::SwitchRF, &[rf as u8])?;
+
+        ensure!(data == [0], "switch rf failed");
+        Ok(())
+    }
+
     pub fn get_firmware_version(&self) -> anyhow::Result<String> {
         let data = self.send_packet(CmdCode::GetFirmwareVersion, &[])?;
 
         let version = format!("{:x}.{:02x}", data[1], data[0]);
         Ok(version)
+    }
+
+    pub fn set_command_type(&self, command_type: u8) -> anyhow::Result<()> {
+        let data = self.send_packet(CmdCode::SetCommandType, &[command_type])?;
+
+        ensure!(data == [0], "set command type failed");
+        Ok(())
+    }
+
+    fn init(&self) -> anyhow::Result<()> {
+        // ACK送信でソフトリセット
+        self.transport
+            .write(Packet::Ack.serialize().as_ref(), None)?;
+
+        // 空読み込みで直前のデータなどをクリア
+        let _ = self.transport.read(Some(Duration::from_millis(10)));
+
+        self.set_command_type(1)?;
+        self.switch_rf(false)?;
+
+        Ok(())
+    }
+
+    fn close(&self) -> anyhow::Result<()> {
+        self.switch_rf(false)?;
+        self.transport
+            .write(Packet::Ack.serialize().as_ref(), None)?;
+
+        Ok(())
     }
 
     fn send_packet(&self, cmd_code: CmdCode, cmd_data: &[u8]) -> anyhow::Result<Vec<u8>> {
