@@ -1,17 +1,15 @@
+#![allow(dead_code)]
 use std::{borrow::Cow, time::Duration};
 
 use anyhow::{bail, ensure};
 
 use crate::transport::Transport;
 
-pub struct Chipset<T> {
+pub struct Chipset<T: Transport> {
     transport: T,
 }
 
-impl<T> Chipset<T>
-where
-    T: Transport,
-{
+impl<T: Transport> Chipset<T> {
     pub fn new(transport: T) -> anyhow::Result<Self> {
         let chipset = Self { transport };
 
@@ -30,6 +28,14 @@ where
 
         self.set_command_type(1)?;
         self.switch_rf(false)?;
+
+        Ok(())
+    }
+
+    fn close(&self) -> anyhow::Result<()> {
+        self.switch_rf(false)?;
+        self.transport
+            .write(Packet::Ack.serialize().as_ref(), None)?;
 
         Ok(())
     }
@@ -146,6 +152,12 @@ where
             Packet::Err => bail!("error packet"),
             Packet::Ack => bail!("ack packet"),
         }
+    }
+}
+
+impl<T: Transport> Drop for Chipset<T> {
+    fn drop(&mut self) {
+        self.close().expect("close failed");
     }
 }
 
