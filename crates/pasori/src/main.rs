@@ -2,9 +2,7 @@
 mod device;
 mod transport;
 
-use std::time::Duration;
-
-use device::rcs380::{Bitrate, Chipset, Device, InProtocolConfig, PollingRequest};
+use device::rcs380::{Bitrate, Device, PollingRequest};
 use transport::Usb;
 
 const VENDER_ID: u16 = 0x054c;

@@ -30,8 +30,8 @@ impl<T: Transport> Device<T> {
         }
 
         self.chipset.in_set_rf(bitrate, None)?;
-        self.chipset.in_set_protocol(&InProtocolConfig {
-            initial_guard_time: 0x18,
+        self.chipset.in_set_protocol(&InitiatorConfig {
+            initial_guard_time: Some(0x18),
             ..Default::default()
         })?;
         let response = self
@@ -42,7 +42,7 @@ impl<T: Transport> Device<T> {
     }
 }
 
-pub struct Chipset<T: Transport> {
+struct Chipset<T: Transport> {
     transport: T,
 }
 
@@ -71,8 +71,11 @@ impl<T: Transport> Chipset<T> {
         Ok(())
     }
 
-    pub fn in_set_protocol(&self, config: &InProtocolConfig) -> anyhow::Result<()> {
+    pub fn in_set_protocol(&self, config: &InitiatorConfig) -> anyhow::Result<()> {
         let cmd_data = config.serialize();
+        if cmd_data.is_empty() {
+            return Ok(());
+        }
 
         let data = self.send_packet(CmdCode::InSetProtocol, &cmd_data)?;
 
@@ -124,24 +127,6 @@ impl<T: Transport> Chipset<T> {
         Ok(())
     }
 
-    pub fn tg_set_rf(&self, bitrate: Bitrate) -> anyhow::Result<()> {
-        let cmd_data = bitrate.to_tg_set_rf_settings();
-
-        let data = self.send_packet(CmdCode::TgSetRF, &cmd_data)?;
-
-        ensure!(data == [0], "set rf failed");
-        Ok(())
-    }
-
-    pub fn tg_set_protocol(&self, config: &TgProtocolConfig) -> anyhow::Result<()> {
-        let cmd_data = config.serialize();
-
-        let data = self.send_packet(CmdCode::TgSetProtocol, &cmd_data)?;
-
-        ensure!(data == [0], "set protocol failed");
-        Ok(())
-    }
-
     pub fn get_firmware_version(&self) -> anyhow::Result<String> {
         let data = self.send_packet(CmdCode::GetFirmwareVersion, &[])?;
 
@@ -185,11 +170,11 @@ impl<T: Transport> Chipset<T> {
         )?;
 
         let ack = self.transport.read(None)?;
-        let ack = Packet::parse(&ack)?;
+        let ack = Packet::deserialize(&ack)?;
         ensure!(ack == Packet::Ack, "ack failed");
 
         let recv = self.transport.read(None)?;
-        let recv = Packet::parse(&recv)?;
+        let recv = Packet::deserialize(&recv)?;
 
         match recv {
             Packet::Data {
@@ -300,108 +285,152 @@ impl Bitrate {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct InProtocolConfig {
-    pub initial_guard_time: u8,
-    pub add_crc: u8,
-    pub check_crc: u8,
-    pub multi_card: u8,
-    pub add_parity: u8,
-    pub check_parity: u8,
-    pub bitwise_anticoll: u8,
-    pub last_byte_bit_count: u8,
-    pub mifare_crypto: u8,
-    pub add_sof: u8,
-    pub check_sof: u8,
-    pub add_eof: u8,
-    pub check_eof: u8,
-    pub deaf_time: u8,
-    pub continuous_receive_mode: u8,
-    pub min_len_for_crm: u8,
-    pub type_1_tag_rrdd: u8,
-    pub rfca: u8,
-    pub guard_time: u8,
+struct InitiatorConfig {
+    initial_guard_time: Option<u8>,
+    add_crc: Option<u8>,
+    check_crc: Option<u8>,
+    multi_card: Option<u8>,
+    add_parity: Option<u8>,
+    check_parity: Option<u8>,
+    bitwise_anticoll: Option<u8>,
+    last_byte_bit_count: Option<u8>,
+    mifare_crypto: Option<u8>,
+    add_sof: Option<u8>,
+    check_sof: Option<u8>,
+    add_eof: Option<u8>,
+    check_eof: Option<u8>,
+    deaf_time: Option<u8>,
+    continuous_receive_mode: Option<u8>,
+    min_len_for_crm: Option<u8>,
+    type_1_tag_rrdd: Option<u8>,
+    rfca: Option<u8>,
+    guard_time: Option<u8>,
 }
 
-impl Default for InProtocolConfig {
+impl Default for InitiatorConfig {
     fn default() -> Self {
         Self {
-            initial_guard_time: 0x18,
-            add_crc: 0x01,
-            check_crc: 0x01,
-            multi_card: 0x00,
-            add_parity: 0x00,
-            check_parity: 0x00,
-            bitwise_anticoll: 0x00,
-            last_byte_bit_count: 0x08,
-            mifare_crypto: 0x00,
-            add_sof: 0x00,
-            check_sof: 0x00,
-            add_eof: 0x00,
-            check_eof: 0x00,
-            deaf_time: 0x00,
-            continuous_receive_mode: 0x00,
-            min_len_for_crm: 0x00,
-            type_1_tag_rrdd: 0x00,
-            rfca: 0x00,
-            guard_time: 0x06,
+            initial_guard_time: Some(0x18),
+            add_crc: Some(0x01),
+            check_crc: Some(0x01),
+            multi_card: Some(0x00),
+            add_parity: Some(0x00),
+            check_parity: Some(0x00),
+            bitwise_anticoll: Some(0x00),
+            last_byte_bit_count: Some(0x08),
+            mifare_crypto: Some(0x00),
+            add_sof: Some(0x00),
+            check_sof: Some(0x00),
+            add_eof: Some(0x00),
+            check_eof: Some(0x00),
+            deaf_time: Some(0x00),
+            continuous_receive_mode: Some(0x00),
+            min_len_for_crm: Some(0x00),
+            type_1_tag_rrdd: Some(0x00),
+            rfca: Some(0x00),
+            guard_time: Some(0x06),
         }
     }
 }
 
-impl InProtocolConfig {
-    fn serialize(self) -> [u8; 38] {
-        #[rustfmt::skip]
-        let data = [
-            0x00, self.initial_guard_time,
-            0x01, self.add_crc,
-            0x02, self.check_crc,
-            0x03, self.multi_card,
-            0x04, self.add_parity,
-            0x05, self.check_parity,
-            0x06, self.bitwise_anticoll,
-            0x07, self.last_byte_bit_count,
-            0x08, self.mifare_crypto,
-            0x09, self.add_sof,
-            0x0a, self.check_sof,
-            0x0b, self.add_eof,
-            0x0c, self.check_eof,
-            0x0e, self.deaf_time,
-            0x0f, self.continuous_receive_mode,
-            0x10, self.min_len_for_crm,
-            0x11, self.type_1_tag_rrdd,
-            0x12, self.rfca,
-            0x13, self.guard_time,
-        ];
+impl InitiatorConfig {
+    fn serialize(self) -> Vec<u8> {
+        let mut data = Vec::new();
 
-        data
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct TgProtocolConfig {
-    send_timeout_time_unit: u8,
-    rf_off_error: u8,
-    continuous_receive_mode: u8,
-}
-
-impl Default for TgProtocolConfig {
-    fn default() -> Self {
-        Self {
-            send_timeout_time_unit: 0x01,
-            rf_off_error: 0x01,
-            continuous_receive_mode: 0x07,
+        if let Some(value) = self.initial_guard_time {
+            data.push(0x00);
+            data.push(value);
         }
-    }
-}
 
-impl TgProtocolConfig {
-    fn serialize(self) -> [u8; 6] {
-        #[rustfmt::skip]
-        let data = [
-            0x00, self.send_timeout_time_unit,
-            0x01, self.rf_off_error,
-            0x02, self.continuous_receive_mode,
-        ];
+        if let Some(value) = self.add_crc {
+            data.push(0x01);
+            data.push(value);
+        }
+
+        if let Some(value) = self.check_crc {
+            data.push(0x02);
+            data.push(value);
+        }
+
+        if let Some(value) = self.multi_card {
+            data.push(0x03);
+            data.push(value);
+        }
+
+        if let Some(value) = self.add_parity {
+            data.push(0x04);
+            data.push(value);
+        }
+
+        if let Some(value) = self.check_parity {
+            data.push(0x05);
+            data.push(value);
+        }
+
+        if let Some(value) = self.bitwise_anticoll {
+            data.push(0x06);
+            data.push(value);
+        }
+
+        if let Some(value) = self.last_byte_bit_count {
+            data.push(0x07);
+            data.push(value);
+        }
+
+        if let Some(value) = self.mifare_crypto {
+            data.push(0x08);
+            data.push(value);
+        }
+
+        if let Some(value) = self.add_sof {
+            data.push(0x09);
+            data.push(value);
+        }
+
+        if let Some(value) = self.check_sof {
+            data.push(0x0a);
+            data.push(value);
+        }
+
+        if let Some(value) = self.add_eof {
+            data.push(0x0b);
+            data.push(value);
+        }
+
+        if let Some(value) = self.check_eof {
+            data.push(0x0c);
+            data.push(value);
+        }
+
+        if let Some(value) = self.deaf_time {
+            data.push(0x0e);
+            data.push(value);
+        }
+
+        if let Some(value) = self.continuous_receive_mode {
+            data.push(0x0f);
+            data.push(value);
+        }
+
+        if let Some(value) = self.min_len_for_crm {
+            data.push(0x10);
+            data.push(value);
+        }
+
+        if let Some(value) = self.type_1_tag_rrdd {
+            data.push(0x11);
+            data.push(value);
+        }
+
+        if let Some(value) = self.rfca {
+            data.push(0x12);
+            data.push(value);
+        }
+
+        if let Some(value) = self.guard_time {
+            data.push(0x13);
+            data.push(value);
+        }
 
         data
     }
@@ -493,7 +522,7 @@ impl<'a> Packet<'a> {
         }
     }
 
-    fn parse(packet: &'a [u8]) -> anyhow::Result<Self> {
+    fn deserialize(packet: &'a [u8]) -> anyhow::Result<Self> {
         if packet == Self::ACK {
             return Ok(Self::Ack);
         }
