@@ -1,9 +1,11 @@
 #![warn(clippy::all)]
 mod device;
+mod felica;
 mod tag;
 mod transport;
 
-use device::rcs380::{Bitrate, Device, PollingRequest};
+use device::rcs380::{Bitrate, Device};
+use felica::{PollingRequestCode, PollingTimeSlot};
 use tag::tt3::{BlockCode, ServiceCode};
 use transport::Usb;
 
@@ -15,11 +17,17 @@ fn main() -> anyhow::Result<()> {
 
     let device = Device::new(transport)?;
 
-    let response = device.sense_ttf(Bitrate::B212F, PollingRequest::default())?;
-    println!("{:02x?}", response);
+    let polling_res = device.polling(
+        Bitrate::B212F,
+        None,
+        PollingRequestCode::SystemCode,
+        PollingTimeSlot::Slot0,
+    )?;
+    let card = polling_res.card;
+    println!("{:02x?}", card);
 
     let response = device.read_without_encryption(
-        &response.idm,
+        &card.idm(),
         &[ServiceCode::new(0x200b)],
         &[BlockCode::new(0, 0, 0)],
     )?;

@@ -2,8 +2,10 @@
 use std::{borrow::Cow, time::Duration};
 
 use anyhow::{bail, ensure};
+use if_chain::if_chain;
 
 use crate::{
+    felica::{Card, PollingRequestCode, PollingResponse, PollingTimeSlot},
     tag::tt3::{BlockCode, ServiceCode},
     transport::Transport,
 };
@@ -23,11 +25,12 @@ impl<T: Transport> Device<T> {
         self.chipset.switch_rf(false)
     }
 
-    /// FelicaのPollingコマンドと同等の処理を行う
-    pub fn sense_ttf(
+    pub fn polling(
         &self,
         bitrate: Bitrate,
-        request: PollingRequest,
+        system_code: Option<u16>,
+        request_code: PollingRequestCode,
+        time_slot: PollingTimeSlot,
     ) -> anyhow::Result<PollingResponse> {
         // req = 0x00 SystemCode(L) SystemCode(H) RequestCode TimeSlot
         // res = len 0x01 IDm(8) PMm(8) [Request Data(2)]
@@ -42,9 +45,17 @@ impl<T: Transport> Device<T> {
             ..Default::default()
         })?;
 
-        let res = self
-            .chipset
-            .in_comm_rf(request.serialize().as_ref(), Duration::from_millis(10))?;
+        let mut req = Vec::new();
+
+        req.push(0x00);
+        let system_code = system_code.unwrap_or(0xffff);
+        req.push(system_code as u8);
+        req.push((system_code >> 8) as u8);
+
+        req.push(request_code as u8);
+        req.push(time_slot as u8);
+
+        let res = self.chipset.in_comm_rf(&req, Duration::from_millis(10))?;
 
         ensure!(res[0] == res.len() as u8, "invalid response");
         ensure!(res[1] == 0x01, "invalid response");
@@ -53,20 +64,27 @@ impl<T: Transport> Device<T> {
         let pmm = res[10..18].try_into().unwrap();
 
         let request_result = if res.len() == 0x14 {
-            Some(res[0x12..].try_into().unwrap())
+            Some(((res[18] as u16) << 8) | res[19] as u16)
         } else {
             None
         };
 
+        let system_code = if_chain! {
+            if let Some(system_code) = request_result;
+            if request_code == PollingRequestCode::SystemCode;
+            then { Some(system_code) }
+            else { None }
+        };
+
+        let card = Card::new(idm, pmm, system_code);
+
         Ok(PollingResponse {
-            idm,
-            pmm,
+            card,
             request_result,
         })
     }
 
     // TODO: 実装場所は要検討
-    // TODO: サービスコード・ブロックコードを型にする & 複数対応にする
     pub fn read_without_encryption(
         &self,
         idm: &[u8; 8],
@@ -246,54 +264,6 @@ impl<T: Transport> Chipset<T> {
 impl<T: Transport> Drop for Chipset<T> {
     fn drop(&mut self) {
         self.close().expect("close failed");
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PollingResponse {
-    pub idm: [u8; 8],
-    pub pmm: [u8; 8],
-    pub request_result: Option<[u8; 2]>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct PollingRequest {
-    pub system_code: Option<u16>,
-    pub request_code: PollingRequestCode,
-    pub time_slot: PollingTimeSlot,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum PollingRequestCode {
-    None = 0x00,
-    #[default]
-    SystemCode = 0x01,
-    TransmissionCapability = 0x02,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum PollingTimeSlot {
-    #[default]
-    Slot0 = 0x00,
-    Slot1 = 0x01,
-    Slot3 = 0x03,
-    Slot7 = 0x07,
-    Slot15 = 0x0f,
-}
-
-impl PollingRequest {
-    fn serialize(&self) -> [u8; 5] {
-        // data = 0x00 system_code(L) system_code(H) request_code time_slot
-        let mut data = [0; 5];
-
-        let system_code = self.system_code.unwrap_or(0xffff);
-        data[1] = (system_code & 0xff) as u8;
-        data[2] = (system_code >> 8) as u8;
-
-        data[3] = self.request_code as u8;
-        data[4] = self.time_slot as u8;
-
-        data
     }
 }
 

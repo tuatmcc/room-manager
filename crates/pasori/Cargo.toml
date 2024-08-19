@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.82"
+if_chain = "1.0.2"
 nusb = "0.1.7"
 rusb = "0.9.4"
 thiserror = "1.0.61"
