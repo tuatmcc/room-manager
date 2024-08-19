@@ -29,6 +29,9 @@ impl<T: Transport> Device<T> {
         bitrate: Bitrate,
         request: PollingRequest,
     ) -> anyhow::Result<PollingResponse> {
+        // req = 0x00 SystemCode(L) SystemCode(H) RequestCode TimeSlot
+        // res = len 0x01 IDm(8) PMm(8) [Request Data(2)]
+
         if bitrate != Bitrate::B212F && bitrate != Bitrate::B424F {
             bail!("unsupported bitrate");
         }
@@ -39,15 +42,18 @@ impl<T: Transport> Device<T> {
             ..Default::default()
         })?;
 
-        let data = self
+        let res = self
             .chipset
             .in_comm_rf(request.serialize().as_ref(), Duration::from_millis(10))?;
 
-        let idm = data[7..15].try_into().unwrap();
-        let pmm = data[15..23].try_into().unwrap();
+        ensure!(res[0] == res.len() as u8, "invalid response");
+        ensure!(res[1] == 0x01, "invalid response");
 
-        let request_result = if data.len() == 25 {
-            Some(data[23..25].try_into().unwrap())
+        let idm = res[2..10].try_into().unwrap();
+        let pmm = res[10..18].try_into().unwrap();
+
+        let request_result = if res.len() == 0x14 {
+            Some(res[0x12..].try_into().unwrap())
         } else {
             None
         };
@@ -67,6 +73,9 @@ impl<T: Transport> Device<T> {
         service_codes: &[ServiceCode],
         block_codes: &[BlockCode],
     ) -> anyhow::Result<Vec<u8>> {
+        // req = 0x06 IDm(8) len(ServiceCode) ServiceCode... len(BlockCode) BlockCode...
+        // res = len 0x07 IDm(8) StatusFlag1 StatusFlag2 len(BlockData) BlockData...
+
         let mut send_data = Vec::new();
 
         // Read Without Encryptionのコマンドコード
@@ -90,13 +99,11 @@ impl<T: Transport> Device<T> {
         }
 
         // TODO: タイムアウトの値を動的にする
-        let recv_data = self
+        let res = self
             .chipset
             .in_comm_rf(&send_data, Duration::from_millis(100))?;
 
-        let data = recv_data[4..].to_vec();
-
-        Ok(data)
+        Ok(res)
     }
 }
 
@@ -160,7 +167,7 @@ impl<T: Transport> Chipset<T> {
         let data = self.send_packet(CmdCode::InCommRF, &cmd_data)?;
         ensure!(data[0..4] == [0, 0, 0, 0], "comm rf failed");
 
-        Ok(data)
+        Ok(data[5..].to_vec())
     }
 
     pub fn switch_rf(&self, rf: bool) -> anyhow::Result<()> {

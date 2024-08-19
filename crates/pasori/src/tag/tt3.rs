@@ -7,6 +7,7 @@ impl ServiceCode {
     }
 
     pub fn to_bytes(self) -> [u8; 2] {
+        // Little endian
         self.0.to_le_bytes()
     }
 }
@@ -28,6 +29,8 @@ impl BlockCode {
     }
 
     pub fn to_bytes(self) -> Vec<u8> {
+        // byte(2byte) = | 0b0 AccessMode(3bit) ServiceCodeListOrder(4bit) } | BlockCode    |
+        // byte(3byte) = | 0b1 AccessMode(3bit) ServiceCodeListOrder(4bit) } | BlockCode(L) | BlockCode(H) |
         let mut bytes = Vec::new();
 
         bytes.push(
