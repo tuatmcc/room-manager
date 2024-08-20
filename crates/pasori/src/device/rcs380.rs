@@ -12,11 +12,13 @@ use crate::{
     transport::Transport,
 };
 
-pub struct Device<T: Transport> {
+use super::{Bitrate, Device};
+
+pub struct RCS380<T: Transport> {
     chipset: Chipset<T>,
 }
 
-impl<T: Transport> Device<T> {
+impl<T: Transport> RCS380<T> {
     pub fn new(transport: T) -> anyhow::Result<Self> {
         let chipset = Chipset::new(transport)?;
 
@@ -26,8 +28,10 @@ impl<T: Transport> Device<T> {
     pub fn mute(&self) -> anyhow::Result<()> {
         self.chipset.switch_rf(false)
     }
+}
 
-    pub fn polling(
+impl<T: Transport> Device for RCS380<T> {
+    fn polling(
         &self,
         bitrate: Bitrate,
         system_code: Option<u16>,
@@ -36,10 +40,6 @@ impl<T: Transport> Device<T> {
     ) -> anyhow::Result<PollingResponse> {
         // req = 0x00 SystemCode(L) SystemCode(H) RequestCode TimeSlot
         // res = len 0x01 IDm(8) PMm(8) [Request Data(2)]
-
-        if bitrate != Bitrate::B212F && bitrate != Bitrate::B424F {
-            bail!("unsupported bitrate");
-        }
 
         self.chipset.in_set_rf(bitrate, None)?;
         self.chipset.in_set_protocol(&InitiatorConfig {
@@ -86,7 +86,7 @@ impl<T: Transport> Device<T> {
         })
     }
 
-    pub fn read_without_encryption(
+    fn read_without_encryption(
         &self,
         card: &Card,
         service_codes: &[ServiceCode],
@@ -173,9 +173,17 @@ impl<T: Transport> Chipset<T> {
         recv_bitrate: Option<Bitrate>,
     ) -> anyhow::Result<()> {
         let mut cmd_data = [0; 4];
-        cmd_data[0..2].copy_from_slice(&send_bitrate.to_in_set_rf_settings()[0..2]);
-        cmd_data[2..4]
-            .copy_from_slice(&recv_bitrate.unwrap_or(send_bitrate).to_in_set_rf_settings()[2..4]);
+
+        let recv_bitrate = match recv_bitrate.unwrap_or(send_bitrate) {
+            Bitrate::Bitrate212kbs => [0x0f, 0x01],
+            Bitrate::Bitrate424kbs => [0x0f, 0x02],
+        };
+        let send_bitrate = match send_bitrate {
+            Bitrate::Bitrate212kbs => [0x01, 0x01],
+            Bitrate::Bitrate424kbs => [0x01, 0x02],
+        };
+        cmd_data[0..2].copy_from_slice(&send_bitrate);
+        cmd_data[2..4].copy_from_slice(&recv_bitrate);
 
         let data = self.send_packet(CmdCode::InSetRF, &cmd_data)?;
 
@@ -293,43 +301,6 @@ impl<T: Transport> Chipset<T> {
 impl<T: Transport> Drop for Chipset<T> {
     fn drop(&mut self) {
         self.close().expect("close failed");
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Bitrate {
-    B212F,
-    B424F,
-    B106A,
-    B212A,
-    B424A,
-    B106B,
-    B212B,
-    B424B,
-}
-
-impl Bitrate {
-    fn to_in_set_rf_settings(self) -> [u8; 4] {
-        match self {
-            Bitrate::B212F => [0x01, 0x01, 0x0f, 0x01],
-            Bitrate::B424F => [0x01, 0x02, 0x0f, 0x02],
-            Bitrate::B106A => [0x02, 0x03, 0x0f, 0x03],
-            Bitrate::B212A => [0x04, 0x04, 0x0f, 0x04],
-            Bitrate::B424A => [0x05, 0x05, 0x0f, 0x05],
-            Bitrate::B106B => [0x03, 0x07, 0x0f, 0x07],
-            Bitrate::B212B => [0x03, 0x08, 0x0f, 0x08],
-            Bitrate::B424B => [0x03, 0x09, 0x0f, 0x09],
-        }
-    }
-    fn to_tg_set_rf_settings(self) -> [u8; 2] {
-        match self {
-            Bitrate::B106A => [0x08, 0x0b],
-            Bitrate::B212F => [0x08, 0x0c],
-            Bitrate::B424F => [0x08, 0x0d],
-            Bitrate::B212A => [0x08, 0x0e],
-            Bitrate::B424A => [0x08, 0x0f],
-            _ => unreachable!(),
-        }
     }
 }
 

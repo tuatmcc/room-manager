@@ -3,7 +3,7 @@ mod device;
 mod felica;
 mod transport;
 
-use device::rcs380::{Bitrate, Device};
+use device::{rcs380::RCS380, Bitrate, Device};
 use felica::{BlockCode, PollingRequestCode, PollingTimeSlot, ServiceCode};
 use transport::Usb;
 
@@ -13,10 +13,10 @@ const PRODUCT_ID: u16 = 0x06c3;
 fn main() -> anyhow::Result<()> {
     let transport = Usb::from_id(VENDER_ID, PRODUCT_ID)?;
 
-    let device = Device::new(transport)?;
+    let device = RCS380::new(transport)?;
 
     let polling_res = device.polling(
-        Bitrate::B212F,
+        Bitrate::Bitrate424kbs,
         None,
         PollingRequestCode::SystemCode,
         PollingTimeSlot::Slot0,
