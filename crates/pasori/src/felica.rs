@@ -49,7 +49,9 @@ pub struct BlockCode {
 }
 
 impl BlockCode {
-    pub fn new(block_code: u16, access_mode: u8, service_code_list_order: u8) -> Self {
+    pub fn new(block_code: u16, access_mode: Option<u8>, service_code_list_order: u8) -> Self {
+        let access_mode = access_mode.unwrap_or(0);
+
         Self {
             block_code,
             access_mode,
@@ -95,8 +97,15 @@ pub enum PollingTimeSlot {
     Slot15 = 0x0f,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct PollingResponse {
     pub card: Card,
     pub request_result: Option<u16>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ReadWithoutEncryptionResponse {
+    pub status_flag1: u8,
+    pub status_flag2: u8,
+    pub block_data: Vec<Vec<u8>>,
 }

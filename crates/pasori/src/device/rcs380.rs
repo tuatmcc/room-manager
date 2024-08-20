@@ -5,8 +5,10 @@ use anyhow::{bail, ensure};
 use if_chain::if_chain;
 
 use crate::{
-    felica::{Card, PollingRequestCode, PollingResponse, PollingTimeSlot},
-    tag::tt3::{BlockCode, ServiceCode},
+    felica::{
+        BlockCode, Card, PollingRequestCode, PollingResponse, PollingTimeSlot,
+        ReadWithoutEncryptionResponse, ServiceCode,
+    },
     transport::Transport,
 };
 
@@ -84,44 +86,71 @@ impl<T: Transport> Device<T> {
         })
     }
 
-    // TODO: 実装場所は要検討
     pub fn read_without_encryption(
         &self,
-        idm: &[u8; 8],
+        card: &Card,
         service_codes: &[ServiceCode],
         block_codes: &[BlockCode],
-    ) -> anyhow::Result<Vec<u8>> {
+    ) -> anyhow::Result<ReadWithoutEncryptionResponse> {
         // req = 0x06 IDm(8) len(ServiceCode) ServiceCode... len(BlockCode) BlockCode...
         // res = len 0x07 IDm(8) StatusFlag1 StatusFlag2 len(BlockData) BlockData...
 
-        let mut send_data = Vec::new();
+        let mut req = Vec::new();
 
-        // Read Without Encryptionのコマンドコード
-        send_data.push(0x06);
+        req.push(0x06);
 
         // IDm
-        send_data.extend_from_slice(idm);
+        req.extend_from_slice(&card.idm());
 
         // サービス数
-        send_data.push(service_codes.len() as u8);
+        req.push(service_codes.len() as u8);
         // サービスコード (リトルエンディアン)
         for service_code in service_codes {
-            send_data.extend_from_slice(&service_code.to_bytes());
+            req.extend_from_slice(&service_code.to_bytes());
         }
 
         // ブロック数
-        send_data.push(service_codes.len() as u8);
+        req.push(service_codes.len() as u8);
         // ブロックコード
         for block_code in block_codes {
-            send_data.extend_from_slice(&block_code.to_bytes());
+            req.extend_from_slice(&block_code.to_bytes());
         }
 
-        // TODO: タイムアウトの値を動的にする
-        let res = self
-            .chipset
-            .in_comm_rf(&send_data, Duration::from_millis(100))?;
+        // pmm = ICCode(2) D10 D11 D12 D13 D14 D15
+        //                             ^^^ Read Without Encryptionのタイムアウトパラメータ
+        let param = card.pmm()[4];
+        let a = (param & 0b0000_0111) as f64;
+        let b = ((param & 0b0011_1000) >> 3) as f64;
+        let e = ((param & 0b1100_0000) >> 6) as i32;
 
-        Ok(res)
+        let n = block_codes.len() as f64;
+
+        let t = 256.0 * 16.0 / 13.56 * 1_000_000.0;
+
+        let timeout = t * ((b + 1.0) * n + (a + 1.0)) * 4.0_f64.powi(e);
+        let timeout = Duration::from_secs_f64(timeout / 1_000.0);
+
+        let res = self.chipset.in_comm_rf(&req, timeout)?;
+
+        ensure!(res[0] == res.len() as u8, "invalid response");
+        ensure!(res[1] == 0x07, "invalid response");
+        ensure!(res[2..10] == card.idm(), "invalid response");
+
+        let status_flag1 = res[10];
+        let status_flag2 = res[11];
+
+        let block_data_len = res[12] as usize;
+
+        let mut block_data = Vec::new();
+        for i in 0..block_data_len {
+            block_data.push(res[(13 + i)..(13 + i + 16)].to_vec());
+        }
+
+        Ok(ReadWithoutEncryptionResponse {
+            status_flag1,
+            status_flag2,
+            block_data,
+        })
     }
 }
 
