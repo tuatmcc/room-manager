@@ -1,11 +1,6 @@
-#![warn(clippy::all)]
-mod device;
-mod felica;
-mod transport;
-
-use device::{rcs380::RCS380, Bitrate, Device};
-use felica::{BlockCode, PollingRequestCode, PollingTimeSlot, ServiceCode};
-use transport::Usb;
+use pasori::device::{rcs380::RCS380, Bitrate, Device};
+use pasori::felica::{BlockCode, PollingRequestCode, PollingTimeSlot, ServiceCode};
+use pasori::transport::Usb;
 
 const VENDER_ID: u16 = 0x054c;
 const PRODUCT_ID: u16 = 0x06c3;
