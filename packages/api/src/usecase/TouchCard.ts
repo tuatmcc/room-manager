@@ -2,12 +2,13 @@ import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
 import { AppError } from "@/error";
+import type { Action } from "@/models/User";
 import type { UserRepository } from "@/repositories/UserRepository";
 
 export class TouchCardUseCase {
 	constructor(private readonly userRepository: UserRepository) {}
 
-	async execute(studentId: string): Promise<Result<void, AppError>> {
+	async execute(studentId: string): Promise<Result<Action, AppError>> {
 		try {
 			const user = await this.userRepository.findByStudentId(studentId);
 			if (!user) {
@@ -21,7 +22,9 @@ export class TouchCardUseCase {
 			const updatedUser = user.withIsInRoom(!user.isInRoom);
 			await this.userRepository.save(updatedUser);
 
-			return ok(undefined);
+			const action = updatedUser.isInRoom ? "entered" : "exited";
+
+			return ok(action);
 		} catch (error) {
 			const cause = error instanceof Error ? error : undefined;
 

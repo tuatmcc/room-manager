@@ -15,7 +15,8 @@
 		"drizzle-orm": "0.35.0",
 		"hono": "4.5.3",
 		"neverthrow": "8.0.0",
-		"ulidx": "2.3.0"
+		"ulidx": "2.3.0",
+		"zod": "3.23.8"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "4.20240725.0",

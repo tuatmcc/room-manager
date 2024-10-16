@@ -1,4 +1,5 @@
 import { ulid } from "ulidx";
+import { z } from "zod";
 
 export class User {
 	static new(discordId: string, studentId: string): User {
@@ -28,3 +29,6 @@ export class User {
 		public readonly isInRoom: boolean,
 	) {}
 }
+
+export const ActionSchema = z.enum(["entered", "exited"]);
+export type Action = z.infer<typeof ActionSchema>;

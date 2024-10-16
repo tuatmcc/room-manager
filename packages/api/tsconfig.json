@@ -3,6 +3,8 @@
 	"compilerOptions": {
 		"target": "esnext",
 
+		"types": ["@cloudflare/workers-types"],
+
 		"paths": {
 			"@/*": ["./src/*"],
 		},

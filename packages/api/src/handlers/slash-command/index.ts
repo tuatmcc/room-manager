@@ -15,7 +15,7 @@ export interface SlashCommandHandler {
 	): Promise<APIInteractionResponse>;
 }
 
-interface SlashCommandHandlers {
+export interface SlashCommandHandlers {
 	registerStudentCard: RegisterStudentCardHandler;
 }
 

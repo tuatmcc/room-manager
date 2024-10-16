@@ -16,6 +16,7 @@ import * as schema from "@/schema";
 
 import { interactionVerifier } from "./discord";
 import type { Env } from "./env";
+import { createLocalDeviceHandlers } from "./handlers/local-device";
 import {
 	createSlashCommandHandlers,
 	handleSlashCommand,
@@ -25,13 +26,27 @@ import { createUseCases } from "./usecase";
 
 const app = new Hono<Env>()
 	.use(logger())
-	.get("/", (c) => {
-		return c.text("OK");
-	})
-	.post("/interaction", interactionVerifier, async (c) => {
+	.use(async (c, next) => {
 		const db = drizzle(c.env.DB, { schema });
 		const repositories = createRepositories(db);
 		const usecases = createUseCases(repositories);
+
+		c.set("usecases", usecases);
+
+		await next();
+	})
+	.get("/", (c) => {
+		return c.text("OK");
+	})
+	.post("/local-device/touch-card", async (c) => {
+		const usecases = c.get("usecases");
+		const localDeviceHandlers = createLocalDeviceHandlers(usecases);
+
+		const res = await localDeviceHandlers.touchCard.handle(c);
+		return res;
+	})
+	.post("/interaction", interactionVerifier, async (c) => {
+		const usecases = c.get("usecases");
 		const slashCommandHandlers = createSlashCommandHandlers(usecases);
 
 		const interaction: APIInteraction = await c.req.json();
