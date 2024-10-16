@@ -15,6 +15,15 @@ export class RegisterStudentCardUseCase {
 		try {
 			const oldUser = await this.userRepository.findByDiscordId(discordId);
 
+			// 既に登録されている学生証番号は登録できない
+			if (await this.userRepository.findByStudentId(studentId)) {
+				return err(
+					new AppError("Student card already registered.", {
+						userMessage: "この学生証は既に登録されています。",
+					}),
+				);
+			}
+
 			const newUser =
 				oldUser?.updateStudentId(studentId) ?? User.new(discordId, studentId);
 

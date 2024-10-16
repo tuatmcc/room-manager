@@ -41,4 +41,20 @@ export class UserRepository {
 			result.isInRoom,
 		);
 	}
+
+	async findByStudentId(studentId: string): Promise<User | null> {
+		const result = await this.db.query.users.findFirst({
+			where: (users, { eq }) => eq(users.studentId, studentId),
+		});
+		if (!result) {
+			return null;
+		}
+
+		return User.of(
+			result.id,
+			result.discordId,
+			result.studentId,
+			result.isInRoom,
+		);
+	}
 }
