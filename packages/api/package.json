@@ -8,24 +8,22 @@
 		"register": "tsx scripts/register.ts"
 	},
 	"dependencies": {
-		"@discordjs/rest": "2.3.0",
-		"@js-temporal/polyfill": "0.4.4",
-		"@resvg/resvg-wasm": "2.4.1",
-		"discord-interactions": "4.0.0",
-		"drizzle-orm": "0.35.0",
-		"hono": "4.5.3",
-		"neverthrow": "8.0.0",
-		"ulidx": "2.3.0",
-		"zod": "3.23.8"
+		"@discordjs/rest": "2.4.3",
+		"@js-temporal/polyfill": "0.5.1",
+		"discord-interactions": "4.1.1",
+		"drizzle-orm": "0.41.0",
+		"hono": "4.7.6",
+		"neverthrow": "8.2.0",
+		"ulidx": "2.4.1",
+		"zod": "3.24.2"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "4.20240725.0",
-		"@types/node": "20.16.11",
-		"@types/react": "18.3.3",
-		"discord-api-types": "0.37.93",
-		"drizzle-kit": "0.26.1",
-		"tsx": "4.16.4",
-		"typescript": "5.5.4",
-		"wrangler": "3.67.1"
+		"@cloudflare/workers-types": "4.20250408.0",
+		"@types/node": "22.14.0",
+		"discord-api-types": "0.37.119",
+		"drizzle-kit": "0.30.6",
+		"tsx": "4.19.3",
+		"typescript": "5.8.3",
+		"wrangler": "4.9.0"
 	}
 }
