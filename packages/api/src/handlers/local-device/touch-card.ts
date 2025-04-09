@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { Env } from "@/env";
 import { ActionSchema } from "@/models/User";
-import type { TouchCardUseCase } from "@/usecase/TouchCard";
+import type { TouchStudentCardUseCase } from "@/usecase/TouchStudentCard";
 
 import type { LocalDeviceHandler } from ".";
 
@@ -25,7 +25,7 @@ const TouchCardResponseSchema = z.union([
 type TouchCardResponse = z.infer<typeof TouchCardResponseSchema>;
 
 export class TouchCardHandler implements LocalDeviceHandler {
-	constructor(private readonly usecase: TouchCardUseCase) {}
+	constructor(private readonly usecase: TouchStudentCardUseCase) {}
 
 	async handle(c: Context<Env>): Promise<Response> {
 		const request = TouchCardRequestSchema.safeParse(await c.req.json());

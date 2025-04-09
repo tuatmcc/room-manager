@@ -38,11 +38,11 @@ const app = new Hono<Env>()
 	.get("/", (c) => {
 		return c.text("OK");
 	})
-	.post("/local-device/touch-card", async (c) => {
+	.post("/local-device/touch-student-card", async (c) => {
 		const usecases = c.get("usecases");
 		const localDeviceHandlers = createLocalDeviceHandlers(usecases);
 
-		const res = await localDeviceHandlers.touchCard.handle(c);
+		const res = await localDeviceHandlers.touchStudentCard.handle(c);
 		return res;
 	})
 	.post("/interaction", interactionVerifier, async (c) => {

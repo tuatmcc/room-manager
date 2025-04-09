@@ -10,13 +10,13 @@ export interface LocalDeviceHandler {
 }
 
 export interface LocalDeviceHandlers {
-	touchCard: TouchCardHandler;
+	touchStudentCard: TouchCardHandler;
 }
 
 export function createLocalDeviceHandlers(
 	usecases: UseCases,
 ): LocalDeviceHandlers {
 	return {
-		touchCard: new TouchCardHandler(usecases.touchCard),
+		touchStudentCard: new TouchCardHandler(usecases.touchStudentCard),
 	};
 }
