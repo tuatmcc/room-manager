@@ -1,27 +1,27 @@
-import type { DrizzleD1Database } from "drizzle-orm/d1";
-
+import type { Database } from "@/database";
 import { User } from "@/models/User";
 import * as schema from "@/schema";
 
 export class UserRepository {
-	constructor(private readonly db: DrizzleD1Database<typeof schema>) {}
+	constructor(private readonly db: Database) {}
+
+	async create(discordId: string): Promise<User> {
+		const result = await this.db
+			.insert(schema.users)
+			.values({
+				discordId,
+			})
+			.returning()
+			.get();
+
+		return new User(result.id, result.discordId);
+	}
 
 	async save(user: User): Promise<void> {
 		await this.db
-			.insert(schema.users)
-			.values({
-				id: user.id,
+			.update(schema.users)
+			.set({
 				discordId: user.discordId,
-				studentId: user.studentId,
-				isInRoom: user.isInRoom,
-			})
-			.onConflictDoUpdate({
-				target: schema.users.id,
-				set: {
-					discordId: user.discordId,
-					studentId: user.studentId,
-					isInRoom: user.isInRoom,
-				},
 			})
 			.execute();
 	}
@@ -34,27 +34,21 @@ export class UserRepository {
 			return null;
 		}
 
-		return User.of(
-			result.id,
-			result.discordId,
-			result.studentId,
-			result.isInRoom,
-		);
+		return new User(result.id, result.discordId);
 	}
 
-	async findByStudentId(studentId: string): Promise<User | null> {
-		const result = await this.db.query.users.findFirst({
-			where: (users, { eq }) => eq(users.studentId, studentId),
+	async findByStudentId(studentId: number): Promise<User | null> {
+		const result = await this.db.query.studentCards.findFirst({
+			where: (studentCards, { eq }) => eq(studentCards.studentId, studentId),
+			with: {
+				user: true,
+			},
 		});
+
 		if (!result) {
 			return null;
 		}
 
-		return User.of(
-			result.id,
-			result.discordId,
-			result.studentId,
-			result.isInRoom,
-		);
+		return new User(result.user.id, result.user.discordId);
 	}
 }

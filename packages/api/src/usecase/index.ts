@@ -10,7 +10,10 @@ export interface UseCases {
 
 export function createUseCases(repositories: Repositories): UseCases {
 	return {
-		registerStudentCard: new RegisterStudentCardUseCase(repositories.user),
+		registerStudentCard: new RegisterStudentCardUseCase(
+			repositories.user,
+			repositories.studentCard,
+		),
 		touchCard: new TouchCardUseCase(repositories.user),
 	};
 }
