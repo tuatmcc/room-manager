@@ -82,6 +82,13 @@ export const suicaCards = sqliteTable(
 	],
 );
 
+export const suicaCardsRelations = relations(suicaCards, ({ one }) => ({
+	user: one(users, {
+		fields: [suicaCards.userId],
+		references: [users.id],
+	}),
+}));
+
 export const roomEntryLogs = sqliteTable(
 	"room_entry_logs",
 	{
@@ -114,3 +121,10 @@ export const roomEntryLogs = sqliteTable(
 		index("idx_room_entry_logs_exit_at").on(table.exitAt),
 	],
 );
+
+export const roomEntryLogsRelations = relations(roomEntryLogs, ({ one }) => ({
+	user: one(users, {
+		fields: [roomEntryLogs.userId],
+		references: [users.id],
+	}),
+}));
