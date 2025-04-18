@@ -8,6 +8,7 @@ import {
 } from "discord-api-types/v10";
 import { HTTPException } from "hono/http-exception";
 
+import { convertMessageToEmbed } from "@/discord";
 import type { RegisterStudentCardUseCase } from "@/usecase/RegisterStudentCard";
 
 import type { SlashCommandHandler } from ".";
@@ -34,36 +35,16 @@ export class RegisterStudentCardHandler implements SlashCommandHandler {
 			throw new HTTPException(400, { message: "Invalid request" });
 		}
 
-		const result = await this.usecase.execute(
-			discordId,
-			studentId.toString(10),
-		);
+		const result = await this.usecase.execute(discordId, studentId);
 
 		return result.match<APIInteractionResponse>(
-			() => ({
+			(message) => ({
 				type: InteractionResponseType.ChannelMessageWithSource,
-				data: {
-					embeds: [
-						{
-							color: 0x00_ff_00,
-							title: "学生証登録",
-							description: "学生証の登録に成功しました。",
-						},
-					],
-				},
+				data: { embeds: [convertMessageToEmbed(message)] },
 			}),
 			(error) => ({
 				type: InteractionResponseType.ChannelMessageWithSource,
-				data: {
-					embeds: [
-						{
-							color: 0xff_00_00,
-							title: "エラー",
-							description:
-								error.userMessage ?? "何かエラーが発生したようです。",
-						},
-					],
-				},
+				data: { embeds: [convertMessageToEmbed(error.userMessage)] },
 			}),
 		);
 	}

@@ -2,20 +2,20 @@ import type { Context } from "hono";
 import { z } from "zod";
 
 import type { Env } from "@/env";
-import { ActionSchema } from "@/models/User";
+import type { DiscordService } from "@/services/DiscordService";
 import type { TouchStudentCardUseCase } from "@/usecase/TouchStudentCard";
 
 import type { LocalDeviceHandler } from ".";
 
 const TouchCardRequestSchema = z.object({
-	studentId: z.string(),
+	studentId: z.number(),
 });
 
 // eslint-disable-next-line typescript/no-unused-vars
 const TouchCardResponseSchema = z.union([
 	z.object({
 		success: z.literal(true),
-		action: ActionSchema,
+		status: z.union([z.literal("entry"), z.literal("exit")]),
 	}),
 	z.object({
 		success: z.literal(false),
@@ -25,7 +25,10 @@ const TouchCardResponseSchema = z.union([
 type TouchCardResponse = z.infer<typeof TouchCardResponseSchema>;
 
 export class TouchCardHandler implements LocalDeviceHandler {
-	constructor(private readonly usecase: TouchStudentCardUseCase) {}
+	constructor(
+		private readonly usecase: TouchStudentCardUseCase,
+		private readonly service: DiscordService,
+	) {}
 
 	async handle(c: Context<Env>): Promise<Response> {
 		const request = TouchCardRequestSchema.safeParse(await c.req.json());
@@ -36,13 +39,18 @@ export class TouchCardHandler implements LocalDeviceHandler {
 
 		const result = await this.usecase.execute(studentId);
 
-		return result.match<Response>(
-			(action) => c.json<TouchCardResponse>({ success: true, action }),
-			(err) =>
-				c.json<TouchCardResponse>({
-					success: false,
-					error: err.userMessage ?? "何かエラーが発生したようです。",
-				}),
+		return await result.match<Promise<Response>>(
+			async (res) => {
+				await this.service.sendMessage(res.message);
+				return c.json<TouchCardResponse>({ success: true, status: res.status });
+			},
+			async (err) =>
+				await Promise.resolve(
+					c.json<TouchCardResponse>({
+						success: false,
+						error: err.message,
+					}),
+				),
 		);
 	}
 }
