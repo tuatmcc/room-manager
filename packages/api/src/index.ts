@@ -22,6 +22,7 @@ import {
 	handleSlashCommand,
 } from "./handlers/slash-command";
 import { createRepositories } from "./repositories";
+import { createServices } from "./services";
 import { createUseCases } from "./usecase";
 
 const app = new Hono<Env>()
@@ -29,7 +30,13 @@ const app = new Hono<Env>()
 	.use(async (c, next) => {
 		const db = drizzle(c.env.DB, { schema });
 		const repositories = createRepositories(db);
-		const usecases = createUseCases(repositories);
+		const services = createServices(
+			c.env.DISCORD_BOT_TOKEN,
+			c.env.DISCORD_APPLICATION_ID,
+			c.env.DISCORD_GUILD_ID,
+			c.env.DISCORD_CHANNEL_ID,
+		);
+		const usecases = createUseCases(repositories, services);
 
 		c.set("usecases", usecases);
 

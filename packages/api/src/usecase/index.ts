@@ -1,4 +1,5 @@
 import type { Repositories } from "@/repositories";
+import type { Services } from "@/services";
 
 import { RegisterStudentCardUseCase } from "./RegisterStudentCard";
 import { TouchStudentCardUseCase } from "./TouchStudentCard";
@@ -8,7 +9,10 @@ export interface UseCases {
 	touchStudentCard: TouchStudentCardUseCase;
 }
 
-export function createUseCases(repositories: Repositories): UseCases {
+export function createUseCases(
+	repositories: Repositories,
+	services: Services,
+): UseCases {
 	return {
 		registerStudentCard: new RegisterStudentCardUseCase(
 			repositories.user,
@@ -17,6 +21,7 @@ export function createUseCases(repositories: Repositories): UseCases {
 		touchStudentCard: new TouchStudentCardUseCase(
 			repositories.user,
 			repositories.roomEntryLog,
+			services.discord,
 		),
 	};
 }
