@@ -210,7 +210,7 @@ impl<T: Transport> Chipset<T> {
         let timeout = if timeout.as_millis() == 0 {
             0
         } else {
-            (((timeout.as_millis() + 1) * 10) as u16).min(0xffff)
+            ((timeout.as_millis() + 1) * 10).min(0xffff) as u16
         };
 
         let mut cmd_data = vec![0; 3 + send_data.len()];

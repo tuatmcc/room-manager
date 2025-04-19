@@ -65,8 +65,8 @@ impl BlockCode {
         let mut bytes = Vec::new();
 
         bytes.push(
-            ((self.block_code < 256) as u8) << 7
-                | (self.access_mode & 0x07) << 4
+            (((self.block_code < 256) as u8) << 7)
+                | ((self.access_mode & 0x07) << 4)
                 | (self.service_code_list_order & 0x0f),
         );
 
