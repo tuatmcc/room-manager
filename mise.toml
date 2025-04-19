@@ -1,4 +1,4 @@
 [tools]
-node = "22.14.0"
-"npm:pnpm" = "10.8.0"
-rust = "1.86.0"
+node = "22"
+"npm:pnpm" = "10"
+rust = "1"
