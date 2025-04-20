@@ -1,11 +1,11 @@
 CREATE TABLE `room_entry_logs` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-	`user_id` integer NOT NULL,
 	`entry_at` integer NOT NULL,
 	`exit_at` integer,
+	`user_id` integer NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE cascade ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE INDEX `idx_room_entry_logs_user_id` ON `room_entry_logs` (`user_id`);--> statement-breakpoint
@@ -17,7 +17,7 @@ CREATE TABLE `student_cards` (
 	`user_id` integer NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE cascade ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `student_cards_student_id_unique` ON `student_cards` (`student_id`);--> statement-breakpoint
@@ -29,7 +29,7 @@ CREATE TABLE `suica_cards` (
 	`user_id` integer NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE cascade ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `suica_cards_card_idm_unique` ON `suica_cards` (`card_idm`);--> statement-breakpoint

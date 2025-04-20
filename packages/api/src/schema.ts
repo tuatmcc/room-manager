@@ -30,7 +30,7 @@ export const studentCards = sqliteTable(
 		userId: integer("user_id")
 			.notNull()
 			.unique()
-			.references(() => users.id),
+			.references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
 
 		// timestamps
 		createdAt: integer("created_at")
@@ -65,7 +65,7 @@ export const suicaCards = sqliteTable(
 		userId: integer("user_id")
 			.notNull()
 			.unique()
-			.references(() => users.id),
+			.references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
 
 		// timestamps
 		createdAt: integer("created_at")
@@ -96,14 +96,11 @@ export const roomEntryLogs = sqliteTable(
 		id: integer("id").primaryKey({ autoIncrement: true }),
 
 		// columns
+		entryAt: integer("entry_at").notNull(),
+		exitAt: integer("exit_at"),
 		userId: integer("user_id")
 			.notNull()
-			.references(() => users.id),
-
-		entryAt: integer("entry_at")
-			.notNull()
-			.$defaultFn(() => Temporal.Now.instant().epochMilliseconds),
-		exitAt: integer("exit_at"),
+			.references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
 
 		// timestamps
 		createdAt: integer("created_at")
