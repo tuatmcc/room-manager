@@ -21,7 +21,7 @@ pub fn open_reader() -> anyhow::Result<Reader> {
     Ok(Box::new(device))
 }
 
-pub fn scan_student_card(reader: &mut Reader) -> anyhow::Result<Option<(Card, u64)>> {
+pub fn scan_student_card(reader: &mut Reader) -> anyhow::Result<Option<(Card, u32)>> {
     let Ok(polling_res) = reader.polling(
         pasori::device::Bitrate::Bitrate424kbs,
         Some(STUDENT_CARD_SYSTEM_CODE),
@@ -48,7 +48,7 @@ pub fn scan_student_card(reader: &mut Reader) -> anyhow::Result<Option<(Card, u6
 
     let read_data = &read_res.block_data[0];
     let student_id = std::str::from_utf8(&read_data[7..15])?;
-    let student_id = student_id.parse::<u64>()?;
+    let student_id = student_id.parse::<u32>()?;
 
     Ok(Some((card, student_id)))
 }
