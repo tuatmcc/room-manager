@@ -13,9 +13,11 @@ import { convertMessageToEmbed } from "@/discord";
 import type { UseCases } from "@/usecase";
 
 import { RegisterStudentCardHandler } from "./register-student-card";
+import { RegisterSuicaCardHandler } from "./register-suica-card";
 
 export interface SlashCommandHandlers {
 	registerStudentCard: RegisterStudentCardHandler;
+	registerSuicaCard: RegisterSuicaCardHandler;
 }
 
 export function createSlashCommandHandlers(
@@ -25,6 +27,7 @@ export function createSlashCommandHandlers(
 		registerStudentCard: new RegisterStudentCardHandler(
 			usecases.registerStudentCard,
 		),
+		registerSuicaCard: new RegisterSuicaCardHandler(usecases.registerSuicaCard),
 	};
 }
 
@@ -94,6 +97,7 @@ export const SlashCommandSchema = z.union([
 	}),
 ]);
 
+// eslint-disable-next-line complexity
 export async function handleSlashCommand(
 	handlers: SlashCommandHandlers,
 	interaction: APIChatInputApplicationCommandInteraction,
@@ -138,8 +142,18 @@ export async function handleSlashCommand(
 								studentId,
 							);
 						}
-						case "suica":
-							return notImplemented;
+						case "suica": {
+							const discordId = interaction.member?.user.id;
+							const suicaIdm = option2.options[0]?.value;
+							if (discordId === undefined || suicaIdm === undefined) {
+								throw invalidRequestError;
+							}
+
+							return await handlers.registerSuicaCard.handle(
+								discordId,
+								suicaIdm,
+							);
+						}
 					}
 					throw invalidRequestError;
 				}
