@@ -38,7 +38,7 @@ impl<T: Transport> Device for RCS380<T> {
         request_code: PollingRequestCode,
         time_slot: PollingTimeSlot,
     ) -> anyhow::Result<PollingResponse> {
-        // req = 0x00 SystemCode(L) SystemCode(H) RequestCode TimeSlot
+        // req = 0x00 SystemCode(H) SystemCode(L) RequestCode TimeSlot
         // res = len 0x01 IDm(8) PMm(8) [Request Data(2)]
 
         self.chipset.in_set_rf(bitrate, None)?;
@@ -51,8 +51,8 @@ impl<T: Transport> Device for RCS380<T> {
 
         req.push(0x00);
         let system_code = system_code.unwrap_or(0xffff);
-        req.push(system_code as u8);
         req.push((system_code >> 8) as u8);
+        req.push(system_code as u8);
 
         req.push(request_code as u8);
         req.push(time_slot as u8);

@@ -1,4 +1,4 @@
-use pasori::device::{rcs380::RCS380, Bitrate, Device};
+use pasori::device::{Bitrate, Device, rcs380::RCS380};
 use pasori::felica::{BlockCode, PollingRequestCode, PollingTimeSlot, ServiceCode};
 use pasori::transport::Usb;
 
