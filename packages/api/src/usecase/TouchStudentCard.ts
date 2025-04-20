@@ -40,7 +40,9 @@ export class TouchStudentCardUseCase {
 			}
 
 			const now = Temporal.Now.instant();
-			const iconUrl = await this.discordService.fetchIconUrl(user.discordId);
+			const { iconUrl, name } = await this.discordService.fetchUserInfo(
+				user.discordId,
+			);
 
 			const oldLastEntryLog =
 				await this.roomEntryLogRepository.findLastEntryByUserId(user.id);
@@ -52,7 +54,7 @@ export class TouchStudentCardUseCase {
 				return ok({
 					status: "entry",
 					message: {
-						title: `<@${user.discordId}>さんが入室しました`,
+						title: `${name}さんが入室しました`,
 						iconUrl,
 						color: "green",
 					},
@@ -65,7 +67,7 @@ export class TouchStudentCardUseCase {
 			return ok({
 				status: "exit",
 				message: {
-					title: `<@${user.discordId}>さんが退室しました`,
+					title: `${name}さんが退室しました`,
 					iconUrl,
 					color: "red",
 				},

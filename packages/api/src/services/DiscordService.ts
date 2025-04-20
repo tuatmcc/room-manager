@@ -20,14 +20,20 @@ export class DiscordService {
 		this.restClient = new REST({ version: "10" }).setToken(botToken);
 	}
 
-	async fetchIconUrl(userId: string): Promise<string> {
+	async fetchUserInfo(
+		userId: string,
+	): Promise<{ iconUrl: string; name: string }> {
 		const member = (await this.restClient.get(
 			Routes.guildMember(this.guildId, userId),
 		)) as APIGuildMember;
 
 		const iconUrl = this.getAvatarUrl(member);
+		const name = member.nick ?? member.user.global_name ?? member.user.username;
 
-		return iconUrl;
+		return {
+			iconUrl,
+			name,
+		};
 	}
 
 	async sendMessage(message: Message): Promise<void> {
