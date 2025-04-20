@@ -2,7 +2,7 @@ import type { Repositories } from "@/repositories";
 import type { Services } from "@/services";
 
 import { RegisterStudentCardUseCase } from "./RegisterStudentCard";
-import { TouchStudentCardUseCase } from "./TouchStudentCard";
+import { TouchStudentCardUseCase } from "./TouchCard";
 
 export interface UseCases {
 	registerStudentCard: RegisterStudentCardUseCase;

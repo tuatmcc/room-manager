@@ -52,6 +52,21 @@ export class UserRepository {
 		return new User(result.user.id, result.user.discordId);
 	}
 
+	async findBySuicaIdm(suicaIdm: string): Promise<User | null> {
+		const result = await this.db.query.suicaCards.findFirst({
+			where: (suicaCards, { eq }) => eq(suicaCards.card_idm, suicaIdm),
+			with: {
+				user: true,
+			},
+		});
+
+		if (!result) {
+			return null;
+		}
+
+		return new User(result.user.id, result.user.discordId);
+	}
+
 	async findAllEntryUsers(): Promise<User[]> {
 		const result = await this.db.query.roomEntryLogs.findMany({
 			where: (roomEntryLogs, { isNull }) => isNull(roomEntryLogs.exitAt),

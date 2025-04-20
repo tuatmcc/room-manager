@@ -46,7 +46,7 @@ const app = new Hono<Env>()
 	.get("/", (c) => {
 		return c.text("OK");
 	})
-	.post("/local-device/touch-student-card", async (c) => {
+	.post("/local-device/touch-card", async (c) => {
 		const usecases = c.get("usecases");
 		const services = c.get("services");
 		const localDeviceHandlers = createLocalDeviceHandlers(usecases, services);

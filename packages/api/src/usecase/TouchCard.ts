@@ -22,18 +22,28 @@ export class TouchStudentCardUseCase {
 		private readonly discordService: DiscordService,
 	) {}
 
-	async execute(
-		studentId: number,
-	): Promise<Result<TouchStudentCardResponse, AppError>> {
+	async execute({
+		studentId,
+		suicaIdm,
+	}: {
+		studentId?: number;
+		suicaIdm?: string;
+	}): Promise<Result<TouchStudentCardResponse, AppError>> {
 		try {
-			const user = await this.userRepository.findByStudentId(studentId);
+			if (!studentId && !suicaIdm) {
+				throw new Error("studentId or suicaIdm is required");
+			}
+
+			const user =
+				studentId != null
+					? await this.userRepository.findByStudentId(studentId)
+					: await this.userRepository.findBySuicaIdm(suicaIdm!);
 			if (!user) {
 				return err(
-					new AppError("Student card not registered.", {
+					new AppError("Student card or Suica not registered.", {
 						userMessage: {
-							title: "登録されていない学生証です",
-							description:
-								"`/room-manager register student-card`コマンドで学生証を登録してください。",
+							title: `登録されていない${studentId != null ? "学生証" : "Suica"}です`,
+							description: `\`/room register ${studentId != null ? "student-card" : "suica"}\`コマンドで${studentId != null ? "学生証" : "Suica"}を登録してください。`,
 						},
 					}),
 				);
