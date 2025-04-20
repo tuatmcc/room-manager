@@ -39,6 +39,7 @@ const app = new Hono<Env>()
 		const usecases = createUseCases(repositories, services);
 
 		c.set("usecases", usecases);
+		c.set("services", services);
 
 		await next();
 	})
@@ -47,7 +48,8 @@ const app = new Hono<Env>()
 	})
 	.post("/local-device/touch-student-card", async (c) => {
 		const usecases = c.get("usecases");
-		const localDeviceHandlers = createLocalDeviceHandlers(usecases);
+		const services = c.get("services");
+		const localDeviceHandlers = createLocalDeviceHandlers(usecases, services);
 
 		const res = await localDeviceHandlers.touchStudentCard.handle(c);
 		return res;

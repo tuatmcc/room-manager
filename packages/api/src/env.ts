@@ -1,3 +1,4 @@
+import type { Services } from "./services";
 import type { UseCases } from "./usecase";
 
 export interface Env {
@@ -11,5 +12,6 @@ export interface Env {
 	};
 	Variables: {
 		usecases: UseCases;
+		services: Services;
 	};
 }
