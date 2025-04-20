@@ -1,7 +1,17 @@
 import type { Message } from "./message";
 
+export const ERROR_CODE = {
+	STUDENT_CARD_ALREADY_REGISTERED: "STUDENT_CARD_ALREADY_REGISTERED",
+	SUICA_CARD_ALREADY_REGISTERED: "SUICA_CARD_ALREADY_REGISTERED",
+	STUDENT_CARD_NOT_REGISTERED: "STUDENT_CARD_NOT_REGISTERED",
+	SUICA_CARD_NOT_REGISTERED: "SUICA_CARD_NOT_REGISTERED",
+	UNKNOWN: "UNKNOWN",
+} as const;
+export type ErrorCode = (typeof ERROR_CODE)[keyof typeof ERROR_CODE];
+
 export interface AppErrorOptions extends ErrorOptions {
 	userMessage?: Message;
+	errorCode?: ErrorCode;
 }
 
 export class AppError extends Error {
@@ -10,6 +20,7 @@ export class AppError extends Error {
 	}
 
 	readonly userMessage: Message;
+	readonly errorCode: ErrorCode;
 
 	constructor(message: string, options?: AppErrorOptions) {
 		const { userMessage, ...rest } = options ?? {};
@@ -21,5 +32,6 @@ export class AppError extends Error {
 			description:
 				"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
 		};
+		this.errorCode = options?.errorCode ?? ERROR_CODE.UNKNOWN;
 	}
 }

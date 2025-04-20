@@ -21,6 +21,7 @@ const TouchCardResponseSchema = z.union([
 	z.object({
 		success: z.literal(false),
 		error: z.string(),
+		error_code: z.string(),
 	}),
 ]);
 type TouchCardResponse = z.infer<typeof TouchCardResponseSchema>;
@@ -50,6 +51,7 @@ export class TouchCardHandler implements LocalDeviceHandler {
 				return c.json<TouchCardResponse>({
 					success: false,
 					error: err.message,
+					error_code: err.errorCode,
 				});
 			},
 		);

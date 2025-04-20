@@ -24,10 +24,25 @@ enum RoomEntryStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum ErrorCode {
+    StudentCardAlreadyRegistered,
+    SuicaCardAlreadyRegistered,
+    StudentCardNotRegistered,
+    SuicaCardNotRegistered,
+    Unknown,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 enum TouchCardResponse {
-    Success { status: RoomEntryStatus },
-    Error { error: String },
+    Success {
+        status: RoomEntryStatus,
+    },
+    Error {
+        error: String,
+        error_code: ErrorCode,
+    },
 }
 
 pub enum CardKind {

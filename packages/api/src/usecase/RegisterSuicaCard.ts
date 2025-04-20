@@ -1,7 +1,7 @@
 import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
-import { AppError } from "@/error";
+import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
 import type { SuicaCardRepository } from "@/repositories/SuicaCardRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
@@ -25,6 +25,7 @@ export class RegisterSuicaCardUseCase {
 			if (await this.suicaCardRepository.findBySuicaIdm(suicaIdm)) {
 				return err(
 					new AppError("Student card already registered.", {
+						errorCode: ERROR_CODE.SUICA_CARD_ALREADY_REGISTERED,
 						userMessage: {
 							title: "Suicaの登録に失敗しました",
 							description: "すでに登録されているSuicaです。",
@@ -45,6 +46,7 @@ export class RegisterSuicaCardUseCase {
 			return err(
 				new AppError("Failed to register student card.", {
 					cause,
+					errorCode: ERROR_CODE.UNKNOWN,
 					userMessage: {
 						title: "Suicaの登録に失敗しました",
 						description:

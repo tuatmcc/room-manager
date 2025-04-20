@@ -2,7 +2,7 @@ import { Temporal } from "@js-temporal/polyfill";
 import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
-import { AppError } from "@/error";
+import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
 import type { RoomEntryLogRepository } from "@/repositories/RoomEntryLogRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
@@ -41,6 +41,10 @@ export class TouchStudentCardUseCase {
 			if (!user) {
 				return err(
 					new AppError("Student card or Suica not registered.", {
+						errorCode:
+							studentId != null
+								? ERROR_CODE.STUDENT_CARD_NOT_REGISTERED
+								: ERROR_CODE.SUICA_CARD_NOT_REGISTERED,
 						userMessage: {
 							title: `登録されていない${studentId != null ? "学生証" : "Suica"}です`,
 							description: `\`/room register ${studentId != null ? "student-card" : "suica"}\`コマンドで${studentId != null ? "学生証" : "Suica"}を登録してください。`,
@@ -98,6 +102,7 @@ export class TouchStudentCardUseCase {
 			return err(
 				new AppError("Failed to touch card.", {
 					cause,
+					errorCode: ERROR_CODE.UNKNOWN,
 					userMessage: {
 						title: "入退出に失敗しました",
 						description:

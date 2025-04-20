@@ -1,7 +1,7 @@
 import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
-import { AppError } from "@/error";
+import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
 import type { StudentCardRepository } from "@/repositories/StudentCardRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
@@ -25,6 +25,7 @@ export class RegisterStudentCardUseCase {
 			if (await this.studentCardRepository.findByStudentId(studentId)) {
 				return err(
 					new AppError("Student card already registered.", {
+						errorCode: ERROR_CODE.STUDENT_CARD_ALREADY_REGISTERED,
 						userMessage: {
 							title: "学生証の登録に失敗しました",
 							description: "すでに登録されている学生証番号です。",
@@ -60,6 +61,7 @@ export class RegisterStudentCardUseCase {
 			return err(
 				new AppError("Failed to register student card.", {
 					cause,
+					errorCode: ERROR_CODE.UNKNOWN,
 					userMessage: {
 						title: "学生証の登録に失敗しました",
 						description:
