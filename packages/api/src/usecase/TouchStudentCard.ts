@@ -51,10 +51,15 @@ export class TouchStudentCardUseCase {
 				const newLastEntryLog = oldLastEntryLog.exitRoom(now);
 				await this.roomEntryLogRepository.save(newLastEntryLog);
 
+				// 入室中のユーザーを取得
+				const entryUsers = await this.userRepository.findAllEntryUsers();
+				const description = `### 入室中 (${entryUsers.length}人)\n${entryUsers.map((u) => `* <@${u.discordId}>`).join("\n")}`;
+
 				return ok({
-					status: "entry",
+					status: "exit",
 					message: {
-						title: `${name}さんが入室しました`,
+						title: `${name}さんが退出しました`,
+						description,
 						iconUrl,
 						color: "green",
 					},
@@ -64,10 +69,15 @@ export class TouchStudentCardUseCase {
 			// 入室していない場合は入室ログを新規作成
 			await this.roomEntryLogRepository.create(user.id, now);
 
+			// 入室中のユーザーを取得
+			const entryUsers = await this.userRepository.findAllEntryUsers();
+			const description = `### 入室中 (${entryUsers.length}人)\n${entryUsers.map((u) => `* <@${u.discordId}>`).join("\n")}`;
+
 			return ok({
-				status: "exit",
+				status: "entry",
 				message: {
-					title: `${name}さんが退室しました`,
+					title: `${name}さんが入室しました`,
+					description,
 					iconUrl,
 					color: "red",
 				},

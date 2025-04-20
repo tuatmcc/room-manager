@@ -51,4 +51,19 @@ export class UserRepository {
 
 		return new User(result.user.id, result.user.discordId);
 	}
+
+	async findAllEntryUsers(): Promise<User[]> {
+		const result = await this.db.query.roomEntryLogs.findMany({
+			where: (roomEntryLogs, { isNull }) => isNull(roomEntryLogs.exitAt),
+			with: {
+				user: true,
+			},
+		});
+
+		const users = result.map(
+			(entryLog) => new User(entryLog.user.id, entryLog.user.discordId),
+		);
+
+		return users;
+	}
 }
