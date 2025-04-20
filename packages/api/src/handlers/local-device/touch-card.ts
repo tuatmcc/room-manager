@@ -44,13 +44,13 @@ export class TouchCardHandler implements LocalDeviceHandler {
 				await this.service.sendMessage(res.message);
 				return c.json<TouchCardResponse>({ success: true, status: res.status });
 			},
-			async (err) =>
-				await Promise.resolve(
-					c.json<TouchCardResponse>({
-						success: false,
-						error: err.message,
-					}),
-				),
+			async (err) => {
+				await this.service.sendMessage(err.userMessage, "error");
+				return c.json<TouchCardResponse>({
+					success: false,
+					error: err.message,
+				});
+			},
 		);
 	}
 }

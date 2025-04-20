@@ -32,7 +32,7 @@ export function convertMessageToEmbed(
 	type?: "error",
 ): APIEmbed {
 	const color = colorToHex(
-		(message.color ?? type === "error") ? "red" : "green",
+		message.color ?? (type === "error" ? "red" : "green"),
 	);
 
 	return {

@@ -36,9 +36,9 @@ export class DiscordService {
 		};
 	}
 
-	async sendMessage(message: Message): Promise<void> {
+	async sendMessage(message: Message, type?: "error"): Promise<void> {
 		const body: RESTPostAPIChannelMessageJSONBody = {
-			embeds: [convertMessageToEmbed(message)],
+			embeds: [convertMessageToEmbed(message, type)],
 		};
 
 		await this.restClient.post(Routes.channelMessages(this.channelId), {

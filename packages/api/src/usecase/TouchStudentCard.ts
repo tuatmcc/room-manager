@@ -61,7 +61,7 @@ export class TouchStudentCardUseCase {
 						title: `${name}さんが退出しました`,
 						description,
 						iconUrl,
-						color: "green",
+						color: "red",
 					},
 				});
 			}
@@ -79,7 +79,7 @@ export class TouchStudentCardUseCase {
 					title: `${name}さんが入室しました`,
 					description,
 					iconUrl,
-					color: "red",
+					color: "green",
 				},
 			});
 		} catch (error) {
