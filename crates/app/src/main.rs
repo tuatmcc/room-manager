@@ -1,11 +1,10 @@
 mod reader;
-
-use std::io::Cursor;
+mod sounds;
 
 use reader::{open_reader, scan_card, wait_for_release};
 use reqwest::Client;
-use rodio::{Decoder, OutputStream, Sink};
 use serde::{Deserialize, Serialize};
+use sounds::Player;
 use tracing::info;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,21 +55,20 @@ async fn main() -> anyhow::Result<()> {
 
     let mut reader = open_reader()?;
     let client = reqwest::Client::new();
-    let (_stream, stream_handle) = OutputStream::try_default()?;
-    let sink = Sink::try_new(&stream_handle)?;
+    let player = Player::new()?;
 
     loop {
         let Some(detected) = scan_card(&mut reader)? else {
             continue;
         };
 
-        handle_card(&client, &sink, &detected.kind).await?;
+        handle_card(&client, &player, &detected.kind).await?;
 
-        wait_for_release(&mut reader, &detected.card, &detected.kind)?;
+        wait_for_release(&mut reader, &detected.card, &detected.kind).await?;
     }
 }
 
-async fn handle_card(client: &Client, sink: &Sink, kind: &CardKind) -> anyhow::Result<()> {
+async fn handle_card(client: &Client, player: &Player, kind: &CardKind) -> anyhow::Result<()> {
     let req = match kind {
         CardKind::Student(student_id) => TouchCardRequest {
             student_id: Some(*student_id),
@@ -90,18 +88,26 @@ async fn handle_card(client: &Client, sink: &Sink, kind: &CardKind) -> anyhow::R
         .json::<TouchCardResponse>()
         .await?;
 
-    if let TouchCardResponse::Success { status } = res {
-        info!("Card touched successfully: {:?}", status);
-        let buf = match status {
-            RoomEntryStatus::Entry => include_bytes!("./sounds/hello.wav").as_slice(),
-            RoomEntryStatus::Exit => include_bytes!("./sounds/goodbye.wav").as_slice(),
-        };
-        let reader = Cursor::new(buf);
-        let source = Decoder::new(reader)?;
-        sink.append(source);
-        info!("Playing sound");
-    } else {
-        info!("Error touching card: {:?}", res);
+    match res {
+        TouchCardResponse::Success { status } => {
+            info!("Card touched successfully: {:?}", status);
+            match status {
+                RoomEntryStatus::Entry => player.play(sounds::Sounds::GoodMorning)?,
+                RoomEntryStatus::Exit => player.play(sounds::Sounds::GoodBye)?,
+            }
+        }
+        TouchCardResponse::Error { error, error_code } => {
+            info!("Error touching card: {:?} {:?}", error, error_code);
+            match error_code {
+                ErrorCode::StudentCardNotRegistered => {
+                    player.play(sounds::Sounds::RegisterStudentCard)?
+                }
+                ErrorCode::SuicaCardNotRegistered => {
+                    player.play(sounds::Sounds::RegisterSuicaCard)?
+                }
+                _ => player.play(sounds::Sounds::Error)?,
+            }
+        }
     }
 
     Ok(())
