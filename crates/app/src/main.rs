@@ -1,11 +1,12 @@
 mod reader;
 
-use std::time::Duration;
+use std::{io::Cursor, time::Duration};
 
 use reader::{
     open_reader, scan_student_card, scan_suica_card, wait_for_student_card_release,
     wait_for_suica_card_release,
 };
+use rodio::{Decoder, OutputStream, Sink, Source};
 use serde::{Deserialize, Serialize};
 use tokio::time;
 use tracing::info;
@@ -35,6 +36,8 @@ async fn main() -> anyhow::Result<()> {
 
     let mut reader = open_reader()?;
     let client = reqwest::Client::new();
+    let (_stream, stream_handle) = OutputStream::try_default()?;
+    let sink = Sink::try_new(&stream_handle)?;
 
     loop {
         if let Some((card, student_id)) = scan_student_card(&mut reader)? {
@@ -51,13 +54,20 @@ async fn main() -> anyhow::Result<()> {
             match res {
                 TouchCardResponse::Success { status } => {
                     info!("Student card touched successfully: {:?}", status);
+                    let buf = match status {
+                        RoomEntryStatus::Entry => include_bytes!("./sounds/hello.wav").as_slice(),
+                        RoomEntryStatus::Exit => include_bytes!("./sounds/goodbye.wav").as_slice(),
+                    };
+                    let reader = Cursor::new(buf);
+                    let source = Decoder::new(reader)?;
+                    sink.append(source);
+                    info!("Playing sound");
                 }
                 TouchCardResponse::Error { error } => {
                     info!("Error touching student card: {:?}", error);
                 }
             }
 
-            time::sleep(Duration::from_secs(1)).await;
             wait_for_student_card_release(&mut reader, &card)?;
         };
         if let Some((card, suica_idm)) = scan_suica_card(&mut reader)? {
