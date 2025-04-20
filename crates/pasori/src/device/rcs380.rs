@@ -139,6 +139,15 @@ impl<T: Transport> Device for RCS380<T> {
         let status_flag1 = res[10];
         let status_flag2 = res[11];
 
+        if status_flag1 != 0x00 || status_flag2 != 0x00 {
+            // TODO: https://www.sony.co.jp/Products/felica/business/tech-support/data/card_usersmanual_2.21j.pdf の4.5を参考にエラーを返す
+            bail!(
+                "read without encryption failed: status_flag1 = {:#x}, status_flag2 = {:#x}",
+                status_flag1,
+                status_flag2
+            );
+        }
+
         let block_data_len = res[12] as usize;
 
         let mut block_data = Vec::new();

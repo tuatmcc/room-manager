@@ -1,0 +1,135 @@
+use pasori::{
+    device::{Device, rcs380::RCS380},
+    felica::Card,
+    transport::Usb,
+};
+use tracing::info;
+
+const VENDER_ID: u16 = 0x054c;
+const PRODUCT_ID: u16 = 0x06c3;
+
+const STUDENT_CARD_SYSTEM_CODE: u16 = 0x809c; // 学生証のシステムコード
+const STUDENT_CARD_SERVICE_CODE: u16 = 0x200b; // 学籍番号が格納されているサービスコード
+const SUICA_SYSTEM_CODE: u16 = 0x0003; // Suicaのシステムコード
+const SUICA_SERVICE_CODE: u16 = 0x090f; // 残高が格納されているサービスコード
+
+type Reader = Box<dyn Device + Send + Sync>;
+
+pub fn open_reader() -> anyhow::Result<Reader> {
+    let transport = Usb::from_id(VENDER_ID, PRODUCT_ID)?;
+    let device = RCS380::new(transport)?;
+    Ok(Box::new(device))
+}
+
+pub fn scan_student_card(reader: &mut Reader) -> anyhow::Result<Option<(Card, u64)>> {
+    let Ok(polling_res) = reader.polling(
+        pasori::device::Bitrate::Bitrate424kbs,
+        Some(STUDENT_CARD_SYSTEM_CODE),
+        pasori::felica::PollingRequestCode::SystemCode,
+        pasori::felica::PollingTimeSlot::Slot0,
+    ) else {
+        return Ok(None);
+    };
+
+    let card = polling_res.card;
+    info!("Card detected: {:?}", idm_to_string(&card.idm()));
+
+    let read_res = match reader.read_without_encryption(
+        &card,
+        &[pasori::felica::ServiceCode::new(STUDENT_CARD_SERVICE_CODE)],
+        &[pasori::felica::BlockCode::new(0, None, 0)],
+    ) {
+        Ok(res) => res,
+        Err(e) => {
+            tracing::error!("Failed to read card: {:?}", e);
+            return Ok(None);
+        }
+    };
+
+    let read_data = &read_res.block_data[0];
+    let student_id = std::str::from_utf8(&read_data[7..15])?;
+    let student_id = student_id.parse::<u64>()?;
+
+    Ok(Some((card, student_id)))
+}
+
+pub fn scan_suica_card(reader: &mut Reader) -> anyhow::Result<Option<(Card, String)>> {
+    let Ok(polling_res) = reader.polling(
+        pasori::device::Bitrate::Bitrate424kbs,
+        Some(SUICA_SYSTEM_CODE),
+        pasori::felica::PollingRequestCode::SystemCode,
+        pasori::felica::PollingTimeSlot::Slot0,
+    ) else {
+        return Ok(None);
+    };
+
+    let card = polling_res.card;
+    let idm = idm_to_string(&card.idm());
+    info!("Card detected: {:?}", idm);
+
+    // 読み取りを行わないとApple Walletが反応してくれないので、残高を空読み取りする
+    let read_res = match reader.read_without_encryption(
+        &card,
+        &[pasori::felica::ServiceCode::new(SUICA_SERVICE_CODE)],
+        &[pasori::felica::BlockCode::new(0, None, 0)],
+    ) {
+        Ok(res) => res,
+        Err(e) => {
+            tracing::error!("Failed to read card: {:?}", e);
+            return Ok(None);
+        }
+    };
+
+    let read_data = &read_res.block_data[0];
+    let balance = u16::from_le_bytes([read_data[10], read_data[11]]);
+    info!("Read data: {}", balance);
+
+    Ok(Some((card, idm)))
+}
+
+pub fn wait_for_student_card_release(reader: &mut Reader, card: &Card) -> anyhow::Result<()> {
+    loop {
+        let Ok(polling_res) = reader.polling(
+            pasori::device::Bitrate::Bitrate424kbs,
+            Some(STUDENT_CARD_SYSTEM_CODE),
+            pasori::felica::PollingRequestCode::SystemCode,
+            pasori::felica::PollingTimeSlot::Slot0,
+        ) else {
+            info!("Card released: {:?}", idm_to_string(&card.idm()));
+            return Ok(());
+        };
+
+        let new_card = polling_res.card;
+        if new_card.idm() != card.idm() {
+            info!("Card released: {:?}", idm_to_string(&new_card.idm()));
+            return Ok(());
+        }
+    }
+}
+
+pub fn wait_for_suica_card_release(reader: &mut Reader, card: &Card) -> anyhow::Result<()> {
+    loop {
+        let Ok(polling_res) = reader.polling(
+            pasori::device::Bitrate::Bitrate424kbs,
+            Some(SUICA_SYSTEM_CODE),
+            pasori::felica::PollingRequestCode::SystemCode,
+            pasori::felica::PollingTimeSlot::Slot0,
+        ) else {
+            info!("Card released: {:?}", idm_to_string(&card.idm()));
+            return Ok(());
+        };
+
+        let new_card = polling_res.card;
+        if new_card.idm() != card.idm() {
+            info!("Card released: {:?}", idm_to_string(&new_card.idm()));
+            return Ok(());
+        }
+    }
+}
+
+fn idm_to_string(idm: &[u8]) -> String {
+    idm.iter()
+        .map(|byte| format!("{:02x}", byte))
+        .collect::<Vec<_>>()
+        .join("")
+}
