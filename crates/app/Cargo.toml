@@ -21,5 +21,11 @@ reqwest = { version = "0.12.15", default-features = false, features = [
   "rustls-tls",
 ] }
 serde = { version = "1.0.219", features = ["derive"] }
-rodio = { version = "0.20.1", default-features = false, features = ["symphonia-wav"] }
+rodio = { version = "0.20.1", default-features = false, features = [
+  "symphonia-wav",
+] }
 chrono = "0.4.40"
+thiserror = "1.0.57"
+
+[dev-dependencies]
+mockall = "0.12.1"
