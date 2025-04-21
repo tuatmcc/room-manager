@@ -3,8 +3,8 @@ use std::io::Cursor;
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
 
 pub struct Player {
-    stream: OutputStream,
-    stream_handle: OutputStreamHandle,
+    _stream: OutputStream,
+    _stream_handle: OutputStreamHandle,
     sink: Sink,
 }
 
@@ -14,8 +14,8 @@ impl Player {
         let sink = Sink::try_new(&stream_handle)?;
 
         Ok(Self {
-            stream,
-            stream_handle,
+            _stream: stream,
+            _stream_handle: stream_handle,
             sink,
         })
     }

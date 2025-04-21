@@ -1,6 +1,7 @@
 mod reader;
 mod sounds;
 
+use chrono::{Local, Timelike};
 use reader::{open_reader, scan_card, wait_for_release};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -92,7 +93,14 @@ async fn handle_card(client: &Client, player: &Player, kind: &CardKind) -> anyho
         TouchCardResponse::Success { status } => {
             info!("Card touched successfully: {:?}", status);
             match status {
-                RoomEntryStatus::Entry => player.play(sounds::Sounds::GoodMorning)?,
+                RoomEntryStatus::Entry => {
+                    let now = Local::now();
+                    match now.hour() {
+                        6..=11 => player.play(sounds::Sounds::GoodMorning)?,
+                        12..=17 => player.play(sounds::Sounds::Hello)?,
+                        _ => player.play(sounds::Sounds::GoodEvening)?,
+                    }
+                }
                 RoomEntryStatus::Exit => player.play(sounds::Sounds::GoodBye)?,
             }
         }
