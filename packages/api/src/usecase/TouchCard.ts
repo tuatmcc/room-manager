@@ -4,6 +4,7 @@ import { err, ok } from "neverthrow";
 
 import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
+import type { User } from "@/models/User";
 import type { RoomEntryLogRepository } from "@/repositories/RoomEntryLogRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
 import type { DiscordService } from "@/services/DiscordService";
@@ -12,6 +13,7 @@ export type TouchStudentCardStatus = "entry" | "exit";
 
 export interface TouchStudentCardResponse {
 	status: TouchStudentCardStatus;
+	entries: number;
 	message: Message;
 }
 
@@ -67,10 +69,11 @@ export class TouchStudentCardUseCase {
 
 				// 入室中のユーザーを取得
 				const entryUsers = await this.userRepository.findAllEntryUsers();
-				const description = `### 入室中 (${entryUsers.length}人)\n${entryUsers.map((u) => `* <@${u.discordId}>`).join("\n")}`;
+				const description = this.buildEntryUsersMessage(entryUsers);
 
 				return ok({
 					status: "exit",
+					entries: entryUsers.length,
 					message: {
 						title: `${name}さんが退出しました`,
 						description,
@@ -85,10 +88,11 @@ export class TouchStudentCardUseCase {
 
 			// 入室中のユーザーを取得
 			const entryUsers = await this.userRepository.findAllEntryUsers();
-			const description = `### 入室中 (${entryUsers.length}人)\n${entryUsers.map((u) => `* <@${u.discordId}>`).join("\n")}`;
+			const description = this.buildEntryUsersMessage(entryUsers);
 
 			return ok({
 				status: "entry",
+				entries: entryUsers.length,
 				message: {
 					title: `${name}さんが入室しました`,
 					description,
@@ -111,5 +115,16 @@ export class TouchStudentCardUseCase {
 				}),
 			);
 		}
+	}
+
+	private buildEntryUsersMessage(users: User[]): string {
+		if (users.length === 0) {
+			return "部室には誰も居ません";
+		}
+
+		return [
+			`入室中 (${users.length}人)`,
+			...users.map((user) => `* <@${user.discordId}>`),
+		].join("\n");
 	}
 }

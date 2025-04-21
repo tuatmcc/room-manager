@@ -113,11 +113,7 @@ fn scan_suica_card(reader: &mut Reader) -> anyhow::Result<Option<(Card, String)>
     Ok(Some((card, idm)))
 }
 
-pub async fn wait_for_release(
-    reader: &mut Reader,
-    card: &Card,
-    kind: &CardKind,
-) -> anyhow::Result<()> {
+pub async fn wait_for_release(reader: &mut Reader, card: &Card, kind: &CardKind) {
     loop {
         let Ok(polling_res) = reader.polling(
             pasori::device::Bitrate::Bitrate424kbs,
@@ -128,20 +124,20 @@ pub async fn wait_for_release(
             pasori::felica::PollingRequestCode::SystemCode,
             pasori::felica::PollingTimeSlot::Slot0,
         ) else {
-            info!("Card released: {:?}", idm_to_string(&card.idm()));
-            // スキャン失敗後、すぐにまた反応する可能性があるので、少し待つ
-            time::sleep(time::Duration::from_secs_f32(0.5)).await;
-            return Ok(());
+            break;
         };
 
         let new_card = polling_res.card;
         if new_card.idm() != card.idm() {
-            info!("Card released: {:?}", idm_to_string(&new_card.idm()));
-            // スキャン失敗後、すぐにまた反応する可能性があるので、少し待つ
-            time::sleep(time::Duration::from_secs_f32(0.5)).await;
-            return Ok(());
+            break;
         }
+
+        time::sleep(time::Duration::from_secs_f32(0.1)).await;
     }
+
+    info!("Card released: {:?}", idm_to_string(&card.idm()));
+    // スキャン失敗後、すぐにまた反応する可能性があるので、少し待つ
+    time::sleep(time::Duration::from_secs_f32(0.5)).await;
 }
 
 fn idm_to_string(idm: &[u8]) -> String {

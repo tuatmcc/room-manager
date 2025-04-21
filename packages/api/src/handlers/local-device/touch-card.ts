@@ -17,6 +17,7 @@ const TouchCardResponseSchema = z.union([
 	z.object({
 		success: z.literal(true),
 		status: z.union([z.literal("entry"), z.literal("exit")]),
+		entries: z.number(),
 	}),
 	z.object({
 		success: z.literal(false),
@@ -44,7 +45,11 @@ export class TouchCardHandler implements LocalDeviceHandler {
 		return await result.match<Promise<Response>>(
 			async (res) => {
 				await this.service.sendMessage(res.message);
-				return c.json<TouchCardResponse>({ success: true, status: res.status });
+				return c.json<TouchCardResponse>({
+					success: true,
+					status: res.status,
+					entries: res.entries,
+				});
 			},
 			async (err) => {
 				await this.service.sendMessage(err.userMessage, "error");

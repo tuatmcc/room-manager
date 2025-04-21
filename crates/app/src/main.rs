@@ -1,6 +1,8 @@
 mod reader;
 mod sounds;
 
+use std::time::Duration;
+
 use chrono::{Local, Timelike};
 use reader::{open_reader, scan_card, wait_for_release};
 use reqwest::Client;
@@ -38,6 +40,7 @@ enum ErrorCode {
 enum TouchCardResponse {
     Success {
         status: RoomEntryStatus,
+        entries: u32,
     },
     Error {
         error: String,
@@ -64,8 +67,7 @@ async fn main() -> anyhow::Result<()> {
         };
 
         handle_card(&client, &player, &detected.kind).await?;
-
-        wait_for_release(&mut reader, &detected.card, &detected.kind).await?;
+        wait_for_release(&mut reader, &detected.card, &detected.kind).await;
     }
 }
 
@@ -84,13 +86,14 @@ async fn handle_card(client: &Client, player: &Player, kind: &CardKind) -> anyho
     let res = client
         .post("https://dev.s2n.tech/local-device/touch-card")
         .json(&req)
+        .timeout(Duration::from_secs(5))
         .send()
         .await?
         .json::<TouchCardResponse>()
         .await?;
 
     match res {
-        TouchCardResponse::Success { status } => {
+        TouchCardResponse::Success { status, entries } => {
             info!("Card touched successfully: {:?}", status);
             match status {
                 RoomEntryStatus::Entry => {
@@ -101,7 +104,12 @@ async fn handle_card(client: &Client, player: &Player, kind: &CardKind) -> anyho
                         _ => player.play(sounds::Sounds::GoodEvening)?,
                     }
                 }
-                RoomEntryStatus::Exit => player.play(sounds::Sounds::GoodBye)?,
+                RoomEntryStatus::Exit => {
+                    player.play(sounds::Sounds::GoodBye)?;
+                    if entries == 0 {
+                        player.play(sounds::Sounds::Last)?;
+                    }
+                }
             }
         }
         TouchCardResponse::Error { error, error_code } => {
