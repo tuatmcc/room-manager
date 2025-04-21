@@ -1,8 +1,10 @@
+use std::{thread, time::Duration};
+
 use pasori::{
     device::{Device, rcs380::RCS380},
     transport::Usb,
 };
-use tokio::time;
+use tokio::sync::mpsc::{self, UnboundedReceiver};
 use tracing::info;
 
 use crate::domain::{CardId, CardReader, DomainError};
@@ -17,14 +19,15 @@ const STUDENT_CARD_SERVICE_CODE: u16 = 0x200b;
 const SUICA_SYSTEM_CODE: u16 = 0x0003;
 const SUICA_SERVICE_CODE: u16 = 0x090f;
 
-pub struct PcScReader {
+struct InternalPasoriReader {
     device: DeviceReader,
 }
 
-impl PcScReader {
+impl InternalPasoriReader {
     pub fn new() -> anyhow::Result<Self> {
         let transport = Usb::from_id(VENDER_ID, PRODUCT_ID)?;
         let device = RCS380::new(transport)?;
+
         Ok(Self {
             device: Box::new(device),
         })
@@ -114,22 +117,8 @@ impl PcScReader {
             CardId::Student { felica_id, .. } | CardId::Suica { felica_id, .. } => felica_id,
         }
     }
-}
 
-impl CardReader for PcScReader {
-    fn poll(&mut self) -> anyhow::Result<Option<CardId>> {
-        if let Some(card_id) = self.scan_student_card()? {
-            return Ok(Some(card_id));
-        }
-
-        if let Some(card_id) = self.scan_suica_card()? {
-            return Ok(Some(card_id));
-        }
-
-        Ok(None)
-    }
-
-    async fn wait_release(&mut self, card_id: &CardId) -> anyhow::Result<()> {
+    fn wait_release(&mut self, card_id: &CardId) {
         let system_code = Self::get_system_code(card_id);
         let original_idm = Self::get_felica_idm(card_id);
 
@@ -148,14 +137,46 @@ impl CardReader for PcScReader {
                 break;
             }
 
-            time::sleep(time::Duration::from_millis(100)).await;
+            thread::sleep(Duration::from_millis(100));
         }
 
         info!("Card released: {:?}", idm_to_string(original_idm));
         // スキャン失敗後、すぐにまた反応する可能性があるので、少し待つ
-        time::sleep(time::Duration::from_millis(500)).await;
+        thread::sleep(Duration::from_millis(500));
+    }
+}
 
-        Ok(())
+pub struct PasoriReader {
+    rx: UnboundedReceiver<CardId>,
+}
+
+impl PasoriReader {
+    pub fn spawn() -> anyhow::Result<Self> {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let mut reader = InternalPasoriReader::new()?;
+
+        thread::spawn(move || -> anyhow::Result<()> {
+            loop {
+                if let Some(card_id) = reader.scan_student_card()? {
+                    tx.send(card_id.clone())?;
+                    reader.wait_release(&card_id);
+                }
+                if let Some(card_id) = reader.scan_suica_card()? {
+                    tx.send(card_id.clone())?;
+                    reader.wait_release(&card_id);
+                }
+
+                thread::sleep(Duration::from_millis(100));
+            }
+        });
+
+        Ok(Self { rx })
+    }
+}
+
+impl CardReader for PasoriReader {
+    async fn next(&mut self) -> Option<CardId> {
+        self.rx.recv().await
     }
 }
 

@@ -1,11 +1,8 @@
-use std::time::Duration;
-
 use crate::domain::{
     CardApi, CardId, CardReader, Clock, ErrorCode, RoomEntryStatus, SoundEvent, SoundPlayer,
     TouchCardRequest, TouchCardResponse,
 };
 use chrono::Timelike;
-use tokio::time;
 
 pub struct TouchCardUseCase<R, A, P, C>
 where
@@ -37,14 +34,11 @@ where
     }
 
     pub async fn run_loop(&mut self) -> anyhow::Result<()> {
-        loop {
-            if let Some(card) = self.reader.poll()? {
-                self.handle_card(&card)?;
-                self.reader.wait_release(&card).await?;
-            }
-
-            time::sleep(Duration::from_millis(100)).await;
+        while let Some(card) = self.reader.next().await {
+            self.handle_card(&card)?;
         }
+
+        Ok(())
     }
 
     pub fn handle_card(&self, card: &CardId) -> anyhow::Result<()> {

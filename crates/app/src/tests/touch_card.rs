@@ -9,8 +9,7 @@ use crate::domain::{
 mock! {
     pub CardReader {}
     impl CardReader for CardReader {
-        fn poll(&mut self) -> anyhow::Result<Option<CardId>>;
-        async fn wait_release(&mut self, card: &CardId) -> anyhow::Result<()>;
+        async fn next(&mut self) -> Option<CardId>;
     }
 }
 

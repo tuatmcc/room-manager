@@ -6,7 +6,7 @@ mod infra;
 mod tests;
 
 use app::TouchCardUseCase;
-use infra::{HttpCardApi, PcScReader, RodioPlayer, SystemClock};
+use infra::{HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
 use tracing::info;
 
 #[tokio::main]
@@ -16,10 +16,11 @@ async fn main() -> anyhow::Result<()> {
     info!("部屋管理アプリケーションを起動しています...");
 
     // 依存実装を生成
-    let reader = PcScReader::new()?;
     let api = HttpCardApi::new("https://dev.s2n.tech/local-device", 5);
     let player = RodioPlayer::new()?;
     let clock = SystemClock::new();
+
+    let reader = PasoriReader::spawn()?;
 
     info!("カードリーダー、API、サウンドプレイヤーを初期化しました");
     info!("カードをスキャンする準備ができました");
