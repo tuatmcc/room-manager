@@ -22,35 +22,35 @@ impl HttpCardApi {
 }
 
 impl CardApi for HttpCardApi {
-    fn touch(&self, req: TouchCardRequest) -> anyhow::Result<TouchCardResponse> {
+    async fn touch(&self, req: TouchCardRequest) -> anyhow::Result<TouchCardResponse> {
         info!(
             "Sending API request to {}/touch-card with timeout {}s",
             self.base_url, self.timeout_secs
         );
 
         let start = std::time::Instant::now();
-        let response = tokio::task::block_in_place(|| {
-            let rt: tokio::runtime::Handle = tokio::runtime::Handle::current();
-            rt.block_on(async {
-                let result = self
-                    .client
-                    .post(format!("{}/touch-card", self.base_url))
-                    .json(&req)
-                    .timeout(Duration::from_secs(self.timeout_secs))
-                    .send()
-                    .await;
 
-                match result {
-                    Ok(response) => {
-                        info!("API request successful: status={}", response.status());
-                        response.json::<TouchCardResponse>().await
-                    }
-                    Err(e) => {
-                        error!("API request failed: {}", e);
-                        Err(e)
-                    }
-                }
-            })
+        let response = self
+            .client
+            .post(format!("{}/touch-card", self.base_url))
+            .json(&req)
+            .timeout(Duration::from_secs(self.timeout_secs))
+            .send()
+            .await
+            .map_err(|e| {
+                error!("API request failed: {}", e);
+                anyhow::anyhow!("API request failed: {}", e)
+            })?;
+        info!("API request successful: status={}", response.status());
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!(
+                "API request failed with status: {}",
+                response.status()
+            ));
+        }
+        let response = response.json::<TouchCardResponse>().await.map_err(|e| {
+            error!("Failed to parse API response: {}", e);
+            anyhow::anyhow!("Failed to parse API response: {}", e)
         })?;
 
         let elapsed = start.elapsed();

@@ -6,7 +6,7 @@ pub trait CardReader {
 }
 
 pub trait CardApi {
-    fn touch(&self, req: TouchCardRequest) -> anyhow::Result<TouchCardResponse>;
+    async fn touch(&self, req: TouchCardRequest) -> anyhow::Result<TouchCardResponse>;
 }
 
 pub trait SoundPlayer {

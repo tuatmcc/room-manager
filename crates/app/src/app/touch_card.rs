@@ -30,7 +30,7 @@ where
         let req: TouchCardRequest = card.clone().into();
         info!("Sending touch card request: {:?}", req);
 
-        match self.api.touch(req)? {
+        match self.api.touch(req).await? {
             TouchCardResponse::Success { status, entries } => {
                 info!(
                     "Touch card success: status={:?}, entries={}",
