@@ -49,7 +49,10 @@ impl InternalPasoriReader {
         };
 
         let card = polling_res.card;
-        info!("Student card detected: {:?}", idm_to_string(&card.idm()));
+        info!(
+            "Student card detected: IDM={:?}",
+            idm_to_string(&card.idm())
+        );
 
         let read_res = match self.device.read_without_encryption(
             &card,
@@ -58,7 +61,7 @@ impl InternalPasoriReader {
         ) {
             Ok(res) => res,
             Err(e) => {
-                tracing::error!("Failed to read student card: {:?}", e);
+                tracing::error!("Failed to read student card data: {:?}", e);
                 return Err(DomainError::CardReadError(format!("{e:?}")).into());
             }
         };
@@ -85,7 +88,7 @@ impl InternalPasoriReader {
 
         let card = polling_res.card;
         let idm = idm_to_string(&card.idm());
-        info!("Suica card detected: {:?}", idm);
+        info!("Suica card detected: IDm={:?}", idm);
 
         // 読み取りを行わないとApple Walletが反応してくれないので、残高を空読み取りする
         let read_res = match self.device.read_without_encryption(
@@ -95,14 +98,14 @@ impl InternalPasoriReader {
         ) {
             Ok(res) => res,
             Err(e) => {
-                tracing::error!("Failed to read Suica card: {:?}", e);
+                tracing::error!("Failed to read Suica card data: {:?}", e);
                 return Err(DomainError::CardReadError(format!("{e:?}")).into());
             }
         };
 
         let read_data = &read_res.block_data[0];
         let balance = u16::from_le_bytes([read_data[10], read_data[11]]);
-        info!("Suica balance: {}", balance);
+        info!("Suica balance: {} yen", balance);
 
         Ok(Some(CardId::Suica {
             idm,
@@ -145,7 +148,7 @@ impl InternalPasoriReader {
             thread::sleep(Duration::from_millis(100));
         }
 
-        info!("Card released: {:?}", idm_to_string(original_idm));
+        info!("Card removed: IDM={:?}", idm_to_string(original_idm));
         // スキャン失敗後、すぐにまた反応する可能性があるので、少し待つ
         thread::sleep(Duration::from_millis(500));
     }
@@ -166,7 +169,7 @@ impl PasoriReader {
         let handle = thread::Builder::new()
             .name("pasori_reader".to_string())
             .spawn(move || -> anyhow::Result<()> {
-                info!("PasoriReader thread started");
+                info!("PasoriReader thread started successfully");
                 loop {
                     match stop_rx.try_recv() {
                         Ok(()) | Err(TryRecvError::Closed) => {
@@ -191,7 +194,7 @@ impl PasoriReader {
                     thread::sleep(Duration::from_millis(100));
                 }
 
-                info!("PasoriReader thread stopped");
+                info!("PasoriReader thread stopped successfully");
                 Ok(())
             })?;
 
