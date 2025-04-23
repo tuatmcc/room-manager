@@ -44,6 +44,7 @@ pub enum TouchCardResponse {
     },
 }
 
+#[cfg(test)]
 impl TouchCardResponse {
     pub fn success_entry(entries: u32) -> Self {
         Self::Success {

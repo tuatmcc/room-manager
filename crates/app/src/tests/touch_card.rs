@@ -2,21 +2,14 @@ use mockall::predicate::*;
 use mockall::*;
 
 use crate::domain::{
-    CardApi, CardId, CardReader, Clock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse,
+    CardApi, CardId, Clock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse,
 };
 
 // モッククラスの自動生成
 mock! {
-    pub CardReader {}
-    impl CardReader for CardReader {
-        async fn next(&mut self) -> anyhow::Result<Option<CardId>>;
-    }
-}
-
-mock! {
     pub CardApi {}
     impl CardApi for CardApi {
-        fn touch(&self, req: crate::domain::TouchCardRequest) -> anyhow::Result<TouchCardResponse>;
+        async fn touch(&self, req: crate::domain::TouchCardRequest) -> anyhow::Result<TouchCardResponse>;
     }
 }
 
@@ -41,16 +34,13 @@ mod tests {
     use crate::domain::TouchCardRequest;
     use chrono::{Local, TimeZone};
 
-    #[test]
-    fn test_entry_morning() {
+    #[tokio::test]
+    async fn test_entry_morning() {
         // 学生証のモックデータ
         let card_id = CardId::Student {
             id: 12_345_678,
             felica_id: vec![0x01, 0x02, 0x03, 0x04],
         };
-
-        // カードリーダーのモック設定（handle_cardを直接呼ぶのでpollは期待しない）
-        let mock_reader = MockCardReader::new();
 
         // 時計のモック設定（午前9時に固定）
         let mock_time = Local.with_ymd_and_hms(2025, 4, 21, 9, 0, 0).unwrap();
@@ -79,26 +69,19 @@ mod tests {
             .returning(|_| Ok(()));
 
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_reader, mock_api, mock_player, mock_clock);
+        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock);
 
-        // handle_cardを直接呼び出す（pollを経由しない）
-        let result = std::panic::catch_unwind(|| {
-            use_case.handle_card(&card_id).unwrap();
-        });
-
-        assert!(result.is_ok());
+        // executeを非同期で直接呼び出す
+        use_case.execute(&card_id).await.unwrap();
     }
 
-    #[test]
-    fn test_exit_last_person() {
+    #[tokio::test]
+    async fn test_exit_last_person() {
         // Suicaカードのモックデータ
         let card_id = CardId::Suica {
             idm: "0123456789abcdef".to_string(),
             felica_id: vec![0x01, 0x02, 0x03, 0x04],
         };
-
-        // カードリーダーのモック設定（handle_cardを直接呼ぶのでpollは期待しない）
-        let mock_reader = MockCardReader::new();
 
         // 時計のモック設定（夕方18時に固定だが、退出時には使用されない）
         let _mock_time = Local.with_ymd_and_hms(2025, 4, 21, 18, 0, 0).unwrap();
@@ -127,26 +110,19 @@ mod tests {
             .returning(|_| Ok(()));
 
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_reader, mock_api, mock_player, mock_clock);
+        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock);
 
-        // handle_cardを直接呼び出す（pollを経由しない）
-        let result = std::panic::catch_unwind(|| {
-            use_case.handle_card(&card_id).unwrap();
-        });
-
-        assert!(result.is_ok());
+        // executeを非同期で直接呼び出す
+        use_case.execute(&card_id).await.unwrap();
     }
 
-    #[test]
-    fn test_unregistered_card() {
+    #[tokio::test]
+    async fn test_unregistered_card() {
         // 未登録の学生証
         let card_id = CardId::Student {
             id: 99_999_999,
             felica_id: vec![0x01, 0x02, 0x03, 0x04],
         };
-
-        // カードリーダーのモック設定（handle_cardを直接呼ぶのでpollは期待しない）
-        let mock_reader = MockCardReader::new();
 
         // API通信のモック設定
         let mut mock_api = MockCardApi::new();
@@ -169,13 +145,9 @@ mod tests {
         let mock_clock = MockClock::new();
 
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_reader, mock_api, mock_player, mock_clock);
+        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock);
 
-        // handle_cardを直接呼び出す（pollを経由しない）
-        let result = std::panic::catch_unwind(|| {
-            use_case.handle_card(&card_id).unwrap();
-        });
-
-        assert!(result.is_ok());
+        // executeを非同期で直接呼び出す
+        use_case.execute(&card_id).await.unwrap();
     }
 }
