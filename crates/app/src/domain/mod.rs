@@ -1,5 +1,4 @@
 pub mod entities;
-pub mod errors;
 
 pub trait CardReader {
     async fn next(&mut self) -> anyhow::Result<Option<CardId>>;
@@ -17,6 +16,4 @@ pub trait Clock {
     fn now(&self) -> chrono::DateTime<chrono::Local>;
 }
 
-// 再エクスポート
 pub use entities::*;
-pub use errors::*;

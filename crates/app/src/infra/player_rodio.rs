@@ -1,9 +1,9 @@
 use std::io::Cursor;
 
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
-use tracing::{error, info};
+use tracing::info;
 
-use crate::domain::{DomainError, SoundEvent, SoundPlayer};
+use crate::domain::{SoundEvent, SoundPlayer};
 
 pub struct RodioPlayer {
     _stream: OutputStream,
@@ -14,27 +14,9 @@ pub struct RodioPlayer {
 impl RodioPlayer {
     pub fn new() -> anyhow::Result<Self> {
         info!("Initializing RodioPlayer");
-        let (stream, stream_handle) = match OutputStream::try_default() {
-            Ok((stream, handle)) => {
-                info!("Successfully created audio output stream");
-                (stream, handle)
-            }
-            Err(e) => {
-                error!("Failed to create audio output stream: {}", e);
-                return Err(e.into());
-            }
-        };
 
-        let sink = match Sink::try_new(&stream_handle) {
-            Ok(sink) => {
-                info!("Successfully created audio sink");
-                sink
-            }
-            Err(e) => {
-                error!("Failed to create audio sink: {}", e);
-                return Err(e.into());
-            }
-        };
+        let (stream, stream_handle) = OutputStream::try_default()?;
+        let sink = Sink::try_new(&stream_handle)?;
 
         Ok(Self {
             _stream: stream,
@@ -49,16 +31,7 @@ impl SoundPlayer for RodioPlayer {
         info!("Playing sound: {:?}", sound);
 
         let reader = sound_to_reader(sound);
-        let source = match Decoder::new(reader) {
-            Ok(src) => {
-                info!("Successfully decoded sound");
-                src
-            }
-            Err(e) => {
-                error!("Failed to decode sound: {:?}", e);
-                return Err(DomainError::SoundPlaybackError(format!("{e:?}")).into());
-            }
-        };
+        let source = Decoder::new(reader)?;
 
         self.sink.append(source);
         info!("Sound queued for playback");

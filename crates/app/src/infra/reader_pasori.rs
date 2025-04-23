@@ -12,7 +12,7 @@ use tokio::sync::{
 };
 use tracing::info;
 
-use crate::domain::{CardId, CardReader, DomainError};
+use crate::domain::{CardId, CardReader};
 
 type DeviceReader = Box<dyn Device + Send + Sync>;
 
@@ -38,6 +38,7 @@ impl InternalPasoriReader {
         })
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn scan_student_card(&mut self) -> anyhow::Result<Option<CardId>> {
         let Ok(polling_res) = self.device.polling(
             pasori::device::Bitrate::Bitrate424kbs,
@@ -62,7 +63,7 @@ impl InternalPasoriReader {
             Ok(res) => res,
             Err(e) => {
                 tracing::error!("Failed to read student card data: {:?}", e);
-                return Err(DomainError::CardReadError(format!("{e:?}")).into());
+                return Ok(None);
             }
         };
 
@@ -76,6 +77,7 @@ impl InternalPasoriReader {
         }))
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn scan_suica_card(&mut self) -> anyhow::Result<Option<CardId>> {
         let Ok(polling_res) = self.device.polling(
             pasori::device::Bitrate::Bitrate424kbs,
@@ -99,7 +101,7 @@ impl InternalPasoriReader {
             Ok(res) => res,
             Err(e) => {
                 tracing::error!("Failed to read Suica card data: {:?}", e);
-                return Err(DomainError::CardReadError(format!("{e:?}")).into());
+                return Ok(None);
             }
         };
 
