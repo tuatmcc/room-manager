@@ -1,7 +1,7 @@
 use std::io::Cursor;
 
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use crate::domain::{DomainError, SoundEvent, SoundPlayer};
 
@@ -68,39 +68,17 @@ impl SoundPlayer for RodioPlayer {
 }
 
 fn sound_to_reader(sound: SoundEvent) -> Cursor<&'static [u8]> {
-    info!("Loading sound file for event: {:?}", sound);
-
     let buf = match sound {
-        SoundEvent::GoodMorning => {
-            info!("Loading good_morning.wav");
-            include_bytes!("../assets/sounds/good_morning.wav").as_slice()
-        }
-        SoundEvent::Hello => {
-            info!("Loading hello.wav");
-            include_bytes!("../assets/sounds/hello.wav").as_slice()
-        }
-        SoundEvent::GoodEvening => {
-            info!("Loading good_evening.wav");
-            include_bytes!("../assets/sounds/good_evening.wav").as_slice()
-        }
-        SoundEvent::GoodBye => {
-            info!("Loading good_bye.wav");
-            include_bytes!("../assets/sounds/good_bye.wav").as_slice()
-        }
-        SoundEvent::Last => {
-            info!("Loading last.wav");
-            include_bytes!("../assets/sounds/last.wav").as_slice()
-        }
-        SoundEvent::Error => {
-            info!("Loading error.wav");
-            include_bytes!("../assets/sounds/error.wav").as_slice()
-        }
+        SoundEvent::GoodMorning => include_bytes!("../assets/sounds/good_morning.wav").as_slice(),
+        SoundEvent::Hello => include_bytes!("../assets/sounds/hello.wav").as_slice(),
+        SoundEvent::GoodEvening => include_bytes!("../assets/sounds/good_evening.wav").as_slice(),
+        SoundEvent::GoodBye => include_bytes!("../assets/sounds/good_bye.wav").as_slice(),
+        SoundEvent::Last => include_bytes!("../assets/sounds/last.wav").as_slice(),
+        SoundEvent::Error => include_bytes!("../assets/sounds/error.wav").as_slice(),
         SoundEvent::RegisterStudentCard => {
-            info!("Loading register_student_card.wav");
             include_bytes!("../assets/sounds/register_student_card.wav").as_slice()
         }
         SoundEvent::RegisterSuicaCard => {
-            info!("Loading register_suica_card.wav");
             include_bytes!("../assets/sounds/register_suica_card.wav").as_slice()
         }
     };
