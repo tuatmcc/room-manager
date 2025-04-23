@@ -30,7 +30,7 @@ impl CardApi for HttpCardApi {
 
         let start = std::time::Instant::now();
         let response = tokio::task::block_in_place(|| {
-            let rt = tokio::runtime::Handle::current();
+            let rt: tokio::runtime::Handle = tokio::runtime::Handle::current();
             rt.block_on(async {
                 let result = self
                     .client

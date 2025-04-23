@@ -6,6 +6,7 @@ mod infra;
 mod tests;
 
 use app::TouchCardUseCase;
+use domain::CardReader as _;
 use infra::{HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
 use tracing::{error, info, warn};
 
@@ -24,47 +25,30 @@ async fn main() -> anyhow::Result<()> {
     info!("API client initialized successfully");
 
     info!("Initializing sound player");
-    let player = match RodioPlayer::new() {
-        Ok(player) => {
-            info!("Sound player initialized successfully");
-            player
-        }
-        Err(e) => {
-            error!("Failed to initialize sound player: {}", e);
-            return Err(e);
-        }
-    };
+    let player = RodioPlayer::new()?;
+    info!("Sound player initialized successfully");
 
     info!("Initializing system clock");
     let clock = SystemClock::new();
 
     info!("Spawning Pasori card reader");
-    let reader = match PasoriReader::spawn() {
-        Ok(reader) => {
-            info!("Card reader spawned successfully");
-            reader
-        }
-        Err(e) => {
-            error!("Failed to spawn card reader: {}", e);
-            return Err(e);
-        }
-    };
+    let mut reader = PasoriReader::spawn()?;
+    info!("Card reader spawned successfully");
 
     info!("Initialized card reader, API client, and sound player");
-    info!("Ready to scan cards");
 
-    // ユースケースに注入して実行
-    info!("Creating and starting TouchCardUseCase");
-    let mut use_case = TouchCardUseCase::new(reader, api, player, clock);
+    info!("Creating TouchCardUseCase");
+    let touch_card_use_case = TouchCardUseCase::new(api, player, clock);
 
-    match use_case.run_loop().await {
-        Ok(()) => {
-            info!("Application terminated normally");
-            Ok(())
+    info!("Starting card reader loop");
+    while let Some(card_id) = reader.next().await? {
+        info!("Card scanned: {:?}", card_id);
+        if let Err(e) = touch_card_use_case.execute(&card_id).await {
+            error!("Error processing card: {}", e);
         }
-        Err(e) => {
-            error!("Application terminated with error: {}", e);
-            Err(e)
-        }
+        info!("Card processing completed");
     }
+
+    info!("Card reader stopped, exiting application");
+    Ok(())
 }

@@ -1,51 +1,32 @@
 use crate::domain::{
-    CardApi, CardId, CardReader, Clock, ErrorCode, RoomEntryStatus, SoundEvent, SoundPlayer,
-    TouchCardRequest, TouchCardResponse,
+    CardApi, CardId, Clock, ErrorCode, RoomEntryStatus, SoundEvent, SoundPlayer, TouchCardRequest,
+    TouchCardResponse,
 };
 use chrono::Timelike;
 use tracing::{info, warn};
 
-pub struct TouchCardUseCase<R, A, P, C>
+pub struct TouchCardUseCase<A, P, C>
 where
-    R: CardReader,
     A: CardApi,
     P: SoundPlayer,
     C: Clock,
 {
-    reader: R,
     api: A,
     player: P,
     clock: C,
 }
 
-impl<R, A, P, C> TouchCardUseCase<R, A, P, C>
+impl<A, P, C> TouchCardUseCase<A, P, C>
 where
-    R: CardReader,
     A: CardApi,
     P: SoundPlayer,
     C: Clock,
 {
-    pub fn new(reader: R, api: A, player: P, clock: C) -> Self {
-        Self {
-            reader,
-            api,
-            player,
-            clock,
-        }
+    pub fn new(api: A, player: P, clock: C) -> Self {
+        Self { api, player, clock }
     }
 
-    pub async fn run_loop(&mut self) -> anyhow::Result<()> {
-        info!("Starting card scanning loop");
-        while let Some(card) = self.reader.next().await? {
-            info!("Card detected: {:?}", card);
-            self.handle_card(&card)?;
-        }
-
-        info!("Card scanning loop ended");
-        Ok(())
-    }
-
-    pub fn handle_card(&self, card: &CardId) -> anyhow::Result<()> {
+    pub async fn execute(&self, card: &CardId) -> anyhow::Result<()> {
         let req: TouchCardRequest = card.clone().into();
         info!("Sending touch card request: {:?}", req);
 
@@ -62,6 +43,7 @@ where
                 self.play_error(error_code)?;
             }
         }
+
         Ok(())
     }
 
