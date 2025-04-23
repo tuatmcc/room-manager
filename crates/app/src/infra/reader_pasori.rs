@@ -1,10 +1,15 @@
 use std::{thread, time::Duration};
 
+use anyhow::anyhow;
+use if_chain::if_chain;
 use pasori::{
     device::{Device, rcs380::RCS380},
     transport::Usb,
 };
-use tokio::sync::mpsc::{self, UnboundedReceiver};
+use tokio::sync::{
+    mpsc::{self, UnboundedReceiver},
+    oneshot::{self, error::TryRecvError},
+};
 use tracing::info;
 
 use crate::domain::{CardId, CardReader, DomainError};
@@ -148,35 +153,86 @@ impl InternalPasoriReader {
 
 pub struct PasoriReader {
     rx: UnboundedReceiver<CardId>,
+    stop_tx: Option<oneshot::Sender<()>>,
+    handle: Option<thread::JoinHandle<anyhow::Result<()>>>,
 }
 
 impl PasoriReader {
     pub fn spawn() -> anyhow::Result<Self> {
         let (tx, rx) = mpsc::unbounded_channel();
+        let (stop_tx, mut stop_rx) = oneshot::channel();
         let mut reader = InternalPasoriReader::new()?;
 
-        thread::spawn(move || -> anyhow::Result<()> {
-            loop {
-                if let Some(card_id) = reader.scan_student_card()? {
-                    tx.send(card_id.clone())?;
-                    reader.wait_release(&card_id);
-                }
-                if let Some(card_id) = reader.scan_suica_card()? {
-                    tx.send(card_id.clone())?;
-                    reader.wait_release(&card_id);
+        let handle = thread::Builder::new()
+            .name("pasori_reader".to_string())
+            .spawn(move || -> anyhow::Result<()> {
+                info!("PasoriReader thread started");
+                loop {
+                    match stop_rx.try_recv() {
+                        Ok(()) | Err(TryRecvError::Closed) => {
+                            break;
+                        }
+                        Err(TryRecvError::Empty) => {}
+                    }
+
+                    if let Some(card_id) = reader.scan_student_card()? {
+                        if tx.send(card_id.clone()).is_err() {
+                            break;
+                        }
+                        reader.wait_release(&card_id);
+                    }
+                    if let Some(card_id) = reader.scan_suica_card()? {
+                        if tx.send(card_id.clone()).is_err() {
+                            break;
+                        }
+                        reader.wait_release(&card_id);
+                    }
+
+                    thread::sleep(Duration::from_millis(100));
                 }
 
-                thread::sleep(Duration::from_millis(100));
-            }
-        });
+                info!("PasoriReader thread stopped");
+                Ok(())
+            })?;
 
-        Ok(Self { rx })
+        Ok(Self {
+            rx,
+            stop_tx: Some(stop_tx),
+            handle: Some(handle),
+        })
     }
 }
 
 impl CardReader for PasoriReader {
-    async fn next(&mut self) -> Option<CardId> {
-        self.rx.recv().await
+    async fn next(&mut self) -> anyhow::Result<Option<CardId>> {
+        if_chain! {
+            if let Some(handle) = &self.handle;
+            if handle.is_finished();
+            if let Some(handle) = self.handle.take();
+            then {
+                handle.join()
+                    .map_err(|payload| anyhow!("PasoriReader thread panicked: {:?}", payload))??;
+
+                return Ok(None);
+            }
+        }
+
+        if self.handle.is_none() {
+            return Ok(None);
+        }
+
+        Ok(self.rx.recv().await)
+    }
+}
+
+impl Drop for PasoriReader {
+    fn drop(&mut self) {
+        if let Some(stop_tx) = self.stop_tx.take() {
+            let _ = stop_tx.send(());
+        }
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
     }
 }
 

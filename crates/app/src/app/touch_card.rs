@@ -34,7 +34,7 @@ where
     }
 
     pub async fn run_loop(&mut self) -> anyhow::Result<()> {
-        while let Some(card) = self.reader.next().await {
+        while let Some(card) = self.reader.next().await? {
             self.handle_card(&card)?;
         }
 
