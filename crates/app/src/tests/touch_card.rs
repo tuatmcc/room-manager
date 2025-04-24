@@ -1,9 +1,7 @@
 use mockall::predicate::*;
 use mockall::*;
 
-use crate::domain::{
-    CardApi, CardId, Clock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse,
-};
+use crate::domain::{Card, CardApi, Clock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse};
 
 // モッククラスの自動生成
 mock! {
@@ -37,9 +35,10 @@ mod tests {
     #[tokio::test]
     async fn test_entry_morning() {
         // 学生証のモックデータ
-        let card_id = CardId::Student {
-            id: 12_345_678,
-            felica_id: vec![0x01, 0x02, 0x03, 0x04],
+        let card_id = Card {
+            idm: "0123456789abcdef".to_string(),
+            student_id: Some(12_345_678),
+            balance: None,
         };
 
         // 時計のモック設定（午前9時に固定）
@@ -78,9 +77,10 @@ mod tests {
     #[tokio::test]
     async fn test_exit_last_person() {
         // Suicaカードのモックデータ
-        let card_id = CardId::Suica {
+        let card_id = Card {
             idm: "0123456789abcdef".to_string(),
-            felica_id: vec![0x01, 0x02, 0x03, 0x04],
+            student_id: None,
+            balance: Some(1234),
         };
 
         // 時計のモック設定（夕方18時に固定だが、退出時には使用されない）
@@ -92,7 +92,9 @@ mod tests {
         let mut mock_api = MockCardApi::new();
         mock_api
             .expect_touch()
-            .with(function(|req: &TouchCardRequest| matches!(&req.suica_idm, Some(idm) if idm == "0123456789abcdef")))
+            .with(function(|req: &TouchCardRequest| {
+                req.idm == "0123456789abcdef"
+            }))
             .times(1)
             .returning(|_| Ok(TouchCardResponse::success_exit(0))); // 最後の退出（残り0人）
 
@@ -119,9 +121,10 @@ mod tests {
     #[tokio::test]
     async fn test_unregistered_card() {
         // 未登録の学生証
-        let card_id = CardId::Student {
-            id: 99_999_999,
-            felica_id: vec![0x01, 0x02, 0x03, 0x04],
+        let card_id = Card {
+            idm: "0123456789abcdef".to_string(),
+            student_id: Some(99_999_999),
+            balance: None,
         };
 
         // API通信のモック設定

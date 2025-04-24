@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum CardId {
-    Student { id: u32, felica_id: Vec<u8> },
-    Suica { idm: String, felica_id: Vec<u8> },
+pub struct Card {
+    pub idm: String,
+    pub student_id: Option<u32>,
+    pub balance: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -25,10 +26,9 @@ pub enum ErrorCode {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TouchCardRequest {
+    pub idm: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub student_id: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub suica_idm: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -68,17 +68,11 @@ impl TouchCardResponse {
     }
 }
 
-impl From<CardId> for TouchCardRequest {
-    fn from(card_id: CardId) -> Self {
-        match card_id {
-            CardId::Student { id, .. } => TouchCardRequest {
-                student_id: Some(id),
-                suica_idm: None,
-            },
-            CardId::Suica { idm, .. } => TouchCardRequest {
-                student_id: None,
-                suica_idm: Some(idm),
-            },
+impl From<Card> for TouchCardRequest {
+    fn from(card: Card) -> Self {
+        Self {
+            idm: card.idm,
+            student_id: card.student_id,
         }
     }
 }

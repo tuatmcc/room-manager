@@ -1,5 +1,5 @@
 use crate::domain::{
-    CardApi, CardId, Clock, ErrorCode, RoomEntryStatus, SoundEvent, SoundPlayer, TouchCardRequest,
+    CardApi, Card, Clock, ErrorCode, RoomEntryStatus, SoundEvent, SoundPlayer, TouchCardRequest,
     TouchCardResponse,
 };
 use chrono::Timelike;
@@ -26,7 +26,7 @@ where
         Self { api, player, clock }
     }
 
-    pub async fn execute(&self, card: &CardId) -> anyhow::Result<()> {
+    pub async fn execute(&self, card: &Card) -> anyhow::Result<()> {
         let req: TouchCardRequest = card.clone().into();
         info!("Sending touch card request: {:?}", req);
 

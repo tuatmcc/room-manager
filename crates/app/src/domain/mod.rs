@@ -1,7 +1,7 @@
 pub mod entities;
 
 pub trait CardReader {
-    async fn next(&mut self) -> anyhow::Result<Option<CardId>>;
+    async fn next(&mut self) -> anyhow::Result<Option<Card>>;
 }
 
 pub trait CardApi {
