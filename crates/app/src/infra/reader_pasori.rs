@@ -42,7 +42,7 @@ impl InternalPasoriReader {
     #[allow(clippy::unnecessary_wraps)]
     fn scan_card(&mut self) -> anyhow::Result<Option<(felica::Card, Card)>> {
         let Ok(polling_res) = self.device.polling(
-            pasori::device::Bitrate::Bitrate424kbs,
+            pasori::device::Bitrate::Bitrate212kbs,
             None,
             pasori::felica::PollingRequestCode::SystemCode,
             pasori::felica::PollingTimeSlot::Slot0,
@@ -66,7 +66,7 @@ impl InternalPasoriReader {
 
         match system_code {
             STUDENT_CARD_SYSTEM_CODE => {
-                info!("Student card system code detected: {}", system_code);
+                info!("Student card system code detected: {:04x}", system_code);
 
                 let read_res = match self.device.read_without_encryption(
                     &felica_card,
@@ -98,7 +98,7 @@ impl InternalPasoriReader {
                 Ok(Some((felica_card, card)))
             }
             SUICA_SYSTEM_CODE => {
-                info!("Suica card system code detected: {}", system_code);
+                info!("Suica card system code detected: {:04x}", system_code);
 
                 let read_res = match self.device.read_without_encryption(
                     &felica_card,
@@ -124,7 +124,7 @@ impl InternalPasoriReader {
                 Ok(Some((felica_card, card)))
             }
             _ => {
-                info!("Unknown system code detected: {}", system_code);
+                info!("Unknown system code detected: {:04x}", system_code);
                 let card = Card {
                     idm,
                     student_id: None,
@@ -138,7 +138,7 @@ impl InternalPasoriReader {
     fn wait_release(&mut self, felica_card: &felica::Card) {
         loop {
             let Ok(polling_res) = self.device.polling(
-                pasori::device::Bitrate::Bitrate424kbs,
+                pasori::device::Bitrate::Bitrate212kbs,
                 felica_card.system_code(),
                 pasori::felica::PollingRequestCode::SystemCode,
                 pasori::felica::PollingTimeSlot::Slot0,
