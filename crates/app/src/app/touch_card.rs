@@ -93,7 +93,7 @@ where
             }
             ErrorCode::NfcCardNotRegistered => {
                 info!("NFC card not registered, playing registration guidance");
-                self.player.play(SoundEvent::RegisterSuicaCard)?;
+                self.player.play(SoundEvent::RegisterNfcCard)?;
             }
             _ => {
                 warn!("Unknown error occurred, playing generic error sound");

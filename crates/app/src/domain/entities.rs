@@ -86,5 +86,5 @@ pub enum SoundEvent {
     Last,
     Error,
     RegisterStudentCard,
-    RegisterSuicaCard,
+    RegisterNfcCard,
 }

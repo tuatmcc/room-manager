@@ -51,8 +51,8 @@ fn sound_to_reader(sound: SoundEvent) -> Cursor<&'static [u8]> {
         SoundEvent::RegisterStudentCard => {
             include_bytes!("../assets/sounds/register_student_card.wav").as_slice()
         }
-        SoundEvent::RegisterSuicaCard => {
-            include_bytes!("../assets/sounds/register_suica_card.wav").as_slice()
+        SoundEvent::RegisterNfcCard => {
+            include_bytes!("../assets/sounds/register_nfc_card.wav").as_slice()
         }
     };
 
