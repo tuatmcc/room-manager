@@ -5,7 +5,7 @@ import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
 import type { UserRepository } from "@/repositories/UserRepository";
 
-export class ListUsersUseCase {
+export class ListEntryUsersUseCase {
 	constructor(private readonly userRepository: UserRepository) {}
 
 	async execute(): Promise<Result<Message, AppError>> {

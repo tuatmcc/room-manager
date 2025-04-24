@@ -27,7 +27,7 @@ export function createSlashCommandHandlers(
 	usecases: UseCases,
 ): SlashCommandHandlers {
 	return {
-		listUsers: new ListUsersHandler(usecases.listUsers),
+		listUsers: new ListUsersHandler(usecases.listEntryUsers),
 		registerStudentCard: new RegisterStudentCardHandler(
 			usecases.registerStudentCard,
 		),
