@@ -13,10 +13,12 @@ import { z } from "zod";
 import { convertMessageToEmbed } from "@/discord";
 import type { UseCases } from "@/usecase";
 
+import { ListUsersHandler } from "./list-users";
 import { RegisterNfcCardHandler } from "./register-nfc-card";
 import { RegisterStudentCardHandler } from "./register-student-card";
 
 export interface SlashCommandHandlers {
+	listUsers: ListUsersHandler;
 	registerStudentCard: RegisterStudentCardHandler;
 	registerNfcCard: RegisterNfcCardHandler;
 }
@@ -25,6 +27,7 @@ export function createSlashCommandHandlers(
 	usecases: UseCases,
 ): SlashCommandHandlers {
 	return {
+		listUsers: new ListUsersHandler(usecases.listUsers),
 		registerStudentCard: new RegisterStudentCardHandler(
 			usecases.registerStudentCard,
 		),
@@ -157,7 +160,7 @@ export async function handleSlashCommand(
 					throw invalidRequestError;
 				}
 				case "list":
-					return notImplemented;
+					return await handlers.listUsers.handle();
 				default:
 					throw invalidRequestError;
 			}
