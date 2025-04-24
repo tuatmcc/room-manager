@@ -5,6 +5,7 @@ import type {
 import {
 	ApplicationCommandOptionType,
 	InteractionResponseType,
+	MessageFlags,
 } from "discord-api-types/v10";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -112,6 +113,7 @@ export async function handleSlashCommand(
 					color: "red",
 				}),
 			],
+			flags: MessageFlags.Ephemeral,
 		},
 	};
 	const invalidRequestError = new HTTPException(400, {
