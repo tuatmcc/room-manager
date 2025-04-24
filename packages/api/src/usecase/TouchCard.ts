@@ -25,21 +25,17 @@ export class TouchStudentCardUseCase {
 	) {}
 
 	async execute({
+		idm,
 		studentId,
-		suicaIdm,
 	}: {
+		idm: string;
 		studentId?: number;
-		suicaIdm?: string;
 	}): Promise<Result<TouchStudentCardResponse, AppError>> {
 		try {
-			if (!studentId && !suicaIdm) {
-				throw new Error("studentId or suicaIdm is required");
-			}
-
 			const user =
 				studentId != null
 					? await this.userRepository.findByStudentId(studentId)
-					: await this.userRepository.findBySuicaIdm(suicaIdm!);
+					: await this.userRepository.findBySuicaIdm(idm);
 			if (!user) {
 				return err(
 					new AppError("Student card or Suica not registered.", {

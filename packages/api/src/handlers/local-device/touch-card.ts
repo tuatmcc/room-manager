@@ -8,8 +8,8 @@ import type { TouchStudentCardUseCase } from "@/usecase/TouchCard";
 import type { LocalDeviceHandler } from ".";
 
 const TouchCardRequestSchema = z.object({
+	idm: z.string(),
 	student_id: z.number().optional(),
-	suica_idm: z.string().optional(),
 });
 
 // eslint-disable-next-line typescript/no-unused-vars
@@ -39,8 +39,8 @@ export class TouchCardHandler implements LocalDeviceHandler {
 			return c.text("Invalid request", 400);
 		}
 
-		const { student_id: studentId, suica_idm: suicaIdm } = request.data;
-		const result = await this.usecase.execute({ studentId, suicaIdm });
+		const { idm, student_id: studentId } = request.data;
+		const result = await this.usecase.execute({ idm, studentId });
 
 		return await result.match<Promise<Response>>(
 			async (res) => {
