@@ -10,7 +10,7 @@ export const roomCommand = new SlashCommandBuilder()
 	.addSubcommandGroup((group) =>
 		group
 			.setName("register")
-			.setDescription("学生証またはSuicaを登録します。")
+			.setDescription("学生証またはNFCカードを登録します。")
 			.addSubcommand((subcommand) =>
 				subcommand
 					.setName("student-card")
@@ -25,12 +25,12 @@ export const roomCommand = new SlashCommandBuilder()
 			)
 			.addSubcommand((subcommand) =>
 				subcommand
-					.setName("suica")
-					.setDescription("Suicaを登録します。")
+					.setName("nfc")
+					.setDescription("NFCカードを登録します。")
 					.addStringOption((option) =>
 						option
 							.setName("idm")
-							.setDescription("SuicaのIDm")
+							.setDescription("NFCカードのIDm")
 							.setRequired(true),
 					),
 			),

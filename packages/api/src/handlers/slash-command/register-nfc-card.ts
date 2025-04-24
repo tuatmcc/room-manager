@@ -2,16 +2,16 @@ import type { APIInteractionResponse } from "discord-api-types/v10";
 import { InteractionResponseType } from "discord-api-types/v10";
 
 import { convertMessageToEmbed } from "@/discord";
-import type { RegisterSuicaCardUseCase } from "@/usecase/RegisterSuicaCard";
+import type { RegisterNfcCardUseCase } from "@/usecase/RegisterNfcCard";
 
-export class RegisterSuicaCardHandler {
-	constructor(private readonly usecase: RegisterSuicaCardUseCase) {}
+export class RegisterNfcCardHandler {
+	constructor(private readonly usecase: RegisterNfcCardUseCase) {}
 
 	async handle(
 		discordId: string,
-		suicaIdm: string,
+		idm: string,
 	): Promise<APIInteractionResponse> {
-		const result = await this.usecase.execute(discordId, suicaIdm);
+		const result = await this.usecase.execute(discordId, idm);
 
 		return result.match<APIInteractionResponse>(
 			(message) => ({

@@ -12,12 +12,12 @@ import { z } from "zod";
 import { convertMessageToEmbed } from "@/discord";
 import type { UseCases } from "@/usecase";
 
+import { RegisterNfcCardHandler } from "./register-nfc-card";
 import { RegisterStudentCardHandler } from "./register-student-card";
-import { RegisterSuicaCardHandler } from "./register-suica-card";
 
 export interface SlashCommandHandlers {
 	registerStudentCard: RegisterStudentCardHandler;
-	registerSuicaCard: RegisterSuicaCardHandler;
+	registerNfcCard: RegisterNfcCardHandler;
 }
 
 export function createSlashCommandHandlers(
@@ -27,7 +27,7 @@ export function createSlashCommandHandlers(
 		registerStudentCard: new RegisterStudentCardHandler(
 			usecases.registerStudentCard,
 		),
-		registerSuicaCard: new RegisterSuicaCardHandler(usecases.registerSuicaCard),
+		registerNfcCard: new RegisterNfcCardHandler(usecases.registerNfcCard),
 	};
 }
 
@@ -54,7 +54,7 @@ export const SlashCommandSchema = z.union([
 							}),
 							z.object({
 								type: z.literal(ApplicationCommandOptionType.Subcommand),
-								name: z.literal("suica"),
+								name: z.literal("nfc"),
 								options: z
 									.object({
 										type: z.literal(ApplicationCommandOptionType.String),
@@ -142,17 +142,14 @@ export async function handleSlashCommand(
 								studentId,
 							);
 						}
-						case "suica": {
+						case "nfc": {
 							const discordId = interaction.member?.user.id;
-							const suicaIdm = option2.options[0]?.value;
-							if (discordId === undefined || suicaIdm === undefined) {
+							const idm = option2.options[0]?.value;
+							if (discordId === undefined || idm === undefined) {
 								throw invalidRequestError;
 							}
 
-							return await handlers.registerSuicaCard.handle(
-								discordId,
-								suicaIdm,
-							);
+							return await handlers.registerNfcCard.handle(discordId, idm);
 						}
 					}
 					throw invalidRequestError;

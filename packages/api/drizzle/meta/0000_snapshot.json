@@ -1,9 +1,90 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "84636169-1fc1-4f97-96ff-1f927bcb4a81",
+  "id": "73b131cb-1768-488c-a4ea-c4de5f8442d3",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
+    "nfc_cards": {
+      "name": "nfc_cards",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "idm": {
+          "name": "idm",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "nfc_cards_idm_unique": {
+          "name": "nfc_cards_idm_unique",
+          "columns": [
+            "idm"
+          ],
+          "isUnique": true
+        },
+        "nfc_cards_user_id_unique": {
+          "name": "nfc_cards_user_id_unique",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": true
+        },
+        "idx_nfc_cards_idm": {
+          "name": "idx_nfc_cards_idm",
+          "columns": [
+            "idm"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "nfc_cards_user_id_users_id_fk": {
+          "name": "nfc_cards_user_id_users_id_fk",
+          "tableFrom": "nfc_cards",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "room_entry_logs": {
       "name": "room_entry_logs",
       "columns": {
@@ -158,87 +239,6 @@
         "student_cards_user_id_users_id_fk": {
           "name": "student_cards_user_id_users_id_fk",
           "tableFrom": "student_cards",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
-    "suica_cards": {
-      "name": "suica_cards",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "card_idm": {
-          "name": "card_idm",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "suica_cards_card_idm_unique": {
-          "name": "suica_cards_card_idm_unique",
-          "columns": [
-            "card_idm"
-          ],
-          "isUnique": true
-        },
-        "suica_cards_user_id_unique": {
-          "name": "suica_cards_user_id_unique",
-          "columns": [
-            "user_id"
-          ],
-          "isUnique": true
-        },
-        "idx_suica_cards_card_idm": {
-          "name": "idx_suica_cards_card_idm",
-          "columns": [
-            "card_idm"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "suica_cards_user_id_users_id_fk": {
-          "name": "suica_cards_user_id_users_id_fk",
-          "tableFrom": "suica_cards",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"

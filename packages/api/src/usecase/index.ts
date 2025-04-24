@@ -1,13 +1,13 @@
 import type { Repositories } from "@/repositories";
 import type { Services } from "@/services";
 
+import { RegisterNfcCardUseCase } from "./RegisterNfcCard";
 import { RegisterStudentCardUseCase } from "./RegisterStudentCard";
-import { RegisterSuicaCardUseCase } from "./RegisterSuicaCard";
 import { TouchStudentCardUseCase } from "./TouchCard";
 
 export interface UseCases {
 	registerStudentCard: RegisterStudentCardUseCase;
-	registerSuicaCard: RegisterSuicaCardUseCase;
+	registerNfcCard: RegisterNfcCardUseCase;
 	touchStudentCard: TouchStudentCardUseCase;
 }
 
@@ -20,9 +20,9 @@ export function createUseCases(
 			repositories.user,
 			repositories.studentCard,
 		),
-		registerSuicaCard: new RegisterSuicaCardUseCase(
+		registerNfcCard: new RegisterNfcCardUseCase(
 			repositories.user,
-			repositories.suicaCard,
+			repositories.nfcCard,
 		),
 		touchStudentCard: new TouchStudentCardUseCase(
 			repositories.user,

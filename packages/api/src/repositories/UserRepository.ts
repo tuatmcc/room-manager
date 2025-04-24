@@ -52,9 +52,9 @@ export class UserRepository {
 		return new User(result.user.id, result.user.discordId);
 	}
 
-	async findBySuicaIdm(suicaIdm: string): Promise<User | null> {
-		const result = await this.db.query.suicaCards.findFirst({
-			where: (suicaCards, { eq }) => eq(suicaCards.card_idm, suicaIdm),
+	async findByNfcIdm(idm: string): Promise<User | null> {
+		const result = await this.db.query.nfcCards.findFirst({
+			where: (nfcCards, { eq }) => eq(nfcCards.idm, idm),
 			with: {
 				user: true,
 			},

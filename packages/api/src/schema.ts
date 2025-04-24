@@ -54,14 +54,14 @@ export const studentCardsRelations = relations(studentCards, ({ one }) => ({
 	}),
 }));
 
-export const suicaCards = sqliteTable(
-	"suica_cards",
+export const nfcCards = sqliteTable(
+	"nfc_cards",
 	{
 		// primary key
 		id: integer("id").primaryKey({ autoIncrement: true }),
 
 		// columns
-		card_idm: text("card_idm").notNull().unique(),
+		idm: text("idm").notNull().unique(),
 		userId: integer("user_id")
 			.notNull()
 			.unique()
@@ -78,13 +78,13 @@ export const suicaCards = sqliteTable(
 	},
 	(table) => [
 		// indexes
-		index("idx_suica_cards_card_idm").on(table.card_idm),
+		index("idx_nfc_cards_idm").on(table.idm),
 	],
 );
 
-export const suicaCardsRelations = relations(suicaCards, ({ one }) => ({
+export const nfcCardsRelations = relations(nfcCards, ({ one }) => ({
 	user: one(users, {
-		fields: [suicaCards.userId],
+		fields: [nfcCards.userId],
 		references: [users.id],
 	}),
 }));

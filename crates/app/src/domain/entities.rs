@@ -18,9 +18,9 @@ pub enum RoomEntryStatus {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ErrorCode {
     StudentCardAlreadyRegistered,
-    SuicaCardAlreadyRegistered,
+    NfcCardAlreadyRegistered,
     StudentCardNotRegistered,
-    SuicaCardNotRegistered,
+    NfcCardNotRegistered,
     Unknown,
 }
 

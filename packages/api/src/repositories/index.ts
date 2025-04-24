@@ -1,14 +1,14 @@
 import type { Database } from "@/database";
 
+import { NfcCardRepository } from "./NfcCardRepository";
 import { RoomEntryLogRepository } from "./RoomEntryLogRepository";
 import { StudentCardRepository } from "./StudentCardRepository";
-import { SuicaCardRepository } from "./SuicaCardRepository";
 import { UserRepository } from "./UserRepository";
 
 export interface Repositories {
 	user: UserRepository;
 	studentCard: StudentCardRepository;
-	suicaCard: SuicaCardRepository;
+	nfcCard: NfcCardRepository;
 	roomEntryLog: RoomEntryLogRepository;
 }
 
@@ -16,7 +16,7 @@ export function createRepositories(db: Database): Repositories {
 	return {
 		user: new UserRepository(db),
 		studentCard: new StudentCardRepository(db),
-		suicaCard: new SuicaCardRepository(db),
+		nfcCard: new NfcCardRepository(db),
 		roomEntryLog: new RoomEntryLogRepository(db),
 	};
 }

@@ -35,17 +35,17 @@ export class TouchStudentCardUseCase {
 			const user =
 				studentId != null
 					? await this.userRepository.findByStudentId(studentId)
-					: await this.userRepository.findBySuicaIdm(idm);
+					: await this.userRepository.findByNfcIdm(idm);
 			if (!user) {
 				return err(
-					new AppError("Student card or Suica not registered.", {
+					new AppError("Student card or NFC card not registered.", {
 						errorCode:
 							studentId != null
 								? ERROR_CODE.STUDENT_CARD_NOT_REGISTERED
-								: ERROR_CODE.SUICA_CARD_NOT_REGISTERED,
+								: ERROR_CODE.NFC_CARD_NOT_REGISTERED,
 						userMessage: {
-							title: `登録されていない${studentId != null ? "学生証" : "Suica"}です`,
-							description: `\`/room register ${studentId != null ? "student-card" : "suica"}\`コマンドで${studentId != null ? "学生証" : "Suica"}を登録してください。`,
+							title: `登録されていない${studentId != null ? "学生証" : "NFCカード"}です`,
+							description: `\`/room register ${studentId != null ? "student-card" : "nfc"}\`コマンドで${studentId != null ? "学生証" : "NFCカード"}を登録してください。`,
 						},
 					}),
 				);

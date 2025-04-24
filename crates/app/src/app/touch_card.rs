@@ -1,5 +1,5 @@
 use crate::domain::{
-    CardApi, Card, Clock, ErrorCode, RoomEntryStatus, SoundEvent, SoundPlayer, TouchCardRequest,
+    Card, CardApi, Clock, ErrorCode, RoomEntryStatus, SoundEvent, SoundPlayer, TouchCardRequest,
     TouchCardResponse,
 };
 use chrono::Timelike;
@@ -91,8 +91,8 @@ where
                 info!("Student card not registered, playing registration guidance");
                 self.player.play(SoundEvent::RegisterStudentCard)?;
             }
-            ErrorCode::SuicaCardNotRegistered => {
-                info!("Suica card not registered, playing registration guidance");
+            ErrorCode::NfcCardNotRegistered => {
+                info!("NFC card not registered, playing registration guidance");
                 self.player.play(SoundEvent::RegisterSuicaCard)?;
             }
             _ => {
