@@ -1,5 +1,6 @@
 CREATE TABLE `nfc_cards` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`name` text NOT NULL,
 	`idm` text NOT NULL,
 	`user_id` integer NOT NULL,
 	`created_at` integer NOT NULL,
@@ -35,6 +36,18 @@ CREATE TABLE `student_cards` (
 CREATE UNIQUE INDEX `student_cards_student_id_unique` ON `student_cards` (`student_id`);--> statement-breakpoint
 CREATE UNIQUE INDEX `student_cards_user_id_unique` ON `student_cards` (`user_id`);--> statement-breakpoint
 CREATE INDEX `idx_student_cards_student_id` ON `student_cards` (`student_id`);--> statement-breakpoint
+CREATE TABLE `unknown_nfc_cards` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`code` text NOT NULL,
+	`idm` text NOT NULL,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `unknown_nfc_cards_code_unique` ON `unknown_nfc_cards` (`code`);--> statement-breakpoint
+CREATE UNIQUE INDEX `unknown_nfc_cards_idm_unique` ON `unknown_nfc_cards` (`idm`);--> statement-breakpoint
+CREATE INDEX `idx_unknown_nfc_cards_idm` ON `unknown_nfc_cards` (`idm`);--> statement-breakpoint
+CREATE INDEX `idx_unknown_nfc_cards_code` ON `unknown_nfc_cards` (`code`);--> statement-breakpoint
 CREATE TABLE `users` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`discord_id` text NOT NULL,
