@@ -4,25 +4,42 @@ import { err, ok } from "neverthrow";
 import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
 import type { NfcCardRepository } from "@/repositories/NfcCardRepository";
+import type { UnknownNfcCardRepository } from "@/repositories/UnknownNfcCardRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
 
 export class RegisterNfcCardUseCase {
 	constructor(
 		private readonly userRepository: UserRepository,
 		private readonly nfcCardRepository: NfcCardRepository,
+		private readonly unknownNfcCardRepository: UnknownNfcCardRepository,
 	) {}
 
 	async execute(
 		discordId: string,
-		idm: string,
+		code: string,
+		name: string,
 	): Promise<Result<Message, AppError>> {
 		try {
 			const user =
 				(await this.userRepository.findByDiscordId(discordId)) ??
 				(await this.userRepository.create(discordId));
 
+			const unknownNfcCard =
+				await this.unknownNfcCardRepository.findByCode(code);
+			if (!unknownNfcCard) {
+				return err(
+					new AppError("Unknown NFC card.", {
+						errorCode: ERROR_CODE.UNKNOWN_NFC_CARD,
+						userMessage: {
+							title: "NFCカードの登録に失敗しました",
+							description: "不明なNFCカードです。",
+						},
+					}),
+				);
+			}
+
 			// すでに登録されているNFCカードは登録できない
-			if (await this.nfcCardRepository.findByIdm(idm)) {
+			if (await this.nfcCardRepository.findByIdm(unknownNfcCard.idm)) {
 				return err(
 					new AppError("NFC card already registered.", {
 						errorCode: ERROR_CODE.NFC_CARD_ALREADY_REGISTERED,
@@ -34,7 +51,10 @@ export class RegisterNfcCardUseCase {
 				);
 			}
 
-			await this.nfcCardRepository.create(idm, user.id);
+			// 不明なNFCカードを削除
+			await this.unknownNfcCardRepository.deleteById(unknownNfcCard.id);
+			// NFCカードを登録
+			await this.nfcCardRepository.create(name, unknownNfcCard.idm, user.id);
 
 			return ok({
 				title: "NFCカードの登録が完了しました🎉",

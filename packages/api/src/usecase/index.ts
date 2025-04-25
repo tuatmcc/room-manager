@@ -32,6 +32,7 @@ export function createUseCases(
 		registerNfcCard: new RegisterNfcCardUseCase(
 			repositories.user,
 			repositories.nfcCard,
+			repositories.unknownNfcCard,
 		),
 		touchCard: new TouchCardUseCase(
 			repositories.user,
