@@ -1,12 +1,14 @@
 import type { Repositories } from "@/repositories";
 import type { Services } from "@/services";
 
+import { ExitAllEntryUsersUseCase } from "./ExitAllEntryUsers";
 import { ListEntryUsersUseCase } from "./ListEntryUsers";
 import { RegisterNfcCardUseCase } from "./RegisterNfcCard";
 import { RegisterStudentCardUseCase } from "./RegisterStudentCard";
 import { TouchStudentCardUseCase } from "./TouchCard";
 
 export interface UseCases {
+	exitAllEntryUsers: ExitAllEntryUsersUseCase;
 	listEntryUsers: ListEntryUsersUseCase;
 	registerStudentCard: RegisterStudentCardUseCase;
 	registerNfcCard: RegisterNfcCardUseCase;
@@ -18,6 +20,10 @@ export function createUseCases(
 	services: Services,
 ): UseCases {
 	return {
+		exitAllEntryUsers: new ExitAllEntryUsersUseCase(
+			repositories.user,
+			repositories.roomEntryLog,
+		),
 		listEntryUsers: new ListEntryUsersUseCase(repositories.user),
 		registerStudentCard: new RegisterStudentCardUseCase(
 			repositories.user,

@@ -1,4 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
+import { inArray } from "drizzle-orm";
 
 import type { Database } from "@/database";
 import { RoomEntryLog } from "@/models/RoomEntryLog";
@@ -56,5 +57,34 @@ export class RoomEntryLogRepository {
 			Temporal.Instant.fromEpochMilliseconds(result.entryAt),
 			null,
 		);
+	}
+
+	async findAllEntry(): Promise<RoomEntryLog[]> {
+		const results = await this.db.query.roomEntryLogs.findMany({
+			where: (roomEntryLogs, { isNull }) => isNull(roomEntryLogs.exitAt),
+		});
+
+		return results.map(
+			(result) =>
+				new RoomEntryLog(
+					result.id,
+					result.userId,
+					Temporal.Instant.fromEpochMilliseconds(result.entryAt),
+					null,
+				),
+		);
+	}
+
+	async setManyExitAt(
+		entryLogIds: number[],
+		exitAt: Temporal.Instant,
+	): Promise<void> {
+		await this.db
+			.update(schema.roomEntryLogs)
+			.set({
+				exitAt: exitAt.epochMilliseconds,
+			})
+			.where(inArray(schema.roomEntryLogs.id, entryLogIds))
+			.execute();
 	}
 }

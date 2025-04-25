@@ -17,6 +17,7 @@ import * as schema from "@/schema";
 import { interactionVerifier } from "./discord";
 import type { Env } from "./env";
 import { createLocalDeviceHandlers } from "./handlers/local-device";
+import { createScheduledHandlers } from "./handlers/scheduled";
 import {
 	createSlashCommandHandlers,
 	handleSlashCommand,
@@ -80,4 +81,26 @@ const app = new Hono<Env>()
 		return c.text("Unknown interaction", 400);
 	});
 
-export default app;
+const scheduled: ExportedHandlerScheduledHandler<Env["Bindings"]> = (
+	_event,
+	env,
+	ctx,
+) => {
+	const db = drizzle(env.DB, { schema });
+	const repositories = createRepositories(db);
+	const services = createServices(
+		env.DISCORD_BOT_TOKEN,
+		env.DISCORD_APPLICATION_ID,
+		env.DISCORD_GUILD_ID,
+		env.DISCORD_CHANNEL_ID,
+	);
+	const usecases = createUseCases(repositories, services);
+	const handlers = createScheduledHandlers(usecases, services);
+
+	ctx.waitUntil(handlers.exitAllEntryUsers.handle());
+};
+
+export default {
+	fetch: app.fetch,
+	scheduled,
+};

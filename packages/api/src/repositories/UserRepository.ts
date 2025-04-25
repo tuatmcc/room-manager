@@ -26,6 +26,14 @@ export class UserRepository {
 			.execute();
 	}
 
+	async findByIds(ids: number[]): Promise<User[]> {
+		const result = await this.db.query.users.findMany({
+			where: (users, { inArray }) => inArray(users.id, ids),
+		});
+
+		return result.map((user) => new User(user.id, user.discordId));
+	}
+
 	async findByDiscordId(discordId: string): Promise<User | null> {
 		const result = await this.db.query.users.findFirst({
 			where: (users, { eq }) => eq(users.discordId, discordId),

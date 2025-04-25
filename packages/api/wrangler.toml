@@ -1,6 +1,11 @@
 name = "room-manager"
 compatibility_date = "2024-06-20"
 
+[triggers]
+# 毎日20時15分に実行する
+# GMTでのみ指定可能なため、日本時間では+9時間を引く
+crons = ["15 11 * * *"]
+
 [[d1_databases]]
 binding = "DB"
 database_name = "room-manager"
