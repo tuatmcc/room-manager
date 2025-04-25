@@ -11,7 +11,7 @@ export interface LocalDeviceHandler {
 }
 
 export interface LocalDeviceHandlers {
-	touchStudentCard: TouchCardHandler;
+	touchCard: TouchCardHandler;
 }
 
 export function createLocalDeviceHandlers(
@@ -19,9 +19,6 @@ export function createLocalDeviceHandlers(
 	services: Services,
 ): LocalDeviceHandlers {
 	return {
-		touchStudentCard: new TouchCardHandler(
-			usecases.touchStudentCard,
-			services.discord,
-		),
+		touchCard: new TouchCardHandler(usecases.touchCard, services.discord),
 	};
 }

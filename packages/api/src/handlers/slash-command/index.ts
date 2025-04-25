@@ -58,13 +58,20 @@ export const SlashCommandSchema = z.union([
 							}),
 							z.object({
 								type: z.literal(ApplicationCommandOptionType.Subcommand),
-								name: z.literal("nfc"),
+								name: z.literal("nfc-card"),
 								options: z
-									.object({
-										type: z.literal(ApplicationCommandOptionType.String),
-										name: z.literal("idm"),
-										value: z.string(),
-									})
+									.union([
+										z.object({
+											type: z.literal(ApplicationCommandOptionType.String),
+											name: z.literal("code"),
+											value: z.string(),
+										}),
+										z.object({
+											type: z.literal(ApplicationCommandOptionType.String),
+											name: z.literal("name"),
+											value: z.string(),
+										}),
+									])
 									.array(),
 							}),
 						])
@@ -98,6 +105,9 @@ export const SlashCommandSchema = z.union([
 					.array(),
 			})
 			.array(),
+	}),
+	z.object({
+		name: z.literal("ping"),
 	}),
 ]);
 
@@ -147,14 +157,28 @@ export async function handleSlashCommand(
 								studentId,
 							);
 						}
-						case "nfc": {
+						case "nfc-card": {
 							const discordId = interaction.member?.user.id;
-							const idm = option2.options[0]?.value;
-							if (discordId === undefined || idm === undefined) {
+							const code = option2.options.find(
+								(o) => o.name === "code",
+							)?.value;
+							const name = option2.options.find(
+								(o) => o.name === "name",
+							)?.value;
+
+							if (
+								discordId === undefined ||
+								code === undefined ||
+								name === undefined
+							) {
 								throw invalidRequestError;
 							}
 
-							return await handlers.registerNfcCard.handle(discordId, idm);
+							return await handlers.registerNfcCard.handle(
+								discordId,
+								code,
+								name,
+							);
 						}
 					}
 					throw invalidRequestError;
@@ -167,6 +191,14 @@ export async function handleSlashCommand(
 		}
 		case "room-admin":
 			return notImplemented;
+		case "ping":
+			return {
+				type: InteractionResponseType.ChannelMessageWithSource,
+				data: {
+					content: "pong!",
+					flags: MessageFlags.Ephemeral,
+				},
+			};
 		default:
 			slashCommand.data satisfies never;
 			throw invalidRequestError;

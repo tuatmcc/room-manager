@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "73b131cb-1768-488c-a4ea-c4de5f8442d3",
+  "id": "3e80dbbc-c178-4c2a-aac2-c4bfd3181131",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "nfc_cards": {
@@ -13,6 +13,13 @@
           "primaryKey": true,
           "notNull": true,
           "autoincrement": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
         },
         "idm": {
           "name": "idm",
@@ -250,6 +257,80 @@
           "onUpdate": "cascade"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "unknown_nfc_cards": {
+      "name": "unknown_nfc_cards",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "idm": {
+          "name": "idm",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "unknown_nfc_cards_code_unique": {
+          "name": "unknown_nfc_cards_code_unique",
+          "columns": [
+            "code"
+          ],
+          "isUnique": true
+        },
+        "unknown_nfc_cards_idm_unique": {
+          "name": "unknown_nfc_cards_idm_unique",
+          "columns": [
+            "idm"
+          ],
+          "isUnique": true
+        },
+        "idx_unknown_nfc_cards_idm": {
+          "name": "idx_unknown_nfc_cards_idm",
+          "columns": [
+            "idm"
+          ],
+          "isUnique": false
+        },
+        "idx_unknown_nfc_cards_code": {
+          "name": "idx_unknown_nfc_cards_code",
+          "columns": [
+            "code"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}

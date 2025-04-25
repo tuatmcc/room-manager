@@ -7,23 +7,25 @@ import * as schema from "@/schema";
 export class NfcCardRepository {
 	constructor(private readonly db: Database) {}
 
-	async create(idm: string, userId: number): Promise<NfcCard> {
+	async create(name: string, idm: string, userId: number): Promise<NfcCard> {
 		const result = await this.db
 			.insert(schema.nfcCards)
 			.values({
+				name,
 				idm,
 				userId,
 			})
 			.returning()
 			.get();
 
-		return new NfcCard(result.id, result.idm, result.userId);
+		return new NfcCard(result.id, result.name, result.idm, result.userId);
 	}
 
 	async save(nfcCard: NfcCard): Promise<void> {
 		await this.db
 			.update(schema.nfcCards)
 			.set({
+				name: nfcCard.name,
 				idm: nfcCard.idm,
 				userId: nfcCard.userId,
 			})
@@ -40,6 +42,6 @@ export class NfcCardRepository {
 			return null;
 		}
 
-		return new NfcCard(result.id, result.idm, result.userId);
+		return new NfcCard(result.id, result.name, result.idm, result.userId);
 	}
 }

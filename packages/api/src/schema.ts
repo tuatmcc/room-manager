@@ -61,6 +61,7 @@ export const nfcCards = sqliteTable(
 		id: integer("id").primaryKey({ autoIncrement: true }),
 
 		// columns
+		name: text("name").notNull(),
 		idm: text("idm").notNull().unique(),
 		userId: integer("user_id")
 			.notNull()
@@ -88,6 +89,32 @@ export const nfcCardsRelations = relations(nfcCards, ({ one }) => ({
 		references: [users.id],
 	}),
 }));
+
+export const unknownNfcCards = sqliteTable(
+	"unknown_nfc_cards",
+	{
+		// primary key
+		id: integer("id").primaryKey({ autoIncrement: true }),
+
+		// columns
+		code: text("code").notNull().unique(),
+		idm: text("idm").notNull().unique(),
+
+		// timestamps
+		createdAt: integer("created_at")
+			.notNull()
+			.$defaultFn(() => Temporal.Now.instant().epochMilliseconds),
+		updatedAt: integer("updated_at")
+			.notNull()
+			.$defaultFn(() => Temporal.Now.instant().epochMilliseconds)
+			.$onUpdateFn(() => Temporal.Now.instant().epochMilliseconds),
+	},
+	(table) => [
+		// indexes
+		index("idx_unknown_nfc_cards_idm").on(table.idm),
+		index("idx_unknown_nfc_cards_code").on(table.code),
+	],
+);
 
 export const roomEntryLogs = sqliteTable(
 	"room_entry_logs",

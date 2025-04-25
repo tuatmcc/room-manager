@@ -9,9 +9,10 @@ export class RegisterNfcCardHandler {
 
 	async handle(
 		discordId: string,
-		idm: string,
+		code: string,
+		name: string,
 	): Promise<APIInteractionResponse> {
-		const result = await this.usecase.execute(discordId, idm);
+		const result = await this.usecase.execute(discordId, code, name);
 
 		return result.match<APIInteractionResponse>(
 			(message) => ({
