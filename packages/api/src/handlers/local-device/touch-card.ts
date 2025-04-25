@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { Env } from "@/env";
 import type { DiscordService } from "@/services/DiscordService";
-import type { TouchStudentCardUseCase } from "@/usecase/TouchCard";
+import type { TouchCardUseCase } from "@/usecase/TouchCard";
 
 import type { LocalDeviceHandler } from ".";
 
@@ -29,7 +29,7 @@ type TouchCardResponse = z.infer<typeof TouchCardResponseSchema>;
 
 export class TouchCardHandler implements LocalDeviceHandler {
 	constructor(
-		private readonly usecase: TouchStudentCardUseCase,
+		private readonly usecase: TouchCardUseCase,
 		private readonly service: DiscordService,
 	) {}
 

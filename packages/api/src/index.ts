@@ -52,7 +52,7 @@ const app = new Hono<Env>()
 		const services = c.get("services");
 		const localDeviceHandlers = createLocalDeviceHandlers(usecases, services);
 
-		const res = await localDeviceHandlers.touchStudentCard.handle(c);
+		const res = await localDeviceHandlers.touchCard.handle(c);
 		return res;
 	})
 	.post("/interaction", interactionVerifier, async (c) => {
