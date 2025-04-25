@@ -17,7 +17,7 @@ export const roomCommand = new SlashCommandBuilder()
 					.setDescription("学生証を登録します。")
 					.addIntegerOption((option) =>
 						option
-							.setName("student-id")
+							.setName("id")
 							.setNameLocalization("ja", "学籍番号")
 							.setDescription("学籍番号")
 							.setRequired(true),
@@ -25,12 +25,18 @@ export const roomCommand = new SlashCommandBuilder()
 			)
 			.addSubcommand((subcommand) =>
 				subcommand
-					.setName("nfc")
+					.setName("nfc-card")
 					.setDescription("NFCカードを登録します。")
 					.addStringOption((option) =>
 						option
-							.setName("idm")
-							.setDescription("NFCカードのIDm")
+							.setName("code")
+							.setDescription("NFCカードのコード")
+							.setRequired(true),
+					)
+					.addStringOption((option) =>
+						option
+							.setName("name")
+							.setDescription("NFCカードの名前(自由記述)")
 							.setRequired(true),
 					),
 			),
