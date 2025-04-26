@@ -51,7 +51,7 @@ export const SlashCommandSchema = z.union([
 								options: z
 									.object({
 										type: z.literal(ApplicationCommandOptionType.Integer),
-										name: z.literal("student-id"),
+										name: z.literal("id"),
 										value: z.number(),
 									})
 									.array(),
