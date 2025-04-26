@@ -2,5 +2,8 @@
 	"eslint.useFlatConfig": true,
 	"typescript.enablePromptUseWorkspaceTsdk": true,
 	"typescript.tsdk": "node_modules/typescript/lib",
-	"cSpell.words": ["reqwest"]
+	"cSpell.words": ["reqwest"],
+	"files.associations": {
+		".dev.vars*": "dotenv"
+	}
 }
