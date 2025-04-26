@@ -9,5 +9,5 @@ crons = ["15 11 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "room-manager"
-database_id = "7faafe6d-c63f-49f3-be9b-2415c0ff75be"
+database_id = "ecf2559a-b698-4548-9967-dd3dfc60ac4f"
 migrations_dir = "./drizzle"
