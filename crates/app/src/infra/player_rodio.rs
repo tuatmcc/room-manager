@@ -1,13 +1,13 @@
 use std::io::Cursor;
 
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
+use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
 use tracing::info;
 
 use crate::domain::{SoundEvent, SoundPlayer};
 
 pub struct RodioPlayer {
     _stream: OutputStream,
-    stream_handle: OutputStreamHandle,
+    _stream_handle: OutputStreamHandle,
     sink: Sink,
 }
 
@@ -20,27 +20,28 @@ impl RodioPlayer {
 
         Ok(Self {
             _stream: stream,
-            stream_handle,
+            _stream_handle: stream_handle,
             sink,
         })
     }
 }
 
 impl SoundPlayer for RodioPlayer {
-    fn play(&self, sound: SoundEvent, immediate: bool) -> anyhow::Result<()> {
+    fn play(&self, sound: SoundEvent) -> anyhow::Result<()> {
         info!("Playing sound: {:?}", sound);
 
         let reader = sound_to_reader(sound);
         let source = Decoder::new(reader)?;
 
-        if immediate {
-            self.stream_handle.play_raw(source.convert_samples())?;
-        } else {
-            self.sink.append(source);
-        }
+        self.sink.append(source);
         info!("Sound queued for playback");
 
         Ok(())
+    }
+
+    fn reset(&self) {
+        self.sink.clear();
+        self.sink.play();
     }
 }
 

@@ -30,7 +30,8 @@ where
         let req: TouchCardRequest = card.clone().into();
         info!("Sending touch card request: {:?}", req);
 
-        self.player.play(SoundEvent::Touch, true)?;
+        self.player.reset();
+        self.player.play(SoundEvent::Touch)?;
 
         match self.api.touch(req).await? {
             TouchCardResponse::Success { status, entries } => {
@@ -62,24 +63,24 @@ where
                 match hour {
                     6..=11 => {
                         info!("Playing morning greeting");
-                        self.player.play(SoundEvent::GoodMorning, false)?;
+                        self.player.play(SoundEvent::GoodMorning)?;
                     }
                     12..=17 => {
                         info!("Playing daytime greeting");
-                        self.player.play(SoundEvent::Hello, false)?;
+                        self.player.play(SoundEvent::Hello)?;
                     }
                     _ => {
                         info!("Playing evening greeting");
-                        self.player.play(SoundEvent::GoodEvening, false)?;
+                        self.player.play(SoundEvent::GoodEvening)?;
                     }
                 }
             }
             RoomEntryStatus::Exit => {
                 info!("Playing goodbye sound");
-                self.player.play(SoundEvent::GoodBye, false)?;
+                self.player.play(SoundEvent::GoodBye)?;
                 if entries == 0 {
                     info!("Last person exiting, playing last person sound");
-                    self.player.play(SoundEvent::Last, false)?;
+                    self.player.play(SoundEvent::Last)?;
                 }
             }
         }
@@ -91,15 +92,15 @@ where
         match error_code {
             ErrorCode::StudentCardNotRegistered => {
                 info!("Student card not registered, playing registration guidance");
-                self.player.play(SoundEvent::RegisterStudentCard, false)?;
+                self.player.play(SoundEvent::RegisterStudentCard)?;
             }
             ErrorCode::NfcCardNotRegistered => {
                 info!("NFC card not registered, playing registration guidance");
-                self.player.play(SoundEvent::RegisterNfcCard, false)?;
+                self.player.play(SoundEvent::RegisterNfcCard)?;
             }
             _ => {
                 warn!("Unknown error occurred, playing generic error sound");
-                self.player.play(SoundEvent::Error, false)?;
+                self.player.play(SoundEvent::Error)?;
             }
         }
         Ok(())

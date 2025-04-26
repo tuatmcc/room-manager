@@ -15,6 +15,7 @@ mock! {
     pub SoundPlayer {}
     impl SoundPlayer for SoundPlayer {
         fn play(&self, sound: SoundEvent) -> anyhow::Result<()>;
+        fn reset(&self);
     }
 }
 
