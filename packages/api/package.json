@@ -7,7 +7,7 @@
 		"dev": "wrangler dev src/index.ts",
 		"dev:migrate": "wrangler d1 migrations apply room-manager --local",
 		"gen:migration": "drizzle-kit generate",
-		"register": "tsx --env-file=.env scripts/register.ts"
+		"register": "tsx scripts/register.ts"
 	},
 	"dependencies": {
 		"@discordjs/builders": "1.10.1",
