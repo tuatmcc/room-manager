@@ -43,7 +43,24 @@ const app = new Hono<AppEnv>()
 
 		await next();
 	})
+	.use("/local-device", async (c, next) => {
+		const env = c.get("env");
+
+		const header = c.req.header("Authorization");
+		if (!header) {
+			return c.text("Unauthorized", 401);
+		}
+
+		if (header !== `Bearer ${env.API_TOKEN}`) {
+			return c.text("Unauthorized", 401);
+		}
+
+		await next();
+	})
 	.get("/", (c) => {
+		return c.text("OK");
+	})
+	.get("/local-device", (c) => {
 		return c.text("OK");
 	})
 	.post("/local-device/touch-card", async (c) => {
