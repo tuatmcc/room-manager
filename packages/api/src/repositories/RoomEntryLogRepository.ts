@@ -1,5 +1,5 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import type { Database } from "@/database";
 import { RoomEntryLog } from "@/models/RoomEntryLog";
@@ -37,6 +37,7 @@ export class RoomEntryLogRepository {
 				entryAt: roomEntryLog.entryAt.epochMilliseconds,
 				exitAt: roomEntryLog.exitAt?.epochMilliseconds,
 			})
+			.where(eq(schema.roomEntryLogs.id, roomEntryLog.id))
 			.execute();
 	}
 

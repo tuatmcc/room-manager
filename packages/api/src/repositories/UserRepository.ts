@@ -1,3 +1,5 @@
+import { eq } from "drizzle-orm";
+
 import type { Database } from "@/database";
 import { User } from "@/models/User";
 import * as schema from "@/schema";
@@ -23,6 +25,7 @@ export class UserRepository {
 			.set({
 				discordId: user.discordId,
 			})
+			.where(eq(schema.users.id, user.id))
 			.execute();
 	}
 
