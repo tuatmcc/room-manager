@@ -1,11 +1,14 @@
 #![warn(clippy::all, clippy::pedantic)]
 mod app;
+mod config;
 mod domain;
 mod infra;
 #[cfg(test)]
 mod tests;
 
 use app::TouchCardUseCase;
+use clap::Parser;
+use config::Config;
 use domain::CardReader as _;
 use infra::{HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
 use tracing::{error, info, warn};
@@ -17,11 +20,13 @@ async fn main() -> anyhow::Result<()> {
         .with_line_number(true)
         .init();
 
+    let config = Config::parse();
+
     info!("Starting application...");
     info!("Application version: {}", env!("CARGO_PKG_VERSION"));
 
-    info!("Initializing API client with endpoint: https://dev.s2n.tech/local-device");
-    let api = HttpCardApi::new("https://dev.s2n.tech/local-device", 5);
+    info!("Initializing API client with endpoint: {}", config.api_path);
+    let api = HttpCardApi::new(config.api_path, config.api_token)?;
     info!("API client initialized successfully");
 
     info!("Initializing sound player");

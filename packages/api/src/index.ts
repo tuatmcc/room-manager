@@ -15,7 +15,8 @@ import { logger } from "hono/logger";
 import * as schema from "@/schema";
 
 import { interactionVerifier } from "./discord";
-import type { Env } from "./env";
+import type { AppEnv } from "./env";
+import { EnvSchema } from "./env";
 import { createLocalDeviceHandlers } from "./handlers/local-device";
 import { createScheduledHandlers } from "./handlers/scheduled";
 import {
@@ -26,25 +27,40 @@ import { createRepositories } from "./repositories";
 import { createServices } from "./services";
 import { createUseCases } from "./usecase";
 
-const app = new Hono<Env>()
+const app = new Hono<AppEnv>()
 	.use(logger())
 	.use(async (c, next) => {
-		const db = drizzle(c.env.DB, { schema });
+		const env = EnvSchema.parse(c.env);
+
+		const db = drizzle(env.DB, { schema });
 		const repositories = createRepositories(db);
-		const services = createServices(
-			c.env.DISCORD_BOT_TOKEN,
-			c.env.DISCORD_APPLICATION_ID,
-			c.env.DISCORD_GUILD_ID,
-			c.env.DISCORD_CHANNEL_ID,
-		);
+		const services = createServices(env);
 		const usecases = createUseCases(repositories, services);
 
+		c.set("env", env);
 		c.set("usecases", usecases);
 		c.set("services", services);
 
 		await next();
 	})
+	.use("/local-device", async (c, next) => {
+		const env = c.get("env");
+
+		const header = c.req.header("Authorization");
+		if (!header) {
+			return c.text("Unauthorized", 401);
+		}
+
+		if (header !== `Bearer ${env.API_TOKEN}`) {
+			return c.text("Unauthorized", 401);
+		}
+
+		await next();
+	})
 	.get("/", (c) => {
+		return c.text("OK");
+	})
+	.get("/local-device", (c) => {
 		return c.text("OK");
 	})
 	.post("/local-device/touch-card", async (c) => {
@@ -81,19 +97,16 @@ const app = new Hono<Env>()
 		return c.text("Unknown interaction", 400);
 	});
 
-const scheduled: ExportedHandlerScheduledHandler<Env["Bindings"]> = (
+const scheduled: ExportedHandlerScheduledHandler = (
 	_event,
-	env,
+	unknownEnv,
 	ctx,
 ) => {
+	const env = EnvSchema.parse(unknownEnv);
+
 	const db = drizzle(env.DB, { schema });
 	const repositories = createRepositories(db);
-	const services = createServices(
-		env.DISCORD_BOT_TOKEN,
-		env.DISCORD_APPLICATION_ID,
-		env.DISCORD_GUILD_ID,
-		env.DISCORD_CHANNEL_ID,
-	);
+	const services = createServices(env);
 	const usecases = createUseCases(repositories, services);
 	const handlers = createScheduledHandlers(usecases, services);
 

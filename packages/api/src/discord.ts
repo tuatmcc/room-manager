@@ -2,10 +2,12 @@ import type { APIEmbed } from "discord-api-types/v10";
 import { verifyKey } from "discord-interactions";
 import { createMiddleware } from "hono/factory";
 
-import type { Env } from "./env";
+import type { AppEnv } from "./env";
 import type { Message } from "./message";
 
-export const interactionVerifier = createMiddleware<Env>(async (c, next) => {
+export const interactionVerifier = createMiddleware<AppEnv>(async (c, next) => {
+	const env = c.get("env");
+
 	const signature = c.req.header("X-Signature-Ed25519");
 	const timestamp = c.req.header("X-Signature-Timestamp");
 	if (!signature || !timestamp) {
@@ -17,7 +19,7 @@ export const interactionVerifier = createMiddleware<Env>(async (c, next) => {
 		body,
 		signature,
 		timestamp,
-		c.env.DISCORD_PUBLIC_KEY,
+		env.DISCORD_PUBLIC_KEY,
 	);
 
 	if (!isValid) {

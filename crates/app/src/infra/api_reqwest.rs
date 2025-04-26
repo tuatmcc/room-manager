@@ -1,40 +1,51 @@
 use std::time::Duration;
 
-use reqwest::Client;
+use reqwest::{Client, header::HeaderMap};
 use tracing::{error, info};
 
 use crate::domain::{CardApi, TouchCardRequest, TouchCardResponse};
 
+const API_TIMEOUT_SECS: u64 = 5;
+
 pub struct HttpCardApi {
     client: Client,
-    base_url: String,
-    timeout_secs: u64,
+    api_path: String,
 }
 
 impl HttpCardApi {
-    pub fn new(base_url: impl Into<String>, timeout_secs: u64) -> Self {
-        Self {
-            client: Client::new(),
-            base_url: base_url.into(),
-            timeout_secs,
-        }
+    pub fn new(api_path: impl Into<String>, api_token: impl Into<String>) -> anyhow::Result<Self> {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            "Authorization",
+            format!("Bearer {}", api_token.into()).parse()?,
+        );
+
+        let client = Client::builder()
+            .timeout(Duration::from_secs(API_TIMEOUT_SECS))
+            .default_headers(headers)
+            .build()?;
+
+        Ok(Self {
+            client,
+            api_path: api_path.into(),
+        })
     }
 }
 
 impl CardApi for HttpCardApi {
     async fn touch(&self, req: TouchCardRequest) -> anyhow::Result<TouchCardResponse> {
         info!(
-            "Sending API request to {}/touch-card with timeout {}s",
-            self.base_url, self.timeout_secs
+            "Sending API request to {}/local-device/touch-card",
+            self.api_path
         );
 
         let start = std::time::Instant::now();
 
         let response = self
             .client
-            .post(format!("{}/touch-card", self.base_url))
+            .post(format!("{}/local-device/touch-card", self.api_path))
             .json(&req)
-            .timeout(Duration::from_secs(self.timeout_secs))
+            .timeout(Duration::from_secs(API_TIMEOUT_SECS))
             .send()
             .await
             .map_err(|e| {
