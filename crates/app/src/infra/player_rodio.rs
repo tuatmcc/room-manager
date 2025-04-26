@@ -1,13 +1,13 @@
 use std::io::Cursor;
 
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
+use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
 use tracing::info;
 
 use crate::domain::{SoundEvent, SoundPlayer};
 
 pub struct RodioPlayer {
     _stream: OutputStream,
-    _stream_handle: OutputStreamHandle,
+    stream_handle: OutputStreamHandle,
     sink: Sink,
 }
 
@@ -20,20 +20,24 @@ impl RodioPlayer {
 
         Ok(Self {
             _stream: stream,
-            _stream_handle: stream_handle,
+            stream_handle,
             sink,
         })
     }
 }
 
 impl SoundPlayer for RodioPlayer {
-    fn play(&self, sound: SoundEvent) -> anyhow::Result<()> {
+    fn play(&self, sound: SoundEvent, immediate: bool) -> anyhow::Result<()> {
         info!("Playing sound: {:?}", sound);
 
         let reader = sound_to_reader(sound);
         let source = Decoder::new(reader)?;
 
-        self.sink.append(source);
+        if immediate {
+            self.stream_handle.play_raw(source.convert_samples())?;
+        } else {
+            self.sink.append(source);
+        }
         info!("Sound queued for playback");
 
         Ok(())
@@ -42,6 +46,7 @@ impl SoundPlayer for RodioPlayer {
 
 fn sound_to_reader(sound: SoundEvent) -> Cursor<&'static [u8]> {
     let buf = match sound {
+        SoundEvent::Touch => include_bytes!("../assets/sounds/touch.wav").as_slice(),
         SoundEvent::GoodMorning => include_bytes!("../assets/sounds/good_morning.wav").as_slice(),
         SoundEvent::Hello => include_bytes!("../assets/sounds/hello.wav").as_slice(),
         SoundEvent::GoodEvening => include_bytes!("../assets/sounds/good_evening.wav").as_slice(),

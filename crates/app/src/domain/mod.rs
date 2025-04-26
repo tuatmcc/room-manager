@@ -9,7 +9,7 @@ pub trait CardApi {
 }
 
 pub trait SoundPlayer {
-    fn play(&self, sound: SoundEvent) -> anyhow::Result<()>;
+    fn play(&self, sound: SoundEvent, immediate: bool) -> anyhow::Result<()>;
 }
 
 pub trait Clock {
