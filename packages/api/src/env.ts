@@ -1,16 +1,23 @@
+import { z } from "zod";
+
 import type { Services } from "./services";
 import type { UseCases } from "./usecase";
 
-export interface Env {
-	Bindings: {
-		DISCORD_PUBLIC_KEY: string;
-		DISCORD_BOT_TOKEN: string;
-		DISCORD_APPLICATION_ID: string;
-		DISCORD_GUILD_ID: string;
-		DISCORD_CHANNEL_ID: string;
-		DB: D1Database;
-	};
+export const EnvSchema = z.object({
+	API_TOKEN: z.string(),
+	DISCORD_PUBLIC_KEY: z.string(),
+	DISCORD_BOT_TOKEN: z.string(),
+	DISCORD_APPLICATION_ID: z.string(),
+	DISCORD_GUILD_ID: z.string(),
+	DISCORD_CHANNEL_ID: z.string(),
+	DB: z.custom<D1Database>(),
+});
+
+export type Env = z.infer<typeof EnvSchema>;
+
+export interface AppEnv {
 	Variables: {
+		env: Env;
 		usecases: UseCases;
 		services: Services;
 	};

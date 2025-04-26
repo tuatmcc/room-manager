@@ -1,7 +1,7 @@
 import type { Context } from "hono";
 import { z } from "zod";
 
-import type { Env } from "@/env";
+import type { AppEnv } from "@/env";
 import type { DiscordService } from "@/services/DiscordService";
 import type { TouchCardUseCase } from "@/usecase/TouchCard";
 
@@ -33,7 +33,7 @@ export class TouchCardHandler implements LocalDeviceHandler {
 		private readonly service: DiscordService,
 	) {}
 
-	async handle(c: Context<Env>): Promise<Response> {
+	async handle(c: Context<AppEnv>): Promise<Response> {
 		const request = TouchCardRequestSchema.safeParse(await c.req.json());
 		if (!request.success) {
 			return c.text("Invalid request", 400);

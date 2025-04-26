@@ -1,13 +1,13 @@
 import type { Context } from "hono";
 
-import type { Env } from "@/env";
+import type { AppEnv } from "@/env";
 import type { Services } from "@/services";
 import type { UseCases } from "@/usecase";
 
 import { TouchCardHandler } from "./touch-card";
 
 export interface LocalDeviceHandler {
-	handle(ctx: Context<Env>): Promise<Response>;
+	handle(ctx: Context<AppEnv>): Promise<Response>;
 }
 
 export interface LocalDeviceHandlers {
