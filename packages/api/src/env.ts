@@ -4,6 +4,7 @@ import type { Services } from "./services";
 import type { UseCases } from "./usecase";
 
 export const EnvSchema = z.object({
+	OTEL_EXPORTER_URL: z.string(),
 	API_TOKEN: z.string(),
 	DISCORD_PUBLIC_KEY: z.string(),
 	DISCORD_BOT_TOKEN: z.string(),

@@ -4,7 +4,7 @@
 	"scripts": {
 		"build": "wrangler deploy --minify src/index.ts --dry-run --outdir dist",
 		"deploy": "wrangler deploy --minify src/index.ts",
-		"dev": "wrangler dev src/index.ts",
+		"dev": "wrangler dev --test-scheduled src/index.ts",
 		"dev:migrate": "wrangler d1 migrations apply room-manager --local",
 		"gen:migration": "drizzle-kit generate",
 		"register": "tsx scripts/register.ts"
@@ -12,7 +12,10 @@
 	"dependencies": {
 		"@discordjs/builders": "1.10.1",
 		"@discordjs/rest": "2.4.3",
+		"@hono/otel": "0.1.1",
 		"@js-temporal/polyfill": "0.5.1",
+		"@microlabs/otel-cf-workers": "1.0.0-rc.49",
+		"@opentelemetry/api": "1.9.0",
 		"discord-interactions": "4.1.1",
 		"drizzle-orm": "0.41.0",
 		"hono": "4.7.6",
