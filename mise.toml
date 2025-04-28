@@ -5,3 +5,6 @@ rust = "1.86.0"
 
 [env]
 _.file = ".env"
+
+[tasks.start-o11y]
+run = "docker run --rm -p 16686:16686 -p 4318:4318 jaegertracing/all-in-one:latest"

@@ -1,3 +1,6 @@
+import { otel } from "@hono/otel";
+import type { ResolveConfigFn } from "@microlabs/otel-cf-workers";
+import { instrument } from "@microlabs/otel-cf-workers";
 import type {
 	APIChatInputApplicationCommandInteraction,
 	APIInteraction,
@@ -10,12 +13,11 @@ import {
 } from "discord-api-types/v10";
 import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
-import { logger } from "hono/logger";
 
 import * as schema from "@/schema";
 
 import { interactionVerifier } from "./discord";
-import type { AppEnv } from "./env";
+import type { AppEnv, Env } from "./env";
 import { EnvSchema } from "./env";
 import { createLocalDeviceHandlers } from "./handlers/local-device";
 import { createScheduledHandlers } from "./handlers/scheduled";
@@ -27,8 +29,23 @@ import { createRepositories } from "./repositories";
 import { createServices } from "./services";
 import { createUseCases } from "./usecase";
 
+const config: ResolveConfigFn<Env> = (env) => {
+	return {
+		exporter: {
+			url: env.OTEL_EXPORTER_URL,
+			headers: {
+				Authorization: `Basic ${env.OTEL_EXPORTER_TOKEN}`,
+			},
+		},
+		service: {
+			name: "api",
+			namespace: "room-manager",
+		},
+	};
+};
+
 const app = new Hono<AppEnv>()
-	.use(logger())
+	.use(otel())
 	.use(async (c, next) => {
 		const env = EnvSchema.parse(c.env);
 
@@ -113,7 +130,10 @@ const scheduled: ExportedHandlerScheduledHandler = (
 	ctx.waitUntil(handlers.exitAllEntryUsers.handle());
 };
 
-export default {
-	fetch: app.fetch,
-	scheduled,
-};
+export default instrument(
+	{
+		fetch: app.fetch,
+		scheduled,
+	},
+	config,
+);

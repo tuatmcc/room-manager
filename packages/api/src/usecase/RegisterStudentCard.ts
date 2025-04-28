@@ -3,8 +3,11 @@ import { err, ok } from "neverthrow";
 
 import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
+import { StudentCard } from "@/models/StudentCard";
+import { User } from "@/models/User";
 import type { StudentCardRepository } from "@/repositories/StudentCardRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
+import { tracer } from "@/trace";
 
 export class RegisterStudentCardUseCase {
 	constructor(
@@ -16,59 +19,79 @@ export class RegisterStudentCardUseCase {
 		discordId: string,
 		studentId: number,
 	): Promise<Result<Message, AppError>> {
-		try {
-			const user =
-				(await this.userRepository.findByDiscordId(discordId)) ??
-				(await this.userRepository.create(discordId));
+		return await tracer.startActiveSpan(
+			"room_manager.usecase.register_student_card",
+			{
+				attributes: {
+					[User.ATTRIBUTES.DISCORD_ID]: discordId,
+					[StudentCard.ATTRIBUTES.STUDENT_ID]: studentId,
+				},
+			},
+			async (span) => {
+				try {
+					const user =
+						(await this.userRepository.findByDiscordId(discordId)) ??
+						(await this.userRepository.create(discordId));
+					user.setAttributes();
 
-			// すでに登録されている学生証番号は登録できない
-			if (await this.studentCardRepository.findByStudentId(studentId)) {
-				return err(
-					new AppError("Student card already registered.", {
-						errorCode: ERROR_CODE.STUDENT_CARD_ALREADY_REGISTERED,
+					// すでに登録されている学生証番号は登録できない
+					if (await this.studentCardRepository.findByStudentId(studentId)) {
+						return err(
+							new AppError("Student card already registered.", {
+								errorCode: ERROR_CODE.STUDENT_CARD_ALREADY_REGISTERED,
+								userMessage: {
+									title: "学生証の登録に失敗しました",
+									description: "すでに登録されている学生証番号です。",
+								},
+							}),
+						);
+					}
+
+					const oldStudentCard = await this.studentCardRepository.findByUserId(
+						user.id,
+					);
+					// 学生証が存在しない場合は新規作成して終了
+					if (!oldStudentCard) {
+						const newStudentCard = await this.studentCardRepository.create(
+							studentId,
+							user.id,
+						);
+						newStudentCard.setAttributes();
+						return ok({
+							title: "学生証の登録が完了しました🎉",
+							description:
+								"学生証をリーダーにタッチすることで入退出が可能です。",
+						});
+					}
+
+					// 学籍番号を更新
+					const newStudentCard = oldStudentCard.updateStudentId(studentId);
+					await this.studentCardRepository.save(newStudentCard);
+					newStudentCard.setAttributes();
+
+					return ok({
+						title: "学生証の登録が完了しました🎉",
+						description:
+							"学生証をリーダーにタッチすることで入退出が可能です。なお元の学生証は無効になります。",
+					});
+				} catch (caughtError) {
+					const cause = caughtError instanceof Error ? caughtError : undefined;
+					const error = new AppError("Failed to register student card.", {
+						cause,
+						errorCode: ERROR_CODE.UNKNOWN,
 						userMessage: {
 							title: "学生証の登録に失敗しました",
-							description: "すでに登録されている学生証番号です。",
+							description:
+								"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
 						},
-					}),
-				);
-			}
+					});
 
-			const oldStudentCard = await this.studentCardRepository.findByUserId(
-				user.id,
-			);
-			// 学生証が存在しない場合は新規作成して終了
-			if (!oldStudentCard) {
-				await this.studentCardRepository.create(studentId, user.id);
-				return ok({
-					title: "学生証の登録が完了しました🎉",
-					description: "学生証をリーダーにタッチすることで入退出が可能です。",
-				});
-			}
-
-			// 学籍番号を更新
-			const newStudentCard = oldStudentCard.updateStudentId(studentId);
-			await this.studentCardRepository.save(newStudentCard);
-
-			return ok({
-				title: "学生証の登録が完了しました🎉",
-				description:
-					"学生証をリーダーにタッチすることで入退出が可能です。なお元の学生証は無効になります。",
-			});
-		} catch (error) {
-			const cause = error instanceof Error ? error : undefined;
-
-			return err(
-				new AppError("Failed to register student card.", {
-					cause,
-					errorCode: ERROR_CODE.UNKNOWN,
-					userMessage: {
-						title: "学生証の登録に失敗しました",
-						description:
-							"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
-					},
-				}),
-			);
-		}
+					span.recordException(error);
+					return err(error);
+				} finally {
+					span.end();
+				}
+			},
+		);
 	}
 }
