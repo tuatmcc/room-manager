@@ -33,8 +33,14 @@ const config: ResolveConfigFn<Env> = (env) => {
 	return {
 		exporter: {
 			url: env.OTEL_EXPORTER_URL,
+			headers: {
+				Authorization: `Basic ${env.OTEL_EXPORTER_TOKEN}`,
+			},
 		},
-		service: { name: "api" },
+		service: {
+			name: "api",
+			namespace: "room-manager",
+		},
 	};
 };
 
