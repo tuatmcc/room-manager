@@ -3,6 +3,9 @@ import { err, ok } from "neverthrow";
 
 import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
+import { NfcCard } from "@/models/NfcCard";
+import { UnknownNfcCard } from "@/models/UnknownNfcCard";
+import { User } from "@/models/User";
 import type { NfcCardRepository } from "@/repositories/NfcCardRepository";
 import type { UnknownNfcCardRepository } from "@/repositories/UnknownNfcCardRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
@@ -24,9 +27,9 @@ export class RegisterNfcCardUseCase {
 			"room_manager.usecase.register_nfc_card",
 			{
 				attributes: {
-					"room_manager.user.discord_id": discordId,
-					"room_manager.nfc_card.code": code,
-					"room_manager.nfc_card.name": name,
+					[User.ATTRIBUTES.DISCORD_ID]: discordId,
+					[UnknownNfcCard.ATTRIBUTES.CODE]: code,
+					[NfcCard.ATTRIBUTES.NAME]: name,
 				},
 			},
 			async (span): Promise<Result<Message, AppError>> => {
@@ -34,9 +37,11 @@ export class RegisterNfcCardUseCase {
 					const user =
 						(await this.userRepository.findByDiscordId(discordId)) ??
 						(await this.userRepository.create(discordId));
+					user.setAttributes();
 
 					const unknownNfcCard =
 						await this.unknownNfcCardRepository.findByCode(code);
+					unknownNfcCard?.setAttributes();
 					if (!unknownNfcCard) {
 						return err(
 							new AppError("Unknown NFC card.", {
@@ -48,8 +53,6 @@ export class RegisterNfcCardUseCase {
 							}),
 						);
 					}
-
-					span.setAttribute("room_manager.nfc_card.idm", unknownNfcCard.idm);
 
 					// すでに登録されているNFCカードは登録できない
 					if (await this.nfcCardRepository.findByIdm(unknownNfcCard.idm)) {
@@ -67,11 +70,12 @@ export class RegisterNfcCardUseCase {
 					// 不明なNFCカードを削除
 					await this.unknownNfcCardRepository.deleteById(unknownNfcCard.id);
 					// NFCカードを登録
-					await this.nfcCardRepository.create(
+					const nfcCard = await this.nfcCardRepository.create(
 						name,
 						unknownNfcCard.idm,
 						user.id,
 					);
+					nfcCard.setAttributes();
 
 					return ok({
 						title: "NFCカードの登録が完了しました🎉",

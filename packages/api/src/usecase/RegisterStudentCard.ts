@@ -3,6 +3,8 @@ import { err, ok } from "neverthrow";
 
 import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
+import { StudentCard } from "@/models/StudentCard";
+import { User } from "@/models/User";
 import type { StudentCardRepository } from "@/repositories/StudentCardRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
 import { tracer } from "@/trace";
@@ -21,8 +23,8 @@ export class RegisterStudentCardUseCase {
 			"room_manager.usecase.register_student_card",
 			{
 				attributes: {
-					"room_manager.user.discord_id": discordId,
-					"room_manager.student_card.student_id": studentId,
+					[User.ATTRIBUTES.DISCORD_ID]: discordId,
+					[StudentCard.ATTRIBUTES.STUDENT_ID]: studentId,
 				},
 			},
 			async (span) => {
@@ -30,7 +32,7 @@ export class RegisterStudentCardUseCase {
 					const user =
 						(await this.userRepository.findByDiscordId(discordId)) ??
 						(await this.userRepository.create(discordId));
-					span.setAttribute("room_manager.user.id", user.id);
+					user.setAttributes();
 
 					// すでに登録されている学生証番号は登録できない
 					if (await this.studentCardRepository.findByStudentId(studentId)) {
@@ -54,10 +56,7 @@ export class RegisterStudentCardUseCase {
 							studentId,
 							user.id,
 						);
-						span.setAttribute(
-							"room_manager.student_card.id",
-							newStudentCard.id,
-						);
+						newStudentCard.setAttributes();
 						return ok({
 							title: "学生証の登録が完了しました🎉",
 							description:
@@ -68,7 +67,7 @@ export class RegisterStudentCardUseCase {
 					// 学籍番号を更新
 					const newStudentCard = oldStudentCard.updateStudentId(studentId);
 					await this.studentCardRepository.save(newStudentCard);
-					span.setAttribute("room_manager.student_card.id", newStudentCard.id);
+					newStudentCard.setAttributes();
 
 					return ok({
 						title: "学生証の登録が完了しました🎉",
