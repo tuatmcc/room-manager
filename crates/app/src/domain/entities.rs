@@ -79,6 +79,7 @@ impl From<Card> for TouchCardRequest {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SoundEvent {
+    Boot,
     Touch,
     GoodMorning,
     Hello,

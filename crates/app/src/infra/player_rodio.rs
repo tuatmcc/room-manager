@@ -18,11 +18,13 @@ impl RodioPlayer {
         let (stream, stream_handle) = OutputStream::try_default()?;
         let sink = Sink::try_new(&stream_handle)?;
 
-        Ok(Self {
+        let player = Self {
             _stream: stream,
             _stream_handle: stream_handle,
             sink,
-        })
+        };
+        player.play(SoundEvent::Boot)?;
+        Ok(player)
     }
 }
 
@@ -47,6 +49,7 @@ impl SoundPlayer for RodioPlayer {
 
 fn sound_to_reader(sound: SoundEvent) -> Cursor<&'static [u8]> {
     let buf = match sound {
+        SoundEvent::Boot => include_bytes!("../assets/sounds/boot.wav").as_slice(),
         SoundEvent::Touch => include_bytes!("../assets/sounds/touch.wav").as_slice(),
         SoundEvent::GoodMorning => include_bytes!("../assets/sounds/good_morning.wav").as_slice(),
         SoundEvent::Hello => include_bytes!("../assets/sounds/hello.wav").as_slice(),
