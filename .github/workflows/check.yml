@@ -1,0 +1,49 @@
+name: Check
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Development environment
+        uses: ./.github/actions/setup
+
+      - name: Run | Build
+        run: pnpm run build
+        working-directory: packages/api
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Development environment
+        uses: ./.github/actions/setup
+
+      - name: Run | Lint
+        run: pnpm run lint
+        working-directory: packages/api
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Development environment
+        uses: ./.github/actions/setup
+
+      - name: Run | Format
+        run: pnpm run format:check
+        working-directory: packages/api
