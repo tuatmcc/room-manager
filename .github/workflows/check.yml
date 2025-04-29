@@ -18,9 +18,11 @@ jobs:
       - name: Setup | Development environment
         uses: ./.github/actions/setup
 
-      - name: Run | Build
-        run: pnpm run build
-        working-directory: packages/api
+      - name: Run | Build (Node.js)
+        run: pnpm run -r build
+
+      - name: Run | Build (Rust)
+        run: cargo build --all-targets --all-features --release
 
   lint:
     runs-on: ubuntu-latest
@@ -31,9 +33,11 @@ jobs:
       - name: Setup | Development environment
         uses: ./.github/actions/setup
 
-      - name: Run | Lint
-        run: pnpm run lint
-        working-directory: packages/api
+      - name: Run | Lint (Node.js)
+        run: pnpm run -r lint
+
+      - name: Run | Lint (Rust)
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
   format:
     runs-on: ubuntu-latest
@@ -44,6 +48,8 @@ jobs:
       - name: Setup | Development environment
         uses: ./.github/actions/setup
 
-      - name: Run | Format
-        run: pnpm run format:check
-        working-directory: packages/api
+      - name: Run | Format (Node.js)
+        run: pnpm run -r format:check
+
+      - name: Run | Format (Rust)
+        run: cargo fmt --all -- --check
