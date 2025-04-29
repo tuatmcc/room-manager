@@ -1,6 +1,6 @@
 [tools]
 node = "22.14.0"
-"npm:pnpm" = "10.8.1"
+"npm:pnpm" = "10.10.0"
 rust = "1.86.0"
 
 [env]

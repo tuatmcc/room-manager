@@ -6,7 +6,7 @@ backend = "core:node"
 "node-v22.14.0-darwin-arm64.tar.gz" = "sha256:e9404633bc02a5162c5c573b1e2490f5fb44648345d64a958b17e325729a5e42"
 
 [tools."npm:pnpm"]
-version = "10.8.1"
+version = "10.10.0"
 backend = "npm:pnpm"
 
 [tools.rust]

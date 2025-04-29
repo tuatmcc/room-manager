@@ -1,6 +1,6 @@
 packages:
   - packages/*
-
+autoInstallPeers: false
 onlyBuiltDependencies:
   - esbuild
   - protobufjs
