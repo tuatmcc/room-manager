@@ -18,6 +18,11 @@ jobs:
       - name: Setup | Development environment
         uses: ./.github/actions/setup
 
+      - name: Setup | Install apt packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install libasound2-dev
+
       - name: Run | Build (Node.js)
         run: pnpm run -r build
 
@@ -32,6 +37,11 @@ jobs:
 
       - name: Setup | Development environment
         uses: ./.github/actions/setup
+
+      - name: Setup | Install apt packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install libasound2-dev
 
       - name: Run | Lint (Node.js)
         run: pnpm run -r lint
