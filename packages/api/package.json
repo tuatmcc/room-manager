@@ -6,7 +6,11 @@
 		"deploy": "wrangler deploy --minify src/index.ts",
 		"dev": "wrangler dev --test-scheduled src/index.ts",
 		"dev:migrate": "wrangler d1 migrations apply room-manager --local",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
 		"gen:migration": "drizzle-kit generate",
+		"lint": "eslint",
+		"lint:fix": "eslint --fix",
 		"register": "tsx scripts/register.ts"
 	},
 	"dependencies": {

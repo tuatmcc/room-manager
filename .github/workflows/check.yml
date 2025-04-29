@@ -1,0 +1,65 @@
+name: Check
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Development environment
+        uses: ./.github/actions/setup
+
+      - name: Setup | Install apt packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install libasound2-dev
+
+      - name: Run | Build (Node.js)
+        run: pnpm run -r build
+
+      - name: Run | Build (Rust)
+        run: cargo build --all-targets --all-features --release
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Development environment
+        uses: ./.github/actions/setup
+
+      - name: Setup | Install apt packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install libasound2-dev
+
+      - name: Run | Lint (Node.js)
+        run: pnpm run -r lint
+
+      - name: Run | Lint (Rust)
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Development environment
+        uses: ./.github/actions/setup
+
+      - name: Run | Format (Node.js)
+        run: pnpm run -r format:check
+
+      - name: Run | Format (Rust)
+        run: cargo fmt --all -- --check
