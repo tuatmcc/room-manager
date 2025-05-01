@@ -29,7 +29,7 @@
           packages = with pkgs; [
             alsa-lib
             pkg-config
-            nodejs
+            nodejs-slim
             pnpm
             # Add rust toolchain based on mise.toml configuration
             (pkgs.rust-bin.stable.latest.default.override {
