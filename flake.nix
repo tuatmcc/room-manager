@@ -27,6 +27,8 @@
         # When execute `nix develop`, you go in shell installed nil.
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
+            alsa-lib
+            pkg-config
             nodejs
             pnpm
             # Add rust toolchain based on mise.toml configuration
