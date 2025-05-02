@@ -1,3 +1,11 @@
+#
+# For those who uses nix-direnv, you should write 
+# ```
+#   use flake
+#   dotenv
+# ```
+# in your .envrc file.
+#
 {
   description = "A basic flake to with flake-parts";
 
@@ -24,7 +32,7 @@
           ];
         };
 
-        # When execute `nix develop`, you go in shell installed nil.
+        # run `nix develop` or `direnv allow` to enter the development shell
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             alsa-lib
