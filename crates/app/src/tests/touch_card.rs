@@ -1,7 +1,7 @@
 use mockall::predicate::*;
 use mockall::*;
 
-use crate::domain::{Card, CardApi, Clock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse};
+use crate::domain::{Card, CardApi, Clock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse, ServoController};
 
 // モッククラスの自動生成
 mock! {
@@ -23,6 +23,14 @@ mock! {
     pub Clock {}
     impl Clock for Clock {
         fn now(&self) -> chrono::DateTime<chrono::Local>;
+    }
+}
+
+mock! {
+    pub DoorController {}
+    impl ServoController for DoorController {
+        fn open(&self) -> anyhow::Result<()>;
+        fn close(&self) -> anyhow::Result<()>;
     }
 }
 
@@ -73,6 +81,12 @@ mod tests {
             .with(eq(SoundEvent::GoodMorning))
             .times(1)
             .returning(|_| Ok(()));
+
+        let mut mock_door_controller = MockDoorController::new();
+        mock_door_controller
+            .expect_open()
+            .times(1)
+            .returning(|| Ok(()));
 
         // テスト実行
         let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock);
