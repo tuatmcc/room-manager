@@ -35,7 +35,11 @@
         # run `nix develop` or `direnv allow` to enter the development shell
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
-            alsa-lib
+            (if pkgs.system != "aarch64-darwin" then
+              pkgs.alsa-lib
+            else
+              stdenv.cc.cc.lib
+            )
             pkg-config
             nodejs-slim
             pnpm
