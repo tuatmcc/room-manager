@@ -29,8 +29,8 @@ mock! {
 mock! {
     pub DoorController {}
     impl ServoController for DoorController {
-        fn open(&self) -> anyhow::Result<()>;
-        fn close(&self) -> anyhow::Result<()>;
+        fn open(&mut self) -> anyhow::Result<()>;
+        fn close(&mut self) -> anyhow::Result<()>;
     }
 }
 
@@ -137,6 +137,12 @@ mod tests {
             .with(eq(SoundEvent::Last))
             .times(1)
             .returning(|_| Ok(()));
+
+        let mut mock_door_controller = MockDoorController::new();
+        mock_door_controller
+            .expect_open()
+            .times(1)
+            .returning(|| Ok(()));
 
         // テスト実行
         let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock);

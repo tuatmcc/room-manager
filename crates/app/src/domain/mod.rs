@@ -14,8 +14,8 @@ pub trait Clock {
 }
 
 pub trait ServoController {
-    fn open(&self) -> anyhow::Result<()>;
-    fn close(&self) -> anyhow::Result<()>;
+    fn open(&mut self) -> anyhow::Result<()>;
+    fn close(&mut self) -> anyhow::Result<()>;
 }
 
 pub use entities::*;
