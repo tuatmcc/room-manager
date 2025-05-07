@@ -1,33 +1,44 @@
-use rppal::gpio::Gpio;
+use std::time::Duration;
+
+use crate::domain::ServoController;
+use rppal::gpio::{Gpio, OutputPin};
 
 pub struct DoorController {
-    // GPIO pin for the door controller
-    // This pin will be used to control the servo motor
-    // that opens and closes the door
-    _pin: u8,
+    // Output pin for the door controller servo motor
+    pin: OutputPin,
 }
 
 impl DoorController {
     pub fn new(gpio_pin: u8) -> anyhow::Result<Self> {
         let gpio = Gpio::new()?;
         let mut pin = gpio.get(gpio_pin)?.into_output();
-        pin.set_pwm(0, 0.0); // Initialize the pin to 0% duty cycle
-        Ok(Self { _pin: gpio_pin })
+        // Initialize the pin for PWM with a standard servo period (e.g., 20ms)
+        // and set it to a default position (e.g., closed, 1ms pulse width)
+        pin.set_pwm(
+            Duration::from_nanos(20_000_000),
+            Duration::from_nanos(1_000_000),
+        )?;
+        Ok(Self { pin })
     }
 }
 
 impl ServoController for DoorController {
-    fn open(&self) -> anyhow::Result<()> {
-        let gpio = Gpio::new()?;
-        let mut pin = gpio.get(self._pin)?.into_output();
-        pin.set_pwm(1, 0.5); // Set the duty cycle to 0.5 to open the door
+    fn open(&mut self) -> anyhow::Result<()> {
+        // Set the pulse width to open the door (e.g., 2ms for 180 degrees)
+        self.pin.set_pwm(
+            Duration::from_nanos(20_000_000),
+            Duration::from_nanos(2_000_000),
+        )?;
         Ok(())
     }
 
-    fn close(&self) -> anyhow::Result<()> {
-        let gpio = Gpio::new()?;
-        let mut pin = gpio.get(self._pin)?.into_output();
-        pin.set_pwm(1, 0.0); // Set the duty cycle to 0.0 to close the door
+    fn close(&mut self) -> anyhow::Result<()> {
+        // Set the pulse width to close the door (e.g., 1ms for 0 degrees)
+        self.pin.set_pwm(
+            Duration::from_nanos(20_000_000),
+            Duration::from_nanos(1_000_000),
+        )?;
         Ok(())
     }
 }
+
