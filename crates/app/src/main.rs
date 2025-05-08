@@ -15,6 +15,7 @@ use futures_util::StreamExt as _;
 use futures_util::stream::select_all;
 use infra::{DoorSensor, HttpCardApi, KeyController, PasoriReader, RodioPlayer, SystemClock};
 use pasori::rusb::{Context as RusbContext, UsbContext};
+use std::sync::Arc;
 use tracing::{error, info, warn};
 
 const VENDOR_ID: u16 = 0x054c;
@@ -65,7 +66,7 @@ async fn main() -> anyhow::Result<()> {
     info!("Initialized card reader, API client, and sound player");
 
     info!("Initializing Key controller");
-    let servo = KeyController::new(config.servo_pin)?;
+    let servo = Arc::new(KeyController::new(config.servo_pin)?);
     info!("Key controller initialized successfully");
 
     info!("Initializing IR sensor");

@@ -1,36 +1,37 @@
-use crate::{domain::{
+use std::sync::Arc;
+
+use crate::domain::{
     Card, CardApi, Clock, ErrorCode, I2cIrSensor, RoomEntryStatus, ServoController, SoundEvent, SoundPlayer, TouchCardRequest, TouchCardResponse
-}, infra::door_sensor};
+};
 use chrono::Timelike;
 use tracing::{info, warn};
 
-pub struct TouchCardUseCase<A, P, C, S, Ir>
+pub struct TouchCardUseCase<A, P, C, Ir>
 where
     A: CardApi,
     P: SoundPlayer,
     C: Clock,
-    S: ServoController,
     Ir: I2cIrSensor
 {
     api: A,
     player: P,
     clock: C,
-    servo: S,
+    servo: Arc<dyn ServoController + Send + Sync>,
     door_sensor: Ir,
 }
 
-impl<A, P, C, S, Ir> TouchCardUseCase<A, P, C, S, Ir>
+impl<A, P, C, Ir> TouchCardUseCase<A, P, C, Ir>
 where
     A: CardApi,
     P: SoundPlayer,
     C: Clock,
-    S: ServoController,
     Ir: I2cIrSensor,
 {
-    pub fn new(api: A, player: P, clock: C, servo: S, door_sensor: Ir) -> Self {
+    pub fn new(api: A, player: P, clock: C, servo: Arc<dyn ServoController + Send + Sync>, door_sensor: Ir) -> Self {
         Self { api, player, clock, servo, door_sensor }
     }
 
+    
     pub async fn execute(&self, card: &Card) -> anyhow::Result<()> {
         let req: TouchCardRequest = card.clone().into();
         info!("Sending touch card request: {:?}", req);
@@ -45,7 +46,18 @@ where
                     status, entries
                 );
                 self.play_success(status, entries)?;
-                self.servo.open()?;
+                self.servo.open()?; // 鍵を開ける
+
+                // 自動閉鍵処理（30秒後に閉じる）
+                let servo = self.servo.clone();
+                tokio::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                    if let Err(e) = servo.close() {
+                        warn!("Failed to close the door automatically: {:?}", e);
+                    } else {
+                        info!("Door closed automatically after timeout.");
+                    }
+                });
             }
             TouchCardResponse::Error { error_code, .. } => {
                 warn!("Touch card error: error_code={:?}", error_code);

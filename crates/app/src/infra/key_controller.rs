@@ -1,32 +1,35 @@
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::domain::ServoController;
 use rppal::gpio::{Gpio, OutputPin};
 
+#[derive(Clone)]
 pub struct KeyController {
-    pin: Rc<RefCell<OutputPin>>,
+    pin: Arc<Mutex<OutputPin>>,
 }
 
 impl KeyController {
     pub fn new(gpio_pin: u8) -> anyhow::Result<Self> {
         let gpio = Gpio::new()?;
-        let pin = gpio.get(gpio_pin)?.into_output();
-        let pin = Rc::new(RefCell::new(pin));
+        let mut pin = gpio.get(gpio_pin)?.into_output();
 
-        pin.borrow_mut().set_pwm(
+        // 初期位置（閉じてる状態）に設定
+        pin.set_pwm(
             Duration::from_nanos(20_000_000),
             Duration::from_nanos(1_000_000),
         )?;
 
-        Ok(Self { pin })
+        Ok(Self {
+            pin: Arc::new(Mutex::new(pin)),
+        })
     }
 }
 
 impl ServoController for KeyController {
     fn open(&self) -> anyhow::Result<()> {
-        self.pin.borrow_mut().set_pwm(
+        let mut pin = self.pin.lock().unwrap();
+        pin.set_pwm(
             Duration::from_nanos(20_000_000),
             Duration::from_nanos(2_000_000),
         )?;
@@ -34,7 +37,8 @@ impl ServoController for KeyController {
     }
 
     fn close(&self) -> anyhow::Result<()> {
-        self.pin.borrow_mut().set_pwm(
+        let mut pin = self.pin.lock().unwrap();
+        pin.set_pwm(
             Duration::from_nanos(20_000_000),
             Duration::from_nanos(1_000_000),
         )?;

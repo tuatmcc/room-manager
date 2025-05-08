@@ -13,7 +13,7 @@ pub trait Clock {
     fn now(&self) -> chrono::DateTime<chrono::Local>;
 }
 
-pub trait ServoController {
+pub trait ServoController: Send + Sync {
     fn open(&self) -> anyhow::Result<()>;
     fn close(&self) -> anyhow::Result<()>;
 }

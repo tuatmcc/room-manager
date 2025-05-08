@@ -32,6 +32,11 @@ mock! {
         fn open(&self) -> anyhow::Result<()>;
         fn close(&self) -> anyhow::Result<()>;
     }
+    impl Clone for ServoController {
+        fn clone(&self) -> Self {
+            ServoController {}
+        }
+    }
 }
 
 mock! {
@@ -43,6 +48,8 @@ mock! {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use super::*;
     use crate::app::TouchCardUseCase;
     use crate::domain::TouchCardRequest;
@@ -94,6 +101,7 @@ mod tests {
             .expect_open()
             .times(1)
             .returning(|| Ok(()));
+        let mock_key_controller = Arc::new(mock_key_controller);
 
         let mut mock_i2_ir_sensor = MockI2cIrSensor::new();
         mock_i2_ir_sensor
@@ -153,6 +161,7 @@ mod tests {
 
         // サーボモーターのモック設定
         let mock_key_controller = MockServoController::new();
+        let mock_key_controller = Arc::new(mock_key_controller);
 
         // IRセンサーのモック設定
         let mock_i2_ir_sensor = MockI2cIrSensor::new();
@@ -201,6 +210,7 @@ mod tests {
 
         // サーボモーターのモック
         let mock_key_controller = MockServoController::new();
+        let mock_key_controller = Arc::new(mock_key_controller);
         // IRセンサーのモック設定
         let mock_i2_ir_sensor = MockI2cIrSensor::new();
 
