@@ -10,4 +10,7 @@ pub struct Config {
 
     #[clap(long, env, hide_env_values = true)]
     pub servo_pin: u8,
+
+    #[clap(long, env, hide_env_values = true)]
+    pub ir_pin: u16,
 }

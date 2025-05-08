@@ -1,7 +1,7 @@
 use mockall::predicate::*;
 use mockall::*;
 
-use crate::domain::{Card, CardApi, Clock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse, ServoController};
+use crate::domain::{Card, CardApi, Clock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse, ServoController, I2cIrSensor};
 
 // モッククラスの自動生成
 mock! {
@@ -27,10 +27,17 @@ mock! {
 }
 
 mock! {
-    pub KeyController {}
-    impl ServoController for KeyController {
+    pub ServoController {}
+    impl ServoController for ServoController {
         fn open(&self) -> anyhow::Result<()>;
         fn close(&self) -> anyhow::Result<()>;
+    }
+}
+
+mock! {
+    pub I2cIrSensor {}
+    impl I2cIrSensor for I2cIrSensor {
+        fn read(&self) -> anyhow::Result<u8>;
     }
 }
 
@@ -82,14 +89,20 @@ mod tests {
             .times(1)
             .returning(|_| Ok(()));
 
-        let mut mock_key_controller = MockKeyController::new();
+        let mut mock_key_controller = MockServoController::new();
         mock_key_controller
             .expect_open()
             .times(1)
             .returning(|| Ok(()));
 
+        let mut mock_i2_ir_sensor = MockI2cIrSensor::new();
+        mock_i2_ir_sensor
+            .expect_read()
+            .times(1)
+            .returning(|| Ok(0));
+
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_key_controller);
+        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_key_controller, mock_i2_ir_sensor);
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();
@@ -139,10 +152,13 @@ mod tests {
             .returning(|_| Ok(()));
 
         // サーボモーターのモック設定
-        let mock_key_controller = MockKeyController::new();
+        let mock_key_controller = MockServoController::new();
+
+        // IRセンサーのモック設定
+        let mock_i2_ir_sensor = MockI2cIrSensor::new();
 
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_key_controller);
+        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_key_controller, mock_i2_ir_sensor);
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();
@@ -184,10 +200,12 @@ mod tests {
         let mock_clock = MockClock::new();
 
         // サーボモーターのモック
-        let mock_key_controller = MockKeyController::new();
+        let mock_key_controller = MockServoController::new();
+        // IRセンサーのモック設定
+        let mock_i2_ir_sensor = MockI2cIrSensor::new();
 
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_key_controller);
+        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_key_controller, mock_i2_ir_sensor);
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();
