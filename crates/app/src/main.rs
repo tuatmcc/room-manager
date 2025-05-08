@@ -10,9 +10,10 @@ use anyhow::bail;
 use app::TouchCardUseCase;
 use clap::Parser;
 use config::Config;
+use domain::CardReader as _;
 use futures_util::StreamExt as _;
 use futures_util::stream::select_all;
-use infra::{HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
+use infra::{HttpCardApi, KeyController, PasoriReader, RodioPlayer, SystemClock};
 use pasori::rusb::{Context as RusbContext, UsbContext};
 use tracing::{error, info, warn};
 
@@ -61,10 +62,14 @@ async fn main() -> anyhow::Result<()> {
     let mut readers = select_all(readers);
     info!("Card readers spawned successfully");
 
+    info!("Initializing Key controller");
+    let servo = KeyController::new(config.servo_pin)?;
+    info!("Servo controller initialized successfully");
+
     info!("Initialized card reader, API client, and sound player");
 
     info!("Creating TouchCardUseCase");
-    let touch_card_use_case = TouchCardUseCase::new(api, player, clock);
+    let touch_card_use_case = TouchCardUseCase::new(api, player, clock, servo);
 
     info!("Starting card reader loop");
     while let Some(card) = readers.next().await {
