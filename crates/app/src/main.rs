@@ -10,7 +10,7 @@ use app::TouchCardUseCase;
 use clap::Parser;
 use config::Config;
 use domain::CardReader as _;
-use infra::{HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
+use infra::{HttpCardApi, PasoriReader, RodioPlayer, SystemClock, KeyController};
 use tracing::{error, info, warn};
 
 #[tokio::main]
@@ -40,10 +40,14 @@ async fn main() -> anyhow::Result<()> {
     let mut reader = PasoriReader::spawn()?;
     info!("Card reader spawned successfully");
 
+    info!("Initializing Key controller");
+    let servo = KeyController::new(config.servo_pin)?;
+    info!("Servo controller initialized successfully");
+
     info!("Initialized card reader, API client, and sound player");
 
     info!("Creating TouchCardUseCase");
-    let touch_card_use_case = TouchCardUseCase::new(api, player, clock);
+    let touch_card_use_case = TouchCardUseCase::new(api, player, clock, servo);
 
     info!("Starting card reader loop");
     while let Some(card_id) = reader.next().await? {
