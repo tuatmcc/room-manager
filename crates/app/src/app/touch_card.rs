@@ -1,31 +1,34 @@
-use crate::domain::{
-    Card, CardApi, Clock, ErrorCode, RoomEntryStatus, ServoController, SoundEvent, SoundPlayer, TouchCardRequest, TouchCardResponse
-};
+use crate::{domain::{
+    Card, CardApi, Clock, ErrorCode, I2cIrSensor, RoomEntryStatus, ServoController, SoundEvent, SoundPlayer, TouchCardRequest, TouchCardResponse
+}, infra::door_sensor};
 use chrono::Timelike;
 use tracing::{info, warn};
 
-pub struct TouchCardUseCase<A, P, C, S>
-where
-    A: CardApi,
-    P: SoundPlayer,
-    C: Clock,
-    S: ServoController
-{
-    api: A,
-    player: P,
-    clock: C,
-    servo: S,
-}
-
-impl<A, P, C, S> TouchCardUseCase<A, P, C, S>
+pub struct TouchCardUseCase<A, P, C, S, Ir>
 where
     A: CardApi,
     P: SoundPlayer,
     C: Clock,
     S: ServoController,
+    Ir: I2cIrSensor
 {
-    pub fn new(api: A, player: P, clock: C, servo: S) -> Self {
-        Self { api, player, clock, servo }
+    api: A,
+    player: P,
+    clock: C,
+    servo: S,
+    door_sensor: Ir,
+}
+
+impl<A, P, C, S, Ir> TouchCardUseCase<A, P, C, S, Ir>
+where
+    A: CardApi,
+    P: SoundPlayer,
+    C: Clock,
+    S: ServoController,
+    Ir: I2cIrSensor,
+{
+    pub fn new(api: A, player: P, clock: C, servo: S, door_sensor: Ir) -> Self {
+        Self { api, player, clock, servo, door_sensor }
     }
 
     pub async fn execute(&self, card: &Card) -> anyhow::Result<()> {
@@ -49,6 +52,9 @@ where
                 self.play_error(error_code)?;
             }
         }
+
+        let distance = self.door_sensor.read()?;
+        info!("IR sensor distance: {}", distance);
 
         Ok(())
     }

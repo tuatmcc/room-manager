@@ -22,4 +22,8 @@ pub trait ServoController {
     fn close(&self) -> anyhow::Result<()>;
 }
 
+pub trait I2cIrSensor {
+    fn read(&self) -> anyhow::Result<u8>;
+}
+
 pub use entities::*;
