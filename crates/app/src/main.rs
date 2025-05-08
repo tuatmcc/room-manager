@@ -6,6 +6,8 @@ mod infra;
 #[cfg(test)]
 mod tests;
 
+use std::sync::Arc;
+
 use app::TouchCardUseCase;
 use clap::Parser;
 use config::Config;
@@ -43,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
     info!("Initialized card reader, API client, and sound player");
 
     info!("Initializing Key controller");
-    let servo = KeyController::new(config.servo_pin)?;
+    let servo = Arc::new(KeyController::new(config.servo_pin)?);
     info!("Key controller initialized successfully");
 
     info!("Initializing IR sensor");
