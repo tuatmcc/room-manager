@@ -15,10 +15,7 @@ impl KeyController {
         let mut pin = gpio.get(gpio_pin)?.into_output();
 
         // 初期位置（閉じてる状態）に設定
-        pin.set_pwm(
-            Duration::from_nanos(20_000_000),
-            Duration::from_nanos(1_000_000),
-        )?;
+        pin.set_pwm(Duration::from_nanos(20_000_000), Duration::from_micros(500))?;
 
         Ok(Self {
             pin: Arc::new(Mutex::new(pin)),
@@ -29,10 +26,7 @@ impl KeyController {
 impl ServoController for KeyController {
     fn open(&self) -> anyhow::Result<()> {
         let mut pin = self.pin.lock().unwrap();
-        pin.set_pwm(
-            Duration::from_nanos(20_000_000),
-            Duration::from_nanos(2_000_000),
-        )?;
+        pin.set_pwm(Duration::from_nanos(20_000_000), Duration::from_micros(500))?;
         Ok(())
     }
 
@@ -40,7 +34,7 @@ impl ServoController for KeyController {
         let mut pin = self.pin.lock().unwrap();
         pin.set_pwm(
             Duration::from_nanos(20_000_000),
-            Duration::from_nanos(1_000_000),
+            Duration::from_micros(2000),
         )?;
         Ok(())
     }
