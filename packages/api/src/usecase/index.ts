@@ -24,7 +24,10 @@ export function createUseCases(
 			repositories.user,
 			repositories.roomEntryLog,
 		),
-		listEntryUsers: new ListEntryUsersUseCase(repositories.user),
+		listEntryUsers: new ListEntryUsersUseCase(
+			repositories.user,
+			services.discord,
+		),
 		registerStudentCard: new RegisterStudentCardUseCase(
 			repositories.user,
 			repositories.studentCard,
