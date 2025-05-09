@@ -3,7 +3,6 @@ target/
 .wrangler/
 dist/
 
-.env*
-!.env.example
+.env
 .dev.vars
 worker-configuration.d.ts
