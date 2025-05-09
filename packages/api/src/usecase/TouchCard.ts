@@ -151,13 +151,14 @@ export class TouchCardUseCase {
 
 			// 入室中のユーザーを取得
 			const entryUsers = await this.userRepository.findAllEntryUsers();
-			const description = await this.buildEntryUsersMessage(entryUsers);
+			const description = this.buildEntryUsersMessage(entryUsers);
 			span?.setAttribute("room_manager.user.count", entryUsers.length);
 
 			return {
 				status: "exit",
 				entries: entryUsers.length,
 				message: {
+					author: "入退出通知",
 					title: `${name}さんが退出しました`,
 					description,
 					iconUrl,
@@ -176,13 +177,14 @@ export class TouchCardUseCase {
 
 		// 入室中のユーザーを取得
 		const entryUsers = await this.userRepository.findAllEntryUsers();
-		const description = await this.buildEntryUsersMessage(entryUsers);
+		const description = this.buildEntryUsersMessage(entryUsers);
 		span?.setAttribute("room_manager.user.count", entryUsers.length);
 
 		return {
 			status: "entry",
 			entries: entryUsers.length,
 			message: {
+				author: "入退出通知",
 				title: `${name}さんが入室しました`,
 				description,
 				iconUrl,
@@ -191,23 +193,17 @@ export class TouchCardUseCase {
 		};
 	}
 
-	private async buildEntryUsersMessage(users: User[]): Promise<string> {
-		if (users.length === 0) {
-			return "部室には誰も居ません";
-		}
+	private buildEntryUsersMessage(users: User[]): string {
+		const memberCount =
+			users.length === 0
+				? "部室には誰も居ません"
+				: `${users.length}人が入室中です`;
 
-		// DiscordService でキャッシュ付きでユーザー名を取得
-		const names = await Promise.all(
-			users.map(async (user) => {
-				const { name } = await this.discordService.fetchUserInfo(
-					user.discordId,
-				);
-				return name;
-			}),
+		const nowEpochSeconds = Math.floor(
+			Temporal.Now.instant().epochMilliseconds / 1000,
 		);
+		const timestamp = `-# <t:${nowEpochSeconds}:R>`;
 
-		return [`入室中 (${users.length}人)`, ...names.map((n) => `* ${n}`)].join(
-			"\n",
-		);
+		return `${memberCount}\n\n${timestamp}`;
 	}
 }
