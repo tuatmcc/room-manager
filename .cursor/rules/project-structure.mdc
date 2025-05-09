@@ -1,0 +1,64 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# プロジェクト構成ガイド
+
+このリポジトリは **room-manager** プロジェクトで、Raspberry Pi 上で動作する NFC カード読み取りアプリケーションと Cloudflare Workers 上で動作する API サーバーから構成されています。
+
+## モノレポ構成
+
+- **Rust クレート** は `crates/` 以下に配置
+  - **app**: メインアプリケーション。NFC カードをスキャンし、API サーバーへ送信します。
+    - エントリポイント: [crates/app/src/main.rs](mdc:crates/app/src/main.rs)
+    - ドメイン層: [crates/app/src/domain/](mdc:crates/app/src/domain)
+    - インフラ層: [crates/app/src/infra/](mdc:crates/app/src/infra)
+  - **pasori**: Pasori NFC リーダー用ライブラリ
+    - エントリポイント: [crates/pasori/src/lib.rs](mdc:crates/pasori/src/lib.rs)
+
+- **Node / TypeScript パッケージ** は `packages/` 以下に配置
+  - **api**: Cloudflare Workers で動作する API サーバー
+    - エントリポイント: [packages/api/src/index.ts](mdc:packages/api/src/index.ts)
+    - UseCase 層: [packages/api/src/usecase/](mdc:packages/api/src/usecase)
+    - ORM スキーマ: [packages/api/src/schema.ts](mdc:packages/api/src/schema.ts)
+
+## 主要技術スタック
+
+- Rust (Edition 2024)
+- Node.js / TypeScript
+- pnpm workspace
+- Cloudflare Workers (wrangler)
+- Drizzle ORM
+- Discord Interactions API
+
+## ビルド / 実行コマンド (抜粋)
+
+```sh
+# Rust アプリ (開発)
+cargo run -p app
+
+# API サーバー (開発)
+cd packages/api
+pnpm dev
+```
+
+## ディレクトリツリー（抜粋）
+
+```text
+crates/
+  app/
+    src/
+      app/          # アプリケーションサービス層
+      domain/       # ドメインモデル
+      infra/        # インフラ実装
+  pasori/           # NFC リーダーライブラリ
+
+packages/
+  api/
+    src/
+      usecase/
+      repositories/
+      services/
+```
+
