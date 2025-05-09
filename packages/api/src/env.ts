@@ -10,7 +10,6 @@ export const EnvSchema = z.object({
 	API_TOKEN: z.string(),
 	DISCORD_PUBLIC_KEY: z.string(),
 	DISCORD_BOT_TOKEN: z.string(),
-	DISCORD_APPLICATION_ID: z.string(),
 	DISCORD_GUILD_ID: z.string(),
 	DISCORD_CHANNEL_ID: z.string(),
 	DB: z.custom<D1Database>(),

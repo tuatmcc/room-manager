@@ -6,8 +6,6 @@ API_TOKEN=
 DISCORD_PUBLIC_KEY=
 # DiscordのBotトークン
 DISCORD_BOT_TOKEN=
-# DiscordのApplication ID
-DISCORD_APPLICATION_ID=
 # コマンド登録先のDiscordサーバーID
 DISCORD_GUILD_ID=
 # 入退出ログを流す先のチャンネルID
