@@ -51,7 +51,7 @@ where
                 // 自動閉鍵処理（30秒後に閉じる）
                 let servo = self.servo.clone();
                 tokio::spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
                     if let Err(e) = servo.close() {
                         warn!("Failed to close the door automatically: {:?}", e);
                     } else {

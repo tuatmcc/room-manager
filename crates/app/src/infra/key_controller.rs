@@ -30,7 +30,7 @@ impl ServoController for KeyController {
     fn open(&self) -> anyhow::Result<()> {
         let mut pin = self.pin.lock().unwrap();
         // 鍵を開ける(90度回したあと-90度回して戻す)
-        pin.set_pwm(Duration::from_nanos(20_000_000), Duration::from_micros(0))?;
+        pin.set_pwm(Duration::from_nanos(20_000_000), Duration::from_micros(500))?;
         std::thread::sleep(Duration::from_millis(1000));
         pin.set_pwm(
             Duration::from_nanos(20_000_000),
@@ -44,7 +44,7 @@ impl ServoController for KeyController {
         // 鍵を閉じる(-90度回したあと90度回して戻す)
         pin.set_pwm(
             Duration::from_nanos(20_000_000),
-            Duration::from_micros(3000),
+            Duration::from_micros(2500),
         )?;
         std::thread::sleep(Duration::from_millis(1000));
         pin.set_pwm(
