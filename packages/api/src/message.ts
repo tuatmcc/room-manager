@@ -1,5 +1,6 @@
 export interface Message {
-	title: string;
+	author?: string;
+	title?: string;
 	description?: string;
 	color?: "red" | "green";
 	iconUrl?: string;

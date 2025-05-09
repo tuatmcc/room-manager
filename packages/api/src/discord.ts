@@ -39,6 +39,7 @@ export function convertMessageToEmbed(
 
 	return {
 		color,
+		author: message.author ? { name: message.author } : undefined,
 		title: message.title,
 		description: message.description,
 		thumbnail: message.iconUrl ? { url: message.iconUrl } : undefined,
@@ -48,9 +49,9 @@ export function convertMessageToEmbed(
 function colorToHex(color: "red" | "green"): number {
 	switch (color) {
 		case "red":
-			return 0xff_00_00;
+			return 0xcc_00_00;
 		case "green":
-			return 0x00_ff_00;
+			return 0x16_cc_00;
 		default:
 			color satisfies never;
 			return color;
