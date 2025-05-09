@@ -1,3 +1,4 @@
+import type { KVNamespace } from "@cloudflare/workers-types";
 import { z } from "zod";
 
 import type { Services } from "./services";
@@ -13,6 +14,7 @@ export const EnvSchema = z.object({
 	DISCORD_GUILD_ID: z.string(),
 	DISCORD_CHANNEL_ID: z.string(),
 	DB: z.custom<D1Database>(),
+	KV: z.custom<KVNamespace>(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

@@ -1,3 +1,4 @@
+import type { KVNamespace } from "@cloudflare/workers-types";
 import { calculateUserDefaultAvatarIndex, REST } from "@discordjs/rest";
 import type {
 	APIGuildMember,
@@ -12,8 +13,8 @@ export class DiscordService {
 	private readonly restClient: REST;
 
 	constructor(
+		private readonly cache: KVNamespace,
 		botToken: string,
-		private readonly applicationId: string,
 		private readonly guildId: string,
 		private readonly channelId: string,
 	) {
@@ -23,6 +24,13 @@ export class DiscordService {
 	async fetchUserInfo(
 		userId: string,
 	): Promise<{ iconUrl: string; name: string }> {
+		const cacheKey = `discord:${userId}`;
+		// キャッシュを確認
+		const cached = await this.cache.get(cacheKey, { type: "json" });
+		if (cached) {
+			return cached as { iconUrl: string; name: string };
+		}
+
 		const member = (await this.restClient.get(
 			Routes.guildMember(this.guildId, userId),
 		)) as APIGuildMember;
@@ -30,10 +38,13 @@ export class DiscordService {
 		const iconUrl = this.getAvatarUrl(member);
 		const name = member.nick ?? member.user.global_name ?? member.user.username;
 
-		return {
-			iconUrl,
-			name,
-		};
+		const value = { iconUrl, name } as const;
+		// 12時間（43200秒）でキャッシュ
+		await this.cache.put(cacheKey, JSON.stringify(value), {
+			expirationTtl: 60 * 60 * 12,
+		});
+
+		return value;
 	}
 
 	async sendMessage(message: Message, type?: "error"): Promise<void> {
