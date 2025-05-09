@@ -24,7 +24,7 @@ export class DiscordService {
 	async fetchUserInfo(
 		userId: string,
 	): Promise<{ iconUrl: string; name: string }> {
-		const cacheKey = `discord:${userId}`;
+		const cacheKey = `discord:user:${userId}`;
 		// キャッシュを確認
 		const cached = await this.cache.get(cacheKey, { type: "json" });
 		if (cached) {
