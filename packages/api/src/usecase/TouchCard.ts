@@ -3,6 +3,7 @@ import { trace } from "@opentelemetry/api";
 import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
+import type { Env } from "@/env";
 import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
 import type { User } from "@/models/User";
@@ -26,6 +27,7 @@ export class TouchCardUseCase {
 		private readonly unknownNfcCardRepository: UnknownNfcCardRepository,
 		private readonly roomEntryLogRepository: RoomEntryLogRepository,
 		private readonly discordService: DiscordService,
+		private readonly env: Env,
 	) {}
 
 	async execute({
@@ -98,7 +100,7 @@ export class TouchCardUseCase {
 					errorCode: ERROR_CODE.STUDENT_CARD_NOT_REGISTERED,
 					userMessage: {
 						title: `登録されていない学生証です`,
-						description: `\`/room register student-card\`コマンドで学生証を登録してください。`,
+						description: `</room register student-card:${this.env.DISCORD_ROOM_COMMAND_ID}> コマンドで学生証を登録してください。`,
 					},
 				}),
 			);
@@ -119,7 +121,7 @@ export class TouchCardUseCase {
 					errorCode: ERROR_CODE.NFC_CARD_NOT_REGISTERED,
 					userMessage: {
 						title: `登録されていないNFCカードです`,
-						description: `\`/room register nfc-card ${unknownNfcCard.code}\`コマンドでNFCカードを登録してください。`,
+						description: `</room register nfc-card ${unknownNfcCard.code}:${this.env.DISCORD_ROOM_ADMIN_COMMAND_ID}> コマンドでNFCカードを登録してください。`,
 					},
 				}),
 			);
@@ -158,6 +160,7 @@ export class TouchCardUseCase {
 				status: "exit",
 				entries: entryUsers.length,
 				message: {
+					author: "入退出通知",
 					title: `${name}さんが退出しました`,
 					description,
 					iconUrl,
@@ -183,6 +186,7 @@ export class TouchCardUseCase {
 			status: "entry",
 			entries: entryUsers.length,
 			message: {
+				author: "入退出通知",
 				title: `${name}さんが入室しました`,
 				description,
 				iconUrl,
@@ -192,13 +196,16 @@ export class TouchCardUseCase {
 	}
 
 	private buildEntryUsersMessage(users: User[]): string {
-		if (users.length === 0) {
-			return "部室には誰も居ません";
-		}
+		const memberCount =
+			users.length === 0
+				? "部室には誰も居ません"
+				: `${users.length}人が入室中です`;
 
-		return [
-			`入室中 (${users.length}人)`,
-			...users.map((user) => `* <@${user.discordId}>`),
-		].join("\n");
+		const nowEpochSeconds = Math.floor(
+			Temporal.Now.instant().epochMilliseconds / 1000,
+		);
+		const timestamp = `-# <t:${nowEpochSeconds}:R>`;
+
+		return `${memberCount}\n\n${timestamp}`;
 	}
 }

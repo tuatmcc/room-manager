@@ -4,10 +4,14 @@ import { err, ok } from "neverthrow";
 import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
 import type { UserRepository } from "@/repositories/UserRepository";
+import type { DiscordService } from "@/services/DiscordService";
 import { tracer } from "@/trace";
 
 export class ListEntryUsersUseCase {
-	constructor(private readonly userRepository: UserRepository) {}
+	constructor(
+		private readonly userRepository: UserRepository,
+		private readonly discordService: DiscordService,
+	) {}
 
 	async execute(): Promise<Result<Message, AppError>> {
 		return await tracer.startActiveSpan(
@@ -19,18 +23,28 @@ export class ListEntryUsersUseCase {
 
 					if (users.length === 0) {
 						return ok({
-							title: "部室には誰も居ません",
+							author: "入室中のメンバー",
+							description: "部室には誰も居ません",
 							color: "red",
 						});
 					}
 
-					const title = `入室中 (${users.length}人)`;
-					const description = users
-						.map((user) => `* <@${user.discordId}>`)
-						.join("\n");
+					const names = await Promise.all(
+						users.map(async (user) => {
+							const { name } = await this.discordService.fetchUserInfo(
+								user.discordId,
+							);
+							return name;
+						}),
+					);
+
+					const description = [
+						`${users.length}人が入室中です`,
+						...names.map((n) => `* ${n}`),
+					].join("\n");
 
 					return ok({
-						title,
+						author: "入室中のメンバー",
 						description,
 					});
 				} catch (caughtError) {

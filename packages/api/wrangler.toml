@@ -15,3 +15,7 @@ binding = "DB"
 database_name = "room-manager"
 database_id = "446d1a4f-12a2-47a5-a262-be61f14b104a"
 migrations_dir = "./drizzle"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "d6296b0fc1ff45849d857cbc39b9b656"

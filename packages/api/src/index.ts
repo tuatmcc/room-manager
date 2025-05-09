@@ -52,7 +52,7 @@ const app = new Hono<AppEnv>()
 		const db = drizzle(env.DB, { schema });
 		const repositories = createRepositories(db);
 		const services = createServices(env);
-		const usecases = createUseCases(repositories, services);
+		const usecases = createUseCases(repositories, services, env);
 
 		c.set("env", env);
 		c.set("usecases", usecases);
@@ -124,7 +124,7 @@ const scheduled: ExportedHandlerScheduledHandler = (
 	const db = drizzle(env.DB, { schema });
 	const repositories = createRepositories(db);
 	const services = createServices(env);
-	const usecases = createUseCases(repositories, services);
+	const usecases = createUseCases(repositories, services, env);
 	const handlers = createScheduledHandlers(usecases, services);
 
 	ctx.waitUntil(handlers.exitAllEntryUsers.handle());
