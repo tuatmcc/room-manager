@@ -3,6 +3,7 @@ import { trace } from "@opentelemetry/api";
 import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
+import type { Env } from "@/env";
 import { AppError, ERROR_CODE } from "@/error";
 import type { Message } from "@/message";
 import type { User } from "@/models/User";
@@ -26,6 +27,7 @@ export class TouchCardUseCase {
 		private readonly unknownNfcCardRepository: UnknownNfcCardRepository,
 		private readonly roomEntryLogRepository: RoomEntryLogRepository,
 		private readonly discordService: DiscordService,
+		private readonly env: Env,
 	) {}
 
 	async execute({
@@ -98,7 +100,7 @@ export class TouchCardUseCase {
 					errorCode: ERROR_CODE.STUDENT_CARD_NOT_REGISTERED,
 					userMessage: {
 						title: `登録されていない学生証です`,
-						description: `\`/room register student-card\`コマンドで学生証を登録してください。`,
+						description: `</room register student-card:${this.env.DISCORD_ROOM_COMMAND_ID}> コマンドで学生証を登録してください。`,
 					},
 				}),
 			);
@@ -119,7 +121,7 @@ export class TouchCardUseCase {
 					errorCode: ERROR_CODE.NFC_CARD_NOT_REGISTERED,
 					userMessage: {
 						title: `登録されていないNFCカードです`,
-						description: `\`/room register nfc-card ${unknownNfcCard.code}\`コマンドでNFCカードを登録してください。`,
+						description: `</room register nfc-card ${unknownNfcCard.code}:${this.env.DISCORD_ROOM_ADMIN_COMMAND_ID}> コマンドでNFCカードを登録してください。`,
 					},
 				}),
 			);

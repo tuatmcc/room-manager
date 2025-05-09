@@ -12,6 +12,8 @@ export const EnvSchema = z.object({
 	DISCORD_BOT_TOKEN: z.string(),
 	DISCORD_GUILD_ID: z.string(),
 	DISCORD_CHANNEL_ID: z.string(),
+	DISCORD_ROOM_COMMAND_ID: z.string(),
+	DISCORD_ROOM_ADMIN_COMMAND_ID: z.string(),
 	DB: z.custom<D1Database>(),
 	KV: z.custom<KVNamespace>(),
 });
