@@ -5,6 +5,12 @@ on:
       version:
         type: string
         required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        required: true
+        description: "The version to release (e.g. 0.1.0)"
 
 jobs:
   deploy_app:
