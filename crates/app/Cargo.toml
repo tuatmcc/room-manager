@@ -1,5 +1,6 @@
 [package]
 name = "room-manager"
+version = "0.0.1"
 edition = "2024"
 
 [dependencies]
