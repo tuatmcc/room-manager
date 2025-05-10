@@ -2,8 +2,11 @@ packages:
   - .
   - packages/*
 autoInstallPeers: false
+publicHoistPattern:
+  - "*vitest*"
 onlyBuiltDependencies:
   - esbuild
   - protobufjs
   - sharp
+  - unrs-resolver
   - workerd
