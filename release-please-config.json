@@ -17,12 +17,12 @@
 				{
 					"type": "toml",
 					"path": "crates/app/Cargo.toml",
-					"jsonpath": "$.version"
+					"jsonpath": "$.package.version"
 				},
 				{
 					"type": "toml",
 					"path": "crates/pasori/Cargo.toml",
-					"jsonpath": "$.version"
+					"jsonpath": "$.package.version"
 				}
 			]
 		}
