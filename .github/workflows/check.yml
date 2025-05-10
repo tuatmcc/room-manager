@@ -31,7 +31,7 @@ jobs:
         uses: ./.github/actions/setup-rust
 
       - name: Run | Build
-        run: cargo build --all-targets --all-features --release
+        run: cross build --release --locked
 
   typecheck_node:
     runs-on: ubuntu-latest
