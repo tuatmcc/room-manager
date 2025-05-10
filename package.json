@@ -1,13 +1,11 @@
 {
 	"name": "room-manager",
-	"version": "0.1.0",
+	"version": "0.0.0",
 	"type": "module",
 	"license": "UNLICENSED",
 	"private": true,
 	"packageManager": "pnpm@10.10.0",
-	"scripts": {
-		"ci:version": "changeset version && prettier --write CHANGELOG.md"
-	},
+	"scripts": {},
 	"devDependencies": {
 		"@changesets/cli": "2.29.3",
 		"@shun-shobon/style-guide": "0.4.0",
