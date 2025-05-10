@@ -42,3 +42,10 @@ jobs:
           title: "chore(release): publish"
           commit: "chore(release): publish"
           version: "pnpm ci:version"
+
+  release:
+    needs: [changesets]
+    uses: ./.github/workflows/release.yml
+    if: needs.changesets.outputs.published == 'true'
+    with:
+      version: ${{ needs.changesets.outputs.version }}
