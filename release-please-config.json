@@ -6,25 +6,26 @@
 			"bump-patch-for-minor-pre-major": false,
 			"changelog-path": "CHANGELOG.md",
 			"draft": false,
-			"prerelease": false,
-			"release-type": "node",
 			"extra-files": [
 				{
-					"type": "json",
+					"jsonpath": "$.version",
 					"path": "packages/api/package.json",
-					"jsonpath": "$.version"
+					"type": "json"
 				},
 				{
-					"type": "toml",
+					"jsonpath": "$.package.version",
 					"path": "crates/app/Cargo.toml",
-					"jsonpath": "$.package.version"
+					"type": "toml"
 				},
 				{
-					"type": "toml",
+					"jsonpath": "$.package.version",
 					"path": "crates/pasori/Cargo.toml",
-					"jsonpath": "$.package.version"
+					"type": "toml"
 				}
-			]
+			],
+			"include-component-in-tag": false,
+			"prerelease": false,
+			"release-type": "node"
 		}
 	}
 }
