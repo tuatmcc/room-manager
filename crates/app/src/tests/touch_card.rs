@@ -62,6 +62,12 @@ mod tests {
 
         // サウンドプレイヤーのモック設定
         let mut mock_player = MockSoundPlayer::new();
+        mock_player.expect_reset().times(1).return_const(());
+        mock_player
+            .expect_play()
+            .with(eq(SoundEvent::Touch))
+            .times(1)
+            .returning(|_| Ok(()));
         mock_player
             .expect_play()
             .with(eq(SoundEvent::GoodMorning))
@@ -101,6 +107,12 @@ mod tests {
 
         // サウンドプレイヤーのモック設定
         let mut mock_player = MockSoundPlayer::new();
+        mock_player.expect_reset().times(1).return_const(());
+        mock_player
+            .expect_play()
+            .with(eq(SoundEvent::Touch))
+            .times(1)
+            .returning(|_| Ok(()));
         mock_player
             .expect_play()
             .with(eq(SoundEvent::GoodBye))
@@ -139,6 +151,12 @@ mod tests {
 
         // サウンドプレイヤーのモック設定
         let mut mock_player = MockSoundPlayer::new();
+        mock_player.expect_reset().times(1).return_const(());
+        mock_player
+            .expect_play()
+            .with(eq(SoundEvent::Touch))
+            .times(1)
+            .returning(|_| Ok(()));
         mock_player
             .expect_play()
             .with(eq(SoundEvent::RegisterStudentCard))
