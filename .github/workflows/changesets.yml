@@ -49,3 +49,4 @@ jobs:
     if: needs.changesets.outputs.published == 'true'
     with:
       version: ${{ needs.changesets.outputs.version }}
+    secrets: inherit

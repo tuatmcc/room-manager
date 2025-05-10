@@ -3,7 +3,8 @@
 	"type": "module",
 	"scripts": {
 		"build": "wrangler deploy --minify src/index.ts --dry-run --outdir dist",
-		"deploy": "wrangler deploy --minify src/index.ts",
+		"ci:deploy": "wrangler deploy --minify src/index.ts",
+		"ci:migrate": "wrangler d1 migrations apply room-manager --remote",
 		"dev": "wrangler dev --test-scheduled src/index.ts",
 		"dev:migrate": "wrangler d1 migrations apply room-manager --local",
 		"format": "prettier --write .",
