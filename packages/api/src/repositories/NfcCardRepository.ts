@@ -5,7 +5,13 @@ import { NfcCard } from "@/models/NfcCard";
 import * as schema from "@/schema";
 import { tracer } from "@/trace";
 
-export class NfcCardRepository {
+export interface NfcCardRepository {
+	create(name: string, idm: string, userId: number): Promise<NfcCard>;
+	save(nfcCard: NfcCard): Promise<void>;
+	findByIdm(idm: string): Promise<NfcCard | null>;
+}
+
+export class DBNfcCardRepository implements NfcCardRepository {
 	constructor(private readonly db: Database) {}
 
 	async create(name: string, idm: string, userId: number): Promise<NfcCard> {

@@ -5,7 +5,14 @@ import { UnknownNfcCard } from "@/models/UnknownNfcCard";
 import * as schema from "@/schema";
 import { tracer } from "@/trace";
 
-export class UnknownNfcCardRepository {
+export interface UnknownNfcCardRepository {
+	create(idm: string): Promise<UnknownNfcCard>;
+	findByCode(code: string): Promise<UnknownNfcCard | null>;
+	findByIdm(idm: string): Promise<UnknownNfcCard | null>;
+	deleteById(id: number): Promise<void>;
+}
+
+export class DBUnknownNfcCardRepository implements UnknownNfcCardRepository {
 	constructor(private readonly db: Database) {}
 
 	async create(idm: string): Promise<UnknownNfcCard> {

@@ -7,7 +7,17 @@ import { User } from "@/models/User";
 import * as schema from "@/schema";
 import { tracer } from "@/trace";
 
-export class UserRepository {
+export interface UserRepository {
+	create(discordId: string): Promise<User>;
+	save(user: User): Promise<void>;
+	findByIds(ids: number[]): Promise<User[]>;
+	findByDiscordId(discordId: string): Promise<User | null>;
+	findByStudentId(studentId: number): Promise<User | null>;
+	findByNfcIdm(idm: string): Promise<User | null>;
+	findAllEntryUsers(): Promise<User[]>;
+}
+
+export class DBUserRepository implements UserRepository {
 	constructor(private readonly db: Database) {}
 
 	async create(discordId: string): Promise<User> {

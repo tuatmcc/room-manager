@@ -1,10 +1,15 @@
 import type { Database } from "@/database";
 
-import { NfcCardRepository } from "./NfcCardRepository";
-import { RoomEntryLogRepository } from "./RoomEntryLogRepository";
-import { StudentCardRepository } from "./StudentCardRepository";
-import { UnknownNfcCardRepository } from "./UnknownNfcCardRepository";
-import { UserRepository } from "./UserRepository";
+import type { NfcCardRepository } from "./NfcCardRepository";
+import { DBNfcCardRepository } from "./NfcCardRepository";
+import type { RoomEntryLogRepository } from "./RoomEntryLogRepository";
+import { DBRoomEntryLogRepository } from "./RoomEntryLogRepository";
+import type { StudentCardRepository } from "./StudentCardRepository";
+import { DBStudentCardRepository } from "./StudentCardRepository";
+import type { UnknownNfcCardRepository } from "./UnknownNfcCardRepository";
+import { DBUnknownNfcCardRepository } from "./UnknownNfcCardRepository";
+import type { UserRepository } from "./UserRepository";
+import { DBUserRepository } from "./UserRepository";
 
 export interface Repositories {
 	user: UserRepository;
@@ -16,10 +21,10 @@ export interface Repositories {
 
 export function createRepositories(db: Database): Repositories {
 	return {
-		user: new UserRepository(db),
-		studentCard: new StudentCardRepository(db),
-		nfcCard: new NfcCardRepository(db),
-		unknownNfcCard: new UnknownNfcCardRepository(db),
-		roomEntryLog: new RoomEntryLogRepository(db),
+		user: new DBUserRepository(db),
+		studentCard: new DBStudentCardRepository(db),
+		nfcCard: new DBNfcCardRepository(db),
+		unknownNfcCard: new DBUnknownNfcCardRepository(db),
+		roomEntryLog: new DBRoomEntryLogRepository(db),
 	};
 }

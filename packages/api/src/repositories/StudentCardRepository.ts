@@ -5,7 +5,14 @@ import { StudentCard } from "@/models/StudentCard";
 import * as schema from "@/schema";
 import { tracer } from "@/trace";
 
-export class StudentCardRepository {
+export interface StudentCardRepository {
+	create(studentId: number, userId: number): Promise<StudentCard>;
+	save(studentCard: StudentCard): Promise<void>;
+	findByStudentId(studentId: number): Promise<StudentCard | null>;
+	findByUserId(userId: number): Promise<StudentCard | null>;
+}
+
+export class DBStudentCardRepository implements StudentCardRepository {
 	constructor(private readonly db: Database) {}
 
 	async create(studentId: number, userId: number): Promise<StudentCard> {
