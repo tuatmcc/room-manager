@@ -41,7 +41,7 @@ jobs:
           commitMode: github-api
           title: "chore(release): publish"
           commit: "chore(release): publish"
-          version: "pnpm ci:version"
+          version: "pnpm run ci:version"
 
   release:
     needs: [changesets]
