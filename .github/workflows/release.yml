@@ -2,15 +2,15 @@ name: Release
 on:
   workflow_call:
     inputs:
-      version:
+      tag_name:
         type: string
         required: true
   workflow_dispatch:
     inputs:
-      version:
+      tag_name:
         type: string
         required: true
-        description: "The version to release (e.g. 0.1.0)"
+        description: "The tag name to release (e.g. `v0.1.0`)"
 
 jobs:
   deploy_app:
@@ -33,7 +33,7 @@ jobs:
             README.md
 
       - name: Run | Upload
-        run: gh release upload v${{ inputs.version }} room-manager-aarch64-unknown-linux-gnu.tar.gz
+        run: gh release upload ${{ inputs.tag_name }} room-manager-aarch64-unknown-linux-gnu.tar.gz
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
