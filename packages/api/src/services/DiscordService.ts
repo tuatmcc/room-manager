@@ -9,7 +9,12 @@ import { Routes } from "discord-api-types/v10";
 import { convertMessageToEmbed } from "@/discord";
 import type { Message } from "@/message";
 
-export class DiscordService {
+export interface DiscordService {
+	fetchUserInfo(userId: string): Promise<{ iconUrl: string; name: string }>;
+	sendMessage(message: Message, type?: "error"): Promise<void>;
+}
+
+export class ApiDiscordService implements DiscordService {
 	private readonly restClient: REST;
 
 	constructor(
