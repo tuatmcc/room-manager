@@ -13,12 +13,12 @@ crons = ["15 11 * * *"]
 [[d1_databases]]
 binding = "DB"
 database_name = "room-manager"
-database_id = "446d1a4f-12a2-47a5-a262-be61f14b104a"
+database_id = "DUMMY"          # 開発環境ではダミーを指定
 migrations_dir = "./drizzle"
 
 [[kv_namespaces]]
 binding = "KV"
-id = "d6296b0fc1ff45849d857cbc39b9b656"
+id = "DUMMY"   # 開発環境ではダミーを指定
 
 [env.production.vars]
 DISCORD_PUBLIC_KEY = "ec800ecdaa5ff680bb9e180300fa7dd157a6d1ae4b3d3640070a35f58f31b09f"
@@ -26,3 +26,13 @@ DISCORD_GUILD_ID = "882598552780562462"
 DISCORD_CHANNEL_ID = "923521135734325288"
 DISCORD_ROOM_COMMAND_ID = "1365551182323384322"
 DISCORD_ROOM_ADMIN_COMMAND_ID = "1365551182323384323"
+
+[[env.production.d1_databases]]
+binding = "DB"
+database_name = "room-manager"
+database_id = "446d1a4f-12a2-47a5-a262-be61f14b104a"
+migrations_dir = "./drizzle"
+
+[[env.production.kv_namespaces]]
+binding = "KV"
+id = "d6296b0fc1ff45849d857cbc39b9b656"
