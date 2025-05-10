@@ -1,10 +1,12 @@
+import path from "node:path";
+
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-	test: {
-		// Vitest の設定オプションをここに記述します
-		// 例:
-		// globals: true,
-		// environment: 'node',
+	test: {},
+	resolve: {
+		alias: {
+			"@": path.resolve(__dirname, "./src"),
+		},
 	},
 });
