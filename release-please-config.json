@@ -21,6 +21,11 @@
 					"jsonpath": "$.package.version",
 					"path": "crates/pasori/Cargo.toml",
 					"type": "toml"
+				},
+				{
+					"jsonpath": "$.package[?(@.name=='room-manager'||@.name=='pasori')].version",
+					"path": "Cargo.lock",
+					"type": "toml"
 				}
 			],
 			"include-component-in-tag": false,
