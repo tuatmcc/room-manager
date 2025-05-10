@@ -9,57 +9,86 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build_node:
     runs-on: ubuntu-latest
     steps:
       - name: Setup | Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Setup | Development environment
-        uses: ./.github/actions/setup
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
 
-      - name: Setup | Install apt packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install libasound2-dev
-
-      - name: Run | Build (Node.js)
+      - name: Run | Build
         run: pnpm run -r build
 
-      - name: Run | Build (Rust)
-        run: cargo build --all-targets --all-features --release
-
-  lint:
+  build_rust:
     runs-on: ubuntu-latest
     steps:
       - name: Setup | Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Setup | Development environment
-        uses: ./.github/actions/setup
+      - name: Setup | Rust development environment
+        uses: ./.github/actions/setup-rust
 
-      - name: Setup | Install apt packages
-        run: |
-          sudo apt-get update
-          sudo apt-get install libasound2-dev
+      - name: Run | Build
+        run: cross build --release --locked
 
-      - name: Run | Lint (Node.js)
+  typecheck_node:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
+
+      - name: Run | Typecheck
+        run: pnpm run -r typecheck
+
+  lint_node:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
+
+      - name: Run | Lint
         run: pnpm run -r lint
+
+  lint_rust:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Rust development environment
+        uses: ./.github/actions/setup-rust
 
       - name: Run | Lint (Rust)
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-  format:
+  format_node:
     runs-on: ubuntu-latest
     steps:
       - name: Setup | Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Setup | Development environment
-        uses: ./.github/actions/setup
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
 
-      - name: Run | Format (Node.js)
+      - name: Run | Format
         run: pnpm run -r format:check
 
-      - name: Run | Format (Rust)
+  format_rust:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Rust development environment
+        uses: ./.github/actions/setup-rust
+
+      - name: Run | Format
         run: cargo fmt --all -- --check

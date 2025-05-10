@@ -1,6 +1,5 @@
 [package]
-name = "app"
-version = "0.1.0"
+name = "room-manager"
 edition = "2024"
 
 [dependencies]

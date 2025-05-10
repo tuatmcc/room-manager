@@ -1,0 +1,44 @@
+name: "Setup Rust development environment"
+description: "Setup Rust development environment for GitHub Actions"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup | Install apt packages
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install libasound2-dev
+
+    - name: Setup | Cache cargo store
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      with:
+        path: |
+          ~/.cargo/bin/
+          !~/.cargo/bin/cross
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-
+
+    - name: Setup | Mise
+      uses: jdx/mise-action@7a111ead46986ccad89a74ad013ba2a7c08c9e67 # v2.2.1
+
+    - name: Setup | Cache cross
+      id: cache-cross
+      uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      with:
+        path: ~/.cargo/bin/cross
+        key: ${{ runner.os }}-cross
+
+    - name: Setup | Install cross
+      shell: bash
+      if: steps.cache-cross.outputs.cache-hit != 'true'
+      run: cargo install cross --git https://github.com/cross-rs/cross.git --rev 9e2298e17170655342d3248a9c8ac37ef92ba38f
+
+    - name: Setup | Fetch cargo dependencies
+      shell: bash
+      run: cargo fetch

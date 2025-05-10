@@ -1,0 +1,54 @@
+name: Release
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        required: true
+        description: "The version to release (e.g. 0.1.0)"
+
+jobs:
+  deploy_app:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Rust development environment
+        uses: ./.github/actions/setup-rust
+
+      - name: Run | Build
+        run: cross build --release --locked
+
+      - name: Run | Compress
+        run: |
+          tar czvf \
+            room-manager-aarch64-unknown-linux-gnu.tar.gz \
+            target/aarch64-unknown-linux-gnu/release/room-manager \
+            README.md
+
+      - name: Run | Upload
+        run: gh release upload v${{ inputs.version }} room-manager-aarch64-unknown-linux-gnu.tar.gz
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy_api:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
+
+      - name: Run | Deploy
+        run: pnpm run ci:deploy
+        working-directory: packages/api
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
