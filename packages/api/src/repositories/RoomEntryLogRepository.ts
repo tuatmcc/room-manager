@@ -7,7 +7,15 @@ import { User } from "@/models/User";
 import * as schema from "@/schema";
 import { tracer } from "@/trace";
 
-export class RoomEntryLogRepository {
+export interface RoomEntryLogRepository {
+	create(userId: number, entryAt: Temporal.Instant): Promise<RoomEntryLog>;
+	save(roomEntryLog: RoomEntryLog): Promise<void>;
+	findLastEntryByUserId(userId: number): Promise<RoomEntryLog | null>;
+	findAllEntry(): Promise<RoomEntryLog[]>;
+	setManyExitAt(entryLogIds: number[], exitAt: Temporal.Instant): Promise<void>;
+}
+
+export class DBRoomEntryLogRepository implements RoomEntryLogRepository {
 	constructor(private readonly db: Database) {}
 
 	async create(
