@@ -23,6 +23,7 @@ jobs:
         uses: ./.github/actions/setup-node
 
       - name: Setup | Get bot token
+        id: app-token
         uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
         with:
           app-id: ${{ secrets.MCC_BOT_APP_ID }}
@@ -42,6 +43,8 @@ jobs:
           title: "chore(release): publish"
           commit: "chore(release): publish"
           version: "pnpm run ci:version"
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   release:
     needs: [changesets]
