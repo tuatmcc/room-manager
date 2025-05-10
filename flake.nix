@@ -35,16 +35,15 @@
         # run `nix develop` or `direnv allow` to enter the development shell
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
-            (if pkgs.system != "aarch64-darwin" then
-              pkgs.alsa-lib
-            else
-              stdenv.cc.cc.lib
-            )
+            # System-specific dependencies
+            (lib.optional (!stdenv.isDarwin) alsa-lib)
+
+            # Common dependencies
             pkg-config
             nodejs-slim
             pnpm
             # Add rust toolchain based on mise.toml configuration
-            (pkgs.rust-bin.stable.latest.default.override {
+            (rust-bin.stable.latest.default.override {
               extensions = [ "rust-src" "rust-analyzer" ];
             })
           ];
