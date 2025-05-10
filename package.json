@@ -5,7 +5,9 @@
 	"license": "UNLICENSED",
 	"private": true,
 	"packageManager": "pnpm@10.10.0",
-	"scripts": {},
+	"scripts": {
+		"ci:version": "changeset version && prettier --write CHANGELOG.md"
+	},
 	"devDependencies": {
 		"@changesets/cli": "2.29.3",
 		"@shun-shobon/style-guide": "0.4.0",

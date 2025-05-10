@@ -1,0 +1,44 @@
+name: Changesets
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  changesets:
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      version: ${{ fromJSON(steps.changesets.outputs.publishedPackages)[0].version }}
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
+
+      - name: Setup | Get bot token
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        with:
+          app-id: ${{ secrets.MCC_BOT_APP_ID }}
+          private-key: ${{ secrets.MCC_BOT_PRIVATE_KEY }}
+
+      - name: Setup | Setup git user
+        run: |
+          git config --global user.name 'tuatmcc-bot[bot]'
+          git config --global user.email '211099852+tuatmcc-bot[bot]@users.noreply.github.com'
+
+      - name: Run | Changesets
+        id: changesets
+        uses: changesets/action@001cd79f0a536e733315164543a727bdf2d70aff # v1.5.1
+        with:
+          setupGitUser: false
+          commitMode: github-api
+          title: "chore(release): publish"
+          commit: "chore(release): publish"
+          version: "pnpm ci:version"
