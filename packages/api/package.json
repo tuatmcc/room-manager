@@ -11,7 +11,8 @@
 		"gen:migration": "drizzle-kit generate",
 		"lint": "eslint",
 		"lint:fix": "eslint --fix",
-		"register": "tsx scripts/register.ts"
+		"register": "tsx scripts/register.ts",
+		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@discordjs/builders": "1.11.1",
