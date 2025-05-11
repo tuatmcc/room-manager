@@ -62,7 +62,7 @@ describe("ExitAllEntryUsersUseCase", () => {
 		// 検証
 		expect(result.isOk()).toBe(true);
 		if (result.isOk()) {
-			expect(result.value).toEqual([]);
+			expect(result.value).toEqual({ users: [] });
 		}
 		expect(roomEntryLogRepository.findAllEntry).toHaveBeenCalled();
 		expect(roomEntryLogRepository.setManyExitAt).not.toHaveBeenCalled();
@@ -93,7 +93,7 @@ describe("ExitAllEntryUsersUseCase", () => {
 		// 検証
 		expect(result.isOk()).toBe(true);
 		if (result.isOk()) {
-			expect(result.value).toEqual(users);
+			expect(result.value).toEqual({ users });
 		}
 		expect(roomEntryLogRepository.findAllEntry).toHaveBeenCalled();
 		expect(roomEntryLogRepository.setManyExitAt).toHaveBeenCalledWith(

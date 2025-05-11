@@ -44,7 +44,7 @@ describe("ListEntryUsersUseCase", () => {
 		// 検証
 		expect(result.isOk()).toBe(true);
 		if (result.isOk()) {
-			expect(result.value).toEqual([]);
+			expect(result.value).toEqual({ users: [] });
 		}
 		expect(userRepository.findAllEntryUsers).toHaveBeenCalled();
 	});
@@ -66,7 +66,7 @@ describe("ListEntryUsersUseCase", () => {
 		// 検証
 		expect(result.isOk()).toBe(true);
 		if (result.isOk()) {
-			expect(result.value).toEqual(users);
+			expect(result.value).toEqual({ users });
 		}
 		expect(userRepository.findAllEntryUsers).toHaveBeenCalled();
 	});
