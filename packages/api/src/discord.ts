@@ -1,4 +1,11 @@
-import type { APIEmbed } from "discord-api-types/v10";
+import type {
+	APIApplicationCommandInteractionDataOption,
+	APIChatInputApplicationCommandInteraction,
+	APIChatInputApplicationCommandInteractionData,
+	APIEmbed,
+	InteractionType,
+} from "discord-api-types/v10";
+import { ApplicationCommandOptionType } from "discord-api-types/v10";
 import { verifyKey } from "discord-interactions";
 import { createMiddleware } from "hono/factory";
 
@@ -56,4 +63,46 @@ function colorToHex(color: "red" | "green"): number {
 			color satisfies never;
 			return color;
 	}
+}
+
+export function parseCommand(
+	interactionData: APIChatInputApplicationCommandInteractionData,
+): {
+	commands: string[];
+	options: Record<string, string | number | boolean>;
+} {
+	const commands = [interactionData.name];
+	let options: Record<string, string | number | boolean> = {};
+
+	const result = parseOptionsRecursive(interactionData.options ?? []);
+	commands.push(...result.commands);
+	options = { ...options, ...result.options };
+
+	return { commands, options };
+}
+
+function parseOptionsRecursive(
+	apiOptions: APIApplicationCommandInteractionDataOption<InteractionType.ApplicationCommand>[],
+): {
+	commands: string[];
+	options: Record<string, string | number | boolean>;
+} {
+	const commands: string[] = [];
+	let options: Record<string, string | number | boolean> = {};
+
+	for (const apiOption of apiOptions) {
+		if (
+			apiOption.type === ApplicationCommandOptionType.SubcommandGroup ||
+			apiOption.type === ApplicationCommandOptionType.Subcommand
+		) {
+			commands.push(apiOption.name);
+			const subOptionsResult = parseOptionsRecursive(apiOption.options ?? []);
+			commands.push(...subOptionsResult.commands);
+			options = { ...options, ...subOptionsResult.options };
+		} else {
+			options[apiOption.name] = apiOption.value;
+		}
+	}
+
+	return { commands, options };
 }
