@@ -2,22 +2,19 @@ import type {
 	APIChatInputApplicationCommandInteraction,
 	APIInteractionResponse,
 } from "discord-api-types/v10";
-import {
-	ApplicationCommandOptionType,
-	InteractionResponseType,
-	MessageFlags,
-} from "discord-api-types/v10";
+import { InteractionResponseType, MessageFlags } from "discord-api-types/v10";
 import { HTTPException } from "hono/http-exception";
-import { z } from "zod";
+import { match, P } from "ts-pattern";
 
-import { convertMessageToEmbed } from "@/discord";
+import { convertMessageToEmbed, parseCommand } from "@/discord";
 import type { UseCases } from "@/usecase";
 
 import { ListUsersHandler } from "./list-users";
+import { PingHandler } from "./ping";
 import { RegisterNfcCardHandler } from "./register-nfc-card";
 import { RegisterStudentCardHandler } from "./register-student-card";
-
 export interface SlashCommandHandlers {
+	ping: PingHandler;
 	listUsers: ListUsersHandler;
 	registerStudentCard: RegisterStudentCardHandler;
 	registerNfcCard: RegisterNfcCardHandler;
@@ -27,6 +24,7 @@ export function createSlashCommandHandlers(
 	usecases: UseCases,
 ): SlashCommandHandlers {
 	return {
+		ping: new PingHandler(),
 		listUsers: new ListUsersHandler(usecases.listEntryUsers),
 		registerStudentCard: new RegisterStudentCardHandler(
 			usecases.registerStudentCard,
@@ -35,172 +33,84 @@ export function createSlashCommandHandlers(
 	};
 }
 
-export const SlashCommandSchema = z.union([
-	z.object({
-		name: z.literal("room"),
-		options: z
-			.union([
-				z.object({
-					type: z.literal(ApplicationCommandOptionType.SubcommandGroup),
-					name: z.literal("register"),
-					options: z
-						.union([
-							z.object({
-								type: z.literal(ApplicationCommandOptionType.Subcommand),
-								name: z.literal("student-card"),
-								options: z
-									.object({
-										type: z.literal(ApplicationCommandOptionType.Integer),
-										name: z.literal("id"),
-										value: z.number(),
-									})
-									.array(),
-							}),
-							z.object({
-								type: z.literal(ApplicationCommandOptionType.Subcommand),
-								name: z.literal("nfc-card"),
-								options: z
-									.union([
-										z.object({
-											type: z.literal(ApplicationCommandOptionType.String),
-											name: z.literal("code"),
-											value: z.string(),
-										}),
-										z.object({
-											type: z.literal(ApplicationCommandOptionType.String),
-											name: z.literal("name"),
-											value: z.string(),
-										}),
-									])
-									.array(),
-							}),
-						])
-						.array(),
-				}),
-				z.object({
-					type: z.literal(ApplicationCommandOptionType.Subcommand),
-					name: z.literal("list"),
-				}),
-			])
-			.array(),
-	}),
-	z.object({
-		name: z.literal("room-admin"),
-		options: z
-			.object({
-				type: z.literal(ApplicationCommandOptionType.SubcommandGroup),
-				name: z.literal("setting"),
-				options: z
-					.object({
-						type: z.literal(ApplicationCommandOptionType.Subcommand),
-						name: z.literal("register"),
-						options: z
-							.object({
-								type: z.literal(ApplicationCommandOptionType.Boolean),
-								name: z.literal("allow"),
-								value: z.boolean(),
-							})
-							.array(),
-					})
-					.array(),
-			})
-			.array(),
-	}),
-	z.object({
-		name: z.literal("ping"),
-	}),
-]);
+const NOT_IMPLEMENTED: APIInteractionResponse = {
+	type: InteractionResponseType.ChannelMessageWithSource,
+	data: {
+		embeds: [
+			convertMessageToEmbed({
+				title: "エラー",
+				description: "このコマンドは未実装です。",
+				color: "red",
+			}),
+		],
+		flags: MessageFlags.Ephemeral,
+	},
+};
 
-// eslint-disable-next-line complexity
-export async function handleSlashCommand(
-	handlers: SlashCommandHandlers,
-	interaction: APIChatInputApplicationCommandInteraction,
-): Promise<APIInteractionResponse> {
-	const notImplemented: APIInteractionResponse = {
+function handleUnknownCommand(dataJSON: string): APIInteractionResponse {
+	return {
 		type: InteractionResponseType.ChannelMessageWithSource,
 		data: {
 			embeds: [
 				convertMessageToEmbed({
 					title: "エラー",
-					description: "このコマンドは未実装です。",
+					description: `未知のコマンドです。不具合の可能性が高いため、開発者にお問い合わせください。\n\n該当のJSON:\n\`\`\`json\n${dataJSON}\`\`\``,
 					color: "red",
 				}),
 			],
 			flags: MessageFlags.Ephemeral,
 		},
 	};
-	const invalidRequestError = new HTTPException(400, {
-		message: "Invalid request",
-	});
+}
 
-	const slashCommand = SlashCommandSchema.safeParse(interaction.data);
-	if (!slashCommand.success) {
-		throw invalidRequestError;
+export async function handleSlashCommand(
+	handlers: SlashCommandHandlers,
+	interaction: APIChatInputApplicationCommandInteraction,
+): Promise<APIInteractionResponse> {
+	const member = interaction.member;
+	if (!member) {
+		throw new HTTPException(400, { message: "Invalid request" });
 	}
 
-	switch (slashCommand.data.name) {
-		case "room": {
-			const option1 = slashCommand.data.options[0];
-			switch (option1?.name) {
-				case "register": {
-					const option2 = option1.options[0];
-					switch (option2?.name) {
-						case "student-card": {
-							const discordId = interaction.member?.user.id;
-							const studentId = option2.options[0]?.value;
-							if (discordId === undefined || studentId === undefined) {
-								throw invalidRequestError;
-							}
+	const discordId = member.user.id;
+	const result = parseCommand(interaction.data);
 
-							return await handlers.registerStudentCard.handle(
-								discordId,
-								studentId,
-							);
-						}
-						case "nfc-card": {
-							const discordId = interaction.member?.user.id;
-							const code = option2.options.find(
-								(o) => o.name === "code",
-							)?.value;
-							const name = option2.options.find(
-								(o) => o.name === "name",
-							)?.value;
+	const response = match(result)
+		.with(
+			{ commands: ["ping"] },
+			(): APIInteractionResponse => handlers.ping.handle(),
+		)
+		.with(
+			{
+				commands: ["room", "register", "student-card"],
+				options: P.select({ id: P.number }),
+			},
+			async ({ id }) =>
+				await handlers.registerStudentCard.handle(discordId, id),
+		)
+		.with(
+			{
+				commands: ["room", "register", "nfc-card"],
+				options: P.select({ code: P.string, name: P.string }),
+			},
+			async ({ code, name }) =>
+				await handlers.registerNfcCard.handle(discordId, code, name),
+		)
+		.with(
+			{ commands: ["room", "list"] },
+			async () => await handlers.listUsers.handle(),
+		)
+		.with(
+			{
+				commands: ["room-admin", "setting", "register"],
+				options: P.select({ allow: P.boolean.optional() }),
+			},
+			() => NOT_IMPLEMENTED,
+		)
+		.with(P._, () =>
+			handleUnknownCommand(JSON.stringify(interaction.data, null, 2)),
+		)
+		.exhaustive();
 
-							if (
-								discordId === undefined ||
-								code === undefined ||
-								name === undefined
-							) {
-								throw invalidRequestError;
-							}
-
-							return await handlers.registerNfcCard.handle(
-								discordId,
-								code,
-								name,
-							);
-						}
-					}
-					throw invalidRequestError;
-				}
-				case "list":
-					return await handlers.listUsers.handle();
-				default:
-					throw invalidRequestError;
-			}
-		}
-		case "room-admin":
-			return notImplemented;
-		case "ping":
-			return {
-				type: InteractionResponseType.ChannelMessageWithSource,
-				data: {
-					content: "pong!",
-					flags: MessageFlags.Ephemeral,
-				},
-			};
-		default:
-			slashCommand.data satisfies never;
-			throw invalidRequestError;
-	}
+	return await response;
 }
