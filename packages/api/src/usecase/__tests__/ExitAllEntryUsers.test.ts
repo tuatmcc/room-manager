@@ -1,12 +1,14 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { describe, expect, it, vi } from "vitest";
 
-import { AppError, ERROR_CODE } from "@/error";
 import { RoomEntryLog } from "@/models/RoomEntryLog";
 import { User } from "@/models/User";
 import type { RoomEntryLogRepository } from "@/repositories/RoomEntryLogRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
-import { ExitAllEntryUsersUseCase } from "@/usecase/ExitAllEntryUsers";
+import {
+	ExitAllEntryUsersError,
+	ExitAllEntryUsersUseCase,
+} from "@/usecase/ExitAllEntryUsers";
 
 const createMockUserRepository = () => {
 	return {
@@ -47,7 +49,7 @@ describe("ExitAllEntryUsersUseCase", () => {
 		};
 	};
 
-	it("入室中のユーザーがいない場合はnullを返すこと", async () => {
+	it("入室中のユーザーがいない場合は空の配列を返すこと", async () => {
 		// セットアップ
 		const { useCase, roomEntryLogRepository } = setup();
 
@@ -60,13 +62,13 @@ describe("ExitAllEntryUsersUseCase", () => {
 		// 検証
 		expect(result.isOk()).toBe(true);
 		if (result.isOk()) {
-			expect(result.value).toBeNull();
+			expect(result.value).toEqual([]);
 		}
 		expect(roomEntryLogRepository.findAllEntry).toHaveBeenCalled();
 		expect(roomEntryLogRepository.setManyExitAt).not.toHaveBeenCalled();
 	});
 
-	it("入室中のユーザーがいる場合は全員を退出させて適切なメッセージを返すこと", async () => {
+	it("入室中のユーザーがいる場合は全員を退出させてユーザー一覧を返すこと", async () => {
 		// セットアップ
 		const { useCase, userRepository, roomEntryLogRepository } = setup();
 
@@ -91,12 +93,7 @@ describe("ExitAllEntryUsersUseCase", () => {
 		// 検証
 		expect(result.isOk()).toBe(true);
 		if (result.isOk()) {
-			expect(result.value).toEqual({
-				title: "自動退出",
-				description:
-					"以下のメンバーを自動的に退出させました。退出を忘れないようにしましょう！\n* <@discord-user-1>\n* <@discord-user-2>",
-				color: "red",
-			});
+			expect(result.value).toEqual(users);
 		}
 		expect(roomEntryLogRepository.findAllEntry).toHaveBeenCalled();
 		expect(roomEntryLogRepository.setManyExitAt).toHaveBeenCalledWith(
@@ -121,13 +118,8 @@ describe("ExitAllEntryUsersUseCase", () => {
 		// 検証
 		expect(result.isErr()).toBe(true);
 		if (result.isErr()) {
-			expect(result.error).toBeInstanceOf(AppError);
-			expect(result.error.errorCode).toBe(ERROR_CODE.UNKNOWN);
-			expect(result.error.userMessage).toEqual({
-				title: "自動退出に失敗しました",
-				description:
-					"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
-			});
+			expect(result.error).toBeInstanceOf(ExitAllEntryUsersError);
+			expect(result.error.meta.code).toBe("UNKNOWN");
 		}
 	});
 
@@ -152,13 +144,8 @@ describe("ExitAllEntryUsersUseCase", () => {
 		// 検証
 		expect(result.isErr()).toBe(true);
 		if (result.isErr()) {
-			expect(result.error).toBeInstanceOf(AppError);
-			expect(result.error.errorCode).toBe(ERROR_CODE.UNKNOWN);
-			expect(result.error.userMessage).toEqual({
-				title: "自動退出に失敗しました",
-				description:
-					"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
-			});
+			expect(result.error).toBeInstanceOf(ExitAllEntryUsersError);
+			expect(result.error.meta.code).toBe("UNKNOWN");
 		}
 	});
 });
