@@ -3,22 +3,20 @@ import { trace } from "@opentelemetry/api";
 import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
-import type { Env } from "@/env";
-import { AppError, ERROR_CODE } from "@/error";
-import type { Message } from "@/message";
+import { AppError } from "@/error";
+import type { UnknownNfcCard } from "@/models/UnknownNfcCard";
 import type { User } from "@/models/User";
 import type { RoomEntryLogRepository } from "@/repositories/RoomEntryLogRepository";
 import type { UnknownNfcCardRepository } from "@/repositories/UnknownNfcCardRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
-import type { DiscordService } from "@/services/DiscordService";
 import { tracer } from "@/trace";
 
 export type TouchCardStatus = "entry" | "exit";
 
-export interface TouchCardResponse {
+export interface TouchCardResult {
 	status: TouchCardStatus;
 	entries: number;
-	message: Message;
+	user: User;
 }
 
 export class TouchCardUseCase {
@@ -26,8 +24,6 @@ export class TouchCardUseCase {
 		private readonly userRepository: UserRepository,
 		private readonly unknownNfcCardRepository: UnknownNfcCardRepository,
 		private readonly roomEntryLogRepository: RoomEntryLogRepository,
-		private readonly discordService: DiscordService,
-		private readonly env: Env,
 	) {}
 
 	async execute({
@@ -36,7 +32,7 @@ export class TouchCardUseCase {
 	}: {
 		idm: string;
 		studentId?: number;
-	}): Promise<Result<TouchCardResponse, AppError>> {
+	}): Promise<Result<TouchCardResult, TouchCardError>> {
 		return await tracer.startActiveSpan(
 			"room_manager.usecase.touch_card",
 			{
@@ -48,27 +44,26 @@ export class TouchCardUseCase {
 			async (span) => {
 				try {
 					// ユーザーを特定
-					const userResult = await this.findUser(idm, studentId);
+					const userResult =
+						studentId != null
+							? await this.findUserByStudentId(studentId)
+							: await this.findUserByNfcIdm(idm);
 					if (userResult.isErr()) {
 						return err(userResult.error);
 					}
 					const user = userResult.value;
-					span.setAttribute("room_manager.user.id", user.id);
-					span.setAttribute("room_manager.user.discord_id", user.discordId);
+					user.setAttributes();
 
 					// 入退室処理を実行
-					const response = await this.toggleUserRoomPresence(user);
+					const result = await this.toggleUserRoomPresence(user);
 
-					return ok(response);
+					return ok(result);
 				} catch (caughtError) {
 					const cause = caughtError instanceof Error ? caughtError : undefined;
-					const error = new AppError("Failed to touch card.", {
+					const error = new TouchCardError("Failed to touch card.", {
 						cause,
-						errorCode: ERROR_CODE.UNKNOWN,
-						userMessage: {
-							title: "入退出に失敗しました",
-							description:
-								"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
+						meta: {
+							code: "UNKNOWN",
 						},
 					});
 
@@ -81,26 +76,15 @@ export class TouchCardUseCase {
 		);
 	}
 
-	private async findUser(
-		idm: string,
-		studentId?: number,
-	): Promise<Result<User, AppError>> {
-		return studentId != null
-			? await this.findUserByStudentId(studentId)
-			: await this.findUserByNfcIdm(idm);
-	}
-
 	private async findUserByStudentId(
 		studentId: number,
-	): Promise<Result<User, AppError>> {
+	): Promise<Result<User, TouchCardError>> {
 		const user = await this.userRepository.findByStudentId(studentId);
 		if (!user) {
 			return err(
-				new AppError("Student card not registered.", {
-					errorCode: ERROR_CODE.STUDENT_CARD_NOT_REGISTERED,
-					userMessage: {
-						title: `登録されていない学生証です`,
-						description: `</room register student-card:${this.env.DISCORD_ROOM_COMMAND_ID}> コマンドで学生証を登録してください。`,
+				new TouchCardError("Student card not registered.", {
+					meta: {
+						code: "STUDENT_CARD_NOT_REGISTERED",
 					},
 				}),
 			);
@@ -109,7 +93,9 @@ export class TouchCardUseCase {
 		return ok(user);
 	}
 
-	private async findUserByNfcIdm(idm: string): Promise<Result<User, AppError>> {
+	private async findUserByNfcIdm(
+		idm: string,
+	): Promise<Result<User, TouchCardError>> {
 		const user = await this.userRepository.findByNfcIdm(idm);
 		if (!user) {
 			const unknownNfcCard =
@@ -117,11 +103,10 @@ export class TouchCardUseCase {
 				(await this.unknownNfcCardRepository.create(idm));
 
 			return err(
-				new AppError("NFC card not registered.", {
-					errorCode: ERROR_CODE.NFC_CARD_NOT_REGISTERED,
-					userMessage: {
-						title: `登録されていないNFCカードです`,
-						description: `</room register nfc-card ${unknownNfcCard.code}:${this.env.DISCORD_ROOM_ADMIN_COMMAND_ID}> コマンドでNFCカードを登録してください。`,
+				new TouchCardError("NFC card not registered.", {
+					meta: {
+						code: "NFC_CARD_NOT_REGISTERED",
+						unknownNfcCard,
 					},
 				}),
 			);
@@ -130,13 +115,10 @@ export class TouchCardUseCase {
 		return ok(user);
 	}
 
-	private async toggleUserRoomPresence(user: User): Promise<TouchCardResponse> {
+	private async toggleUserRoomPresence(user: User): Promise<TouchCardResult> {
 		const span = trace.getActiveSpan();
 
 		const now = Temporal.Now.instant();
-		const { iconUrl, name } = await this.discordService.fetchUserInfo(
-			user.discordId,
-		);
 
 		const oldLastEntryLog =
 			await this.roomEntryLogRepository.findLastEntryByUserId(user.id);
@@ -144,68 +126,57 @@ export class TouchCardUseCase {
 		if (oldLastEntryLog) {
 			const newLastEntryLog = oldLastEntryLog.exitRoom(now);
 			await this.roomEntryLogRepository.save(newLastEntryLog);
-			span?.setAttributes({
-				"room_manager.room_entry_log.id": newLastEntryLog.id,
-				"room_manager.room_entry_log.entry_at":
-					newLastEntryLog.entryAt.toJSON(),
-				"room_manager.room_entry_log.exit_at": newLastEntryLog.exitAt?.toJSON(),
-			});
+			newLastEntryLog.setAttributes();
 
 			// 入室中のユーザーを取得
 			const entryUsers = await this.userRepository.findAllEntryUsers();
-			const description = this.buildEntryUsersMessage(entryUsers);
 			span?.setAttribute("room_manager.user.count", entryUsers.length);
 
 			return {
 				status: "exit",
 				entries: entryUsers.length,
-				message: {
-					author: "入退出通知",
-					title: `${name}さんが退出しました`,
-					description,
-					iconUrl,
-					color: "red",
-				},
+				user,
 			};
 		}
 
 		// 入室していない場合は入室ログを新規作成
 		const newEntryLog = await this.roomEntryLogRepository.create(user.id, now);
-		span?.setAttributes({
-			"room_manager.room_entry_log.id": newEntryLog.id,
-			"room_manager.room_entry_log.entry_at": newEntryLog.entryAt.toJSON(),
-			"room_manager.room_entry_log.exit_at": newEntryLog.exitAt?.toJSON(),
-		});
+		newEntryLog.setAttributes();
 
 		// 入室中のユーザーを取得
 		const entryUsers = await this.userRepository.findAllEntryUsers();
-		const description = this.buildEntryUsersMessage(entryUsers);
 		span?.setAttribute("room_manager.user.count", entryUsers.length);
 
 		return {
 			status: "entry",
 			entries: entryUsers.length,
-			message: {
-				author: "入退出通知",
-				title: `${name}さんが入室しました`,
-				description,
-				iconUrl,
-				color: "green",
-			},
+			user,
 		};
 	}
+}
 
-	private buildEntryUsersMessage(users: User[]): string {
-		const memberCount =
-			users.length === 0
-				? "部室には誰も居ません"
-				: `${users.length}人が入室中です`;
+type ErrorMeta =
+	| {
+			code: "STUDENT_CARD_NOT_REGISTERED";
+	  }
+	| {
+			code: "NFC_CARD_NOT_REGISTERED";
+			unknownNfcCard: UnknownNfcCard;
+	  }
+	| {
+			code: "UNKNOWN";
+	  };
 
-		const nowEpochSeconds = Math.floor(
-			Temporal.Now.instant().epochMilliseconds / 1000,
-		);
-		const timestamp = `-# <t:${nowEpochSeconds}:R>`;
+interface TouchCardErrorOptions extends ErrorOptions {
+	meta: ErrorMeta;
+}
 
-		return `${memberCount}\n\n${timestamp}`;
+export class TouchCardError extends AppError {
+	meta: ErrorMeta;
+
+	constructor(message: string, { meta, ...options }: TouchCardErrorOptions) {
+		super(message, options);
+
+		this.meta = meta;
 	}
 }
