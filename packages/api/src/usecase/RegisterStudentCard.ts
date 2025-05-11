@@ -1,13 +1,16 @@
 import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
-import { AppError, ERROR_CODE } from "@/error";
-import type { Message } from "@/message";
+import { AppError } from "@/error";
 import { StudentCard } from "@/models/StudentCard";
 import { User } from "@/models/User";
 import type { StudentCardRepository } from "@/repositories/StudentCardRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
 import { tracer } from "@/trace";
+
+export interface RegisterStudentCardResult {
+	status: "created" | "updated";
+}
 
 export class RegisterStudentCardUseCase {
 	constructor(
@@ -18,7 +21,7 @@ export class RegisterStudentCardUseCase {
 	async execute(
 		discordId: string,
 		studentId: number,
-	): Promise<Result<Message, AppError>> {
+	): Promise<Result<RegisterStudentCardResult, RegisterStudentCardError>> {
 		return await tracer.startActiveSpan(
 			"room_manager.usecase.register_student_card",
 			{
@@ -27,7 +30,11 @@ export class RegisterStudentCardUseCase {
 					[StudentCard.ATTRIBUTES.STUDENT_ID]: studentId,
 				},
 			},
-			async (span) => {
+			async (
+				span,
+			): Promise<
+				Result<RegisterStudentCardResult, RegisterStudentCardError>
+			> => {
 				try {
 					const user =
 						(await this.userRepository.findByDiscordId(discordId)) ??
@@ -37,11 +44,9 @@ export class RegisterStudentCardUseCase {
 					// すでに登録されている学生証番号は登録できない
 					if (await this.studentCardRepository.findByStudentId(studentId)) {
 						return err(
-							new AppError("Student card already registered.", {
-								errorCode: ERROR_CODE.STUDENT_CARD_ALREADY_REGISTERED,
-								userMessage: {
-									title: "学生証の登録に失敗しました",
-									description: "すでに登録されている学生証番号です。",
+							new RegisterStudentCardError("Student card already registered.", {
+								meta: {
+									code: "STUDENT_CARD_ALREADY_REGISTERED",
 								},
 							}),
 						);
@@ -57,11 +62,7 @@ export class RegisterStudentCardUseCase {
 							user.id,
 						);
 						newStudentCard.setAttributes();
-						return ok({
-							title: "学生証の登録が完了しました🎉",
-							description:
-								"学生証をリーダーにタッチすることで入退出が可能です。",
-						});
+						return ok({ status: "created" });
 					}
 
 					// 学籍番号を更新
@@ -69,22 +70,18 @@ export class RegisterStudentCardUseCase {
 					await this.studentCardRepository.save(newStudentCard);
 					newStudentCard.setAttributes();
 
-					return ok({
-						title: "学生証の登録が完了しました🎉",
-						description:
-							"学生証をリーダーにタッチすることで入退出が可能です。なお元の学生証は無効になります。",
-					});
+					return ok({ status: "updated" });
 				} catch (caughtError) {
 					const cause = caughtError instanceof Error ? caughtError : undefined;
-					const error = new AppError("Failed to register student card.", {
-						cause,
-						errorCode: ERROR_CODE.UNKNOWN,
-						userMessage: {
-							title: "学生証の登録に失敗しました",
-							description:
-								"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
+					const error = new RegisterStudentCardError(
+						"Failed to register student card.",
+						{
+							cause,
+							meta: {
+								code: "UNKNOWN",
+							},
 						},
-					});
+					);
 
 					span.recordException(error);
 					return err(error);
@@ -93,5 +90,30 @@ export class RegisterStudentCardUseCase {
 				}
 			},
 		);
+	}
+}
+
+type ErrorMeta =
+	| {
+			code: "STUDENT_CARD_ALREADY_REGISTERED";
+	  }
+	| {
+			code: "UNKNOWN";
+	  };
+
+interface RegisterStudentCardErrorOptions extends ErrorOptions {
+	meta: ErrorMeta;
+}
+
+export class RegisterStudentCardError extends AppError {
+	meta: ErrorMeta;
+
+	constructor(
+		message: string,
+		{ meta, ...options }: RegisterStudentCardErrorOptions,
+	) {
+		super(message, options);
+
+		this.meta = meta;
 	}
 }

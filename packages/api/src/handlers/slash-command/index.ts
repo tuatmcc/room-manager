@@ -6,7 +6,8 @@ import { InteractionResponseType, MessageFlags } from "discord-api-types/v10";
 import { HTTPException } from "hono/http-exception";
 import { match, P } from "ts-pattern";
 
-import { convertMessageToEmbed, parseCommand } from "@/discord";
+import { colorToHex, parseCommand } from "@/discord";
+import type { Services } from "@/services";
 import type { UseCases } from "@/usecase";
 
 import { ListUsersHandler } from "./list-users";
@@ -22,10 +23,11 @@ export interface SlashCommandHandlers {
 
 export function createSlashCommandHandlers(
 	usecases: UseCases,
+	services: Services,
 ): SlashCommandHandlers {
 	return {
 		ping: new PingHandler(),
-		listUsers: new ListUsersHandler(usecases.listEntryUsers),
+		listUsers: new ListUsersHandler(usecases.listEntryUsers, services.discord),
 		registerStudentCard: new RegisterStudentCardHandler(
 			usecases.registerStudentCard,
 		),
@@ -37,11 +39,11 @@ const NOT_IMPLEMENTED: APIInteractionResponse = {
 	type: InteractionResponseType.ChannelMessageWithSource,
 	data: {
 		embeds: [
-			convertMessageToEmbed({
+			{
 				title: "エラー",
 				description: "このコマンドは未実装です。",
-				color: "red",
-			}),
+				color: colorToHex("red"),
+			},
 		],
 		flags: MessageFlags.Ephemeral,
 	},
@@ -52,11 +54,11 @@ function handleUnknownCommand(dataJSON: string): APIInteractionResponse {
 		type: InteractionResponseType.ChannelMessageWithSource,
 		data: {
 			embeds: [
-				convertMessageToEmbed({
+				{
 					title: "エラー",
 					description: `未知のコマンドです。不具合の可能性が高いため、開発者にお問い合わせください。\n\n該当のJSON:\n\`\`\`json\n${dataJSON}\`\`\``,
-					color: "red",
-				}),
+					color: colorToHex("red"),
+				},
 			],
 			flags: MessageFlags.Ephemeral,
 		},

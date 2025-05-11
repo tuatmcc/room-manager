@@ -2,11 +2,15 @@ import { Temporal } from "@js-temporal/polyfill";
 import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
-import { AppError, ERROR_CODE } from "@/error";
-import type { Message } from "@/message";
+import { AppError } from "@/error";
+import type { User } from "@/models/User";
 import type { RoomEntryLogRepository } from "@/repositories/RoomEntryLogRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
 import { tracer } from "@/trace";
+
+export interface ExitAllEntryUsersResult {
+	users: User[];
+}
 
 export class ExitAllEntryUsersUseCase {
 	constructor(
@@ -14,10 +18,14 @@ export class ExitAllEntryUsersUseCase {
 		private readonly roomEntryLogRepository: RoomEntryLogRepository,
 	) {}
 
-	async execute(): Promise<Result<Message | null, AppError>> {
+	async execute(): Promise<
+		Result<ExitAllEntryUsersResult, ExitAllEntryUsersError>
+	> {
 		return await tracer.startActiveSpan(
 			"room_manager.usecase.exit_all_entry_users",
-			async (span): Promise<Result<Message | null, AppError>> => {
+			async (
+				span,
+			): Promise<Result<ExitAllEntryUsersResult, ExitAllEntryUsersError>> => {
 				try {
 					const entryLogs = await this.roomEntryLogRepository.findAllEntry();
 					span.setAttribute(
@@ -25,7 +33,7 @@ export class ExitAllEntryUsersUseCase {
 						entryLogs.length,
 					);
 					if (entryLogs.length === 0) {
-						return ok(null);
+						return ok({ users: [] });
 					}
 
 					const now = Temporal.Now.instant();
@@ -38,28 +46,18 @@ export class ExitAllEntryUsersUseCase {
 						entryLogs.map((log) => log.userId),
 					);
 
-					const title = "自動退出";
-					const description = [
-						"以下のメンバーを自動的に退出させました。退出を忘れないようにしましょう！",
-						...users.map((user) => `* <@${user.discordId}>`),
-					].join("\n");
-
-					return ok({
-						title,
-						description,
-						color: "red",
-					});
+					return ok({ users });
 				} catch (caughtError) {
 					const cause = caughtError instanceof Error ? caughtError : undefined;
-					const error = new AppError("Failed to register nfc card.", {
-						cause,
-						errorCode: ERROR_CODE.UNKNOWN,
-						userMessage: {
-							title: "自動退出に失敗しました",
-							description:
-								"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
+					const error = new ExitAllEntryUsersError(
+						"Failed to exit all entry users.",
+						{
+							cause,
+							meta: {
+								code: "UNKNOWN",
+							},
 						},
-					});
+					);
 
 					span.recordException(error);
 					return err(error);
@@ -68,5 +66,26 @@ export class ExitAllEntryUsersUseCase {
 				}
 			},
 		);
+	}
+}
+
+interface ErrorMeta {
+	code: "UNKNOWN";
+}
+
+interface ExitAllEntryUsersErrorOptions extends ErrorOptions {
+	meta: ErrorMeta;
+}
+
+export class ExitAllEntryUsersError extends AppError {
+	meta: ErrorMeta;
+
+	constructor(
+		message: string,
+		{ meta, ...options }: ExitAllEntryUsersErrorOptions,
+	) {
+		super(message, options);
+
+		this.meta = meta;
 	}
 }

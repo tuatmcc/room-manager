@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { AppError, ERROR_CODE } from "@/error";
+import { AppError } from "@/error";
 import { NfcCard } from "@/models/NfcCard";
 import { UnknownNfcCard } from "@/models/UnknownNfcCard";
 import { User } from "@/models/User";
@@ -88,12 +88,6 @@ describe("RegisterNfcCardUseCase", () => {
 
 		// 検証
 		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			expect(result.value).toEqual({
-				title: "NFCカードの登録が完了しました🎉",
-				description: "NFCカードをリーダーにタッチすることで入退出が可能です。",
-			});
-		}
 		expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
 		expect(userRepository.create).toHaveBeenCalledWith(discordId);
 		expect(unknownNfcCardRepository.findByCode).toHaveBeenCalledWith(code);
@@ -133,12 +127,6 @@ describe("RegisterNfcCardUseCase", () => {
 
 		// 検証
 		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			expect(result.value).toEqual({
-				title: "NFCカードの登録が完了しました🎉",
-				description: "NFCカードをリーダーにタッチすることで入退出が可能です。",
-			});
-		}
 		expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
 		expect(userRepository.create).not.toHaveBeenCalled();
 		expect(unknownNfcCardRepository.findByCode).toHaveBeenCalledWith(code);
@@ -172,11 +160,7 @@ describe("RegisterNfcCardUseCase", () => {
 		expect(result.isErr()).toBe(true);
 		if (result.isErr()) {
 			expect(result.error).toBeInstanceOf(AppError);
-			expect(result.error.errorCode).toBe(ERROR_CODE.UNKNOWN_NFC_CARD);
-			expect(result.error.userMessage).toEqual({
-				title: "NFCカードの登録に失敗しました",
-				description: "不明なNFCカードです。",
-			});
+			expect(result.error.meta.code).toBe("NFC_CARD_NOT_FOUND");
 		}
 	});
 
@@ -212,13 +196,7 @@ describe("RegisterNfcCardUseCase", () => {
 		expect(result.isErr()).toBe(true);
 		if (result.isErr()) {
 			expect(result.error).toBeInstanceOf(AppError);
-			expect(result.error.errorCode).toBe(
-				ERROR_CODE.NFC_CARD_ALREADY_REGISTERED,
-			);
-			expect(result.error.userMessage).toEqual({
-				title: "NFCカードの登録に失敗しました",
-				description: "すでに登録されているNFCカードです。",
-			});
+			expect(result.error.meta.code).toBe("NFC_CARD_ALREADY_REGISTERED");
 		}
 	});
 
@@ -239,12 +217,7 @@ describe("RegisterNfcCardUseCase", () => {
 		expect(result.isErr()).toBe(true);
 		if (result.isErr()) {
 			expect(result.error).toBeInstanceOf(AppError);
-			expect(result.error.errorCode).toBe(ERROR_CODE.UNKNOWN);
-			expect(result.error.userMessage).toEqual({
-				title: "NFCカードの登録に失敗しました",
-				description:
-					"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
-			});
+			expect(result.error.meta.code).toBe("UNKNOWN");
 		}
 	});
 });

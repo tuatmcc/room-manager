@@ -1,7 +1,6 @@
 import type { Env } from "@/env";
 
-import type { DiscordService } from "./DiscordService";
-import { ApiDiscordService } from "./DiscordService";
+import { DiscordService } from "./DiscordService";
 
 export interface Services {
 	discord: DiscordService;
@@ -9,7 +8,7 @@ export interface Services {
 
 export function createServices(env: Env): Services {
 	return {
-		discord: new ApiDiscordService(
+		discord: new DiscordService(
 			env.KV,
 			env.DISCORD_BOT_TOKEN,
 			env.DISCORD_GUILD_ID,
