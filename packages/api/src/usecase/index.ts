@@ -1,6 +1,4 @@
-import type { Env } from "@/env";
 import type { Repositories } from "@/repositories";
-import type { Services } from "@/services";
 
 import { ExitAllEntryUsersUseCase } from "./ExitAllEntryUsers";
 import { ListEntryUsersUseCase } from "./ListEntryUsers";
@@ -16,20 +14,13 @@ export interface UseCases {
 	touchCard: TouchCardUseCase;
 }
 
-export function createUseCases(
-	repositories: Repositories,
-	services: Services,
-	env: Env,
-): UseCases {
+export function createUseCases(repositories: Repositories): UseCases {
 	return {
 		exitAllEntryUsers: new ExitAllEntryUsersUseCase(
 			repositories.user,
 			repositories.roomEntryLog,
 		),
-		listEntryUsers: new ListEntryUsersUseCase(
-			repositories.user,
-			services.discord,
-		),
+		listEntryUsers: new ListEntryUsersUseCase(repositories.user),
 		registerStudentCard: new RegisterStudentCardUseCase(
 			repositories.user,
 			repositories.studentCard,
@@ -43,8 +34,6 @@ export function createUseCases(
 			repositories.user,
 			repositories.unknownNfcCard,
 			repositories.roomEntryLog,
-			services.discord,
-			env,
 		),
 	};
 }

@@ -52,7 +52,7 @@ const app = new Hono<AppEnv>()
 		const db = drizzle(env.DB, { schema });
 		const repositories = createRepositories(db);
 		const services = createServices(env);
-		const usecases = createUseCases(repositories, services, env);
+		const usecases = createUseCases(repositories);
 
 		c.set("env", env);
 		c.set("usecases", usecases);
@@ -83,14 +83,20 @@ const app = new Hono<AppEnv>()
 	.post("/local-device/touch-card", async (c) => {
 		const usecases = c.get("usecases");
 		const services = c.get("services");
-		const localDeviceHandlers = createLocalDeviceHandlers(usecases, services);
+		const env = c.get("env");
+		const localDeviceHandlers = createLocalDeviceHandlers(
+			usecases,
+			services,
+			env,
+		);
 
 		const res = await localDeviceHandlers.touchCard.handle(c);
 		return res;
 	})
 	.post("/interaction", interactionVerifier, async (c) => {
 		const usecases = c.get("usecases");
-		const slashCommandHandlers = createSlashCommandHandlers(usecases);
+		const services = c.get("services");
+		const slashCommandHandlers = createSlashCommandHandlers(usecases, services);
 
 		const interaction: APIInteraction = await c.req.json();
 
@@ -124,7 +130,7 @@ const scheduled: ExportedHandlerScheduledHandler = (
 	const db = drizzle(env.DB, { schema });
 	const repositories = createRepositories(db);
 	const services = createServices(env);
-	const usecases = createUseCases(repositories, services, env);
+	const usecases = createUseCases(repositories);
 	const handlers = createScheduledHandlers(usecases, services);
 
 	ctx.waitUntil(handlers.exitAllEntryUsers.handle());
