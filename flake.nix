@@ -7,7 +7,7 @@
 # in your .envrc file.
 #
 {
-  description = "A basic flake to with flake-parts";
+  description = "A basic flake using flake-parts";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixpkgs-unstable";
