@@ -56,6 +56,9 @@ importers:
       neverthrow:
         specifier: 8.2.0
         version: 8.2.0
+      ts-pattern:
+        specifier: 5.7.0
+        version: 5.7.0
       zod:
         specifier: 3.24.3
         version: 3.24.3
@@ -3045,6 +3048,9 @@ packages:
 
   ts-mixer@6.0.4:
     resolution: {integrity: sha512-ufKpbmrugz5Aou4wcr5Wc1UUFWOLhq+Fm6qa6P0w0K5Qw2yhaUoiWszhCVuNQyNwrlGiscHOmqYoAox1PtvgjA==}
+
+  ts-pattern@5.7.0:
+    resolution: {integrity: sha512-0/FvIG4g3kNkYgbNwBBW5pZBkfpeYQnH+2AA3xmjkCAit/DSDPKmgwC3fKof4oYUq6gupClVOJlFl+939VRBMg==}
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
@@ -6433,6 +6439,8 @@ snapshots:
   ts-dedent@2.2.0: {}
 
   ts-mixer@6.0.4: {}
+
+  ts-pattern@5.7.0: {}
 
   tslib@2.8.1: {}
 
