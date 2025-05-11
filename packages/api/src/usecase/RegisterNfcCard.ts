@@ -1,8 +1,7 @@
 import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
-import { AppError, ERROR_CODE } from "@/error";
-import type { Message } from "@/message";
+import { AppError } from "@/error";
 import { NfcCard } from "@/models/NfcCard";
 import { UnknownNfcCard } from "@/models/UnknownNfcCard";
 import { User } from "@/models/User";
@@ -22,7 +21,7 @@ export class RegisterNfcCardUseCase {
 		discordId: string,
 		code: string,
 		name: string,
-	): Promise<Result<Message, AppError>> {
+	): Promise<Result<void, RegisterNfcCardError>> {
 		return await tracer.startActiveSpan(
 			"room_manager.usecase.register_nfc_card",
 			{
@@ -32,7 +31,7 @@ export class RegisterNfcCardUseCase {
 					[NfcCard.ATTRIBUTES.NAME]: name,
 				},
 			},
-			async (span): Promise<Result<Message, AppError>> => {
+			async (span) => {
 				try {
 					const user =
 						(await this.userRepository.findByDiscordId(discordId)) ??
@@ -44,11 +43,9 @@ export class RegisterNfcCardUseCase {
 					unknownNfcCard?.setAttributes();
 					if (!unknownNfcCard) {
 						return err(
-							new AppError("Unknown NFC card.", {
-								errorCode: ERROR_CODE.UNKNOWN_NFC_CARD,
-								userMessage: {
-									title: "NFCカードの登録に失敗しました",
-									description: "不明なNFCカードです。",
+							new RegisterNfcCardError("Unknown NFC card.", {
+								meta: {
+									code: "NFC_CARD_NOT_FOUND",
 								},
 							}),
 						);
@@ -57,11 +54,9 @@ export class RegisterNfcCardUseCase {
 					// すでに登録されているNFCカードは登録できない
 					if (await this.nfcCardRepository.findByIdm(unknownNfcCard.idm)) {
 						return err(
-							new AppError("NFC card already registered.", {
-								errorCode: ERROR_CODE.NFC_CARD_ALREADY_REGISTERED,
-								userMessage: {
-									title: "NFCカードの登録に失敗しました",
-									description: "すでに登録されているNFCカードです。",
+							new RegisterNfcCardError("NFC card already registered.", {
+								meta: {
+									code: "NFC_CARD_ALREADY_REGISTERED",
 								},
 							}),
 						);
@@ -77,22 +72,18 @@ export class RegisterNfcCardUseCase {
 					);
 					nfcCard.setAttributes();
 
-					return ok({
-						title: "NFCカードの登録が完了しました🎉",
-						description:
-							"NFCカードをリーダーにタッチすることで入退出が可能です。",
-					});
+					return ok();
 				} catch (caughtError) {
 					const cause = caughtError instanceof Error ? caughtError : undefined;
-					const error = new AppError("Failed to register nfc card.", {
-						cause,
-						errorCode: ERROR_CODE.UNKNOWN,
-						userMessage: {
-							title: "NFCカードの登録に失敗しました",
-							description:
-								"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
+					const error = new RegisterNfcCardError(
+						"Failed to register nfc card.",
+						{
+							cause,
+							meta: {
+								code: "UNKNOWN",
+							},
 						},
-					});
+					);
 
 					span.recordException(error);
 					return err(error);
@@ -101,5 +92,33 @@ export class RegisterNfcCardUseCase {
 				}
 			},
 		);
+	}
+}
+
+type ErrorMeta =
+	| {
+			code: "NFC_CARD_ALREADY_REGISTERED";
+	  }
+	| {
+			code: "NFC_CARD_NOT_FOUND";
+	  }
+	| {
+			code: "UNKNOWN";
+	  };
+
+interface RegisterNfcCardErrorOptions extends ErrorOptions {
+	meta: ErrorMeta;
+}
+
+export class RegisterNfcCardError extends AppError {
+	meta: ErrorMeta;
+
+	constructor(
+		message: string,
+		{ meta, ...options }: RegisterNfcCardErrorOptions,
+	) {
+		super(message, options);
+
+		this.meta = meta;
 	}
 }
