@@ -6,15 +6,7 @@ import type {
 } from "discord-api-types/v10";
 import { Routes } from "discord-api-types/v10";
 
-import { convertMessageToEmbed } from "@/discord";
-import type { Message } from "@/message";
-
-export interface DiscordService {
-	fetchUserInfo(userId: string): Promise<{ iconUrl: string; name: string }>;
-	sendMessage(message: Message, type?: "error"): Promise<void>;
-}
-
-export class ApiDiscordService implements DiscordService {
+export class DiscordService {
 	private readonly restClient: REST;
 
 	constructor(
@@ -52,13 +44,9 @@ export class ApiDiscordService implements DiscordService {
 		return value;
 	}
 
-	async sendMessage(message: Message, type?: "error"): Promise<void> {
-		const body: RESTPostAPIChannelMessageJSONBody = {
-			embeds: [convertMessageToEmbed(message, type)],
-		};
-
+	async sendMessage(message: RESTPostAPIChannelMessageJSONBody): Promise<void> {
 		await this.restClient.post(Routes.channelMessages(this.channelId), {
-			body,
+			body: message,
 		});
 	}
 
