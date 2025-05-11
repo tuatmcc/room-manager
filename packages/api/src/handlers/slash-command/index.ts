@@ -47,7 +47,7 @@ const NOT_IMPLEMENTED: APIInteractionResponse = {
 	},
 };
 
-function notHandled(dataJSON: string): APIInteractionResponse {
+function handleUnknownCommand(dataJSON: string): APIInteractionResponse {
 	return {
 		type: InteractionResponseType.ChannelMessageWithSource,
 		data: {
@@ -107,7 +107,9 @@ export async function handleSlashCommand(
 			},
 			() => NOT_IMPLEMENTED,
 		)
-		.with(P._, () => notHandled(JSON.stringify(interaction.data, null, 2)))
+		.with(P._, () =>
+			handleUnknownCommand(JSON.stringify(interaction.data, null, 2)),
+		)
 		.exhaustive();
 
 	return await response;
