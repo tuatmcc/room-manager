@@ -10,6 +10,7 @@ import type {
 	ExitAllEntryUsersResult,
 	ExitAllEntryUsersUseCase,
 } from "@/usecase/ExitAllEntryUsers";
+import type { MaybePromise } from "@/utils";
 
 export class ExitAllEntryUsersHandler {
 	constructor(
@@ -20,7 +21,7 @@ export class ExitAllEntryUsersHandler {
 	async handle(): Promise<void> {
 		const result = await this.usecase.execute();
 
-		const embed = await result.match<Promise<APIEmbed | null> | APIEmbed>(
+		const embed = await result.match<MaybePromise<APIEmbed | null>>(
 			async (result) => await this.handleSuccess(result),
 			(error) => this.handleError(error),
 		);

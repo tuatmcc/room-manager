@@ -8,6 +8,7 @@ import type {
 	ListEntryUsersResult,
 	ListEntryUsersUseCase,
 } from "@/usecase/ListEntryUsers";
+import type { MaybePromise } from "@/utils";
 
 export class ListUsersHandler {
 	constructor(
@@ -18,7 +19,7 @@ export class ListUsersHandler {
 	async handle(): Promise<APIInteractionResponse> {
 		const result = await this.usecase.execute();
 
-		const embed = await result.match<Promise<APIEmbed> | APIEmbed>(
+		const embed = await result.match<MaybePromise<APIEmbed>>(
 			async (result) => await this.handleSuccess(result),
 			(error) => this.handleError(error),
 		);

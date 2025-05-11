@@ -14,6 +14,7 @@ import type {
 	TouchCardResult,
 	TouchCardUseCase,
 } from "@/usecase/TouchCard";
+import type { MaybePromise } from "@/utils";
 
 import type { LocalDeviceHandler } from ".";
 
@@ -53,8 +54,7 @@ export class TouchCardHandler implements LocalDeviceHandler {
 		const result = await this.usecase.execute({ idm, studentId });
 
 		const { embed, response } = await result.match<
-			| Promise<{ embed: APIEmbed; response: TouchCardResponse }>
-			| { embed: APIEmbed; response: TouchCardResponse }
+			MaybePromise<{ embed: APIEmbed; response: TouchCardResponse }>
 		>(
 			async (res) => {
 				return await this.handleSuccess(res);
