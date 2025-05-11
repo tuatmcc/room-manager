@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { AppError, ERROR_CODE } from "@/error";
 import { StudentCard } from "@/models/StudentCard";
 import { User } from "@/models/User";
 import type { StudentCardRepository } from "@/repositories/StudentCardRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
-import { RegisterStudentCardUseCase } from "@/usecase/RegisterStudentCard";
+import {
+	RegisterStudentCardError,
+	RegisterStudentCardUseCase,
+} from "@/usecase/RegisterStudentCard";
 
 const createMockUserRepository = () => {
 	return {
@@ -66,12 +68,6 @@ describe("RegisterStudentCardUseCase", () => {
 
 		// 検証
 		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			expect(result.value).toEqual({
-				title: "学生証の登録が完了しました🎉",
-				description: "学生証をリーダーにタッチすることで入退出が可能です。",
-			});
-		}
 		expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
 		expect(userRepository.create).toHaveBeenCalledWith(discordId);
 		expect(studentCardRepository.findByStudentId).toHaveBeenCalledWith(
@@ -106,12 +102,6 @@ describe("RegisterStudentCardUseCase", () => {
 
 		// 検証
 		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			expect(result.value).toEqual({
-				title: "学生証の登録が完了しました🎉",
-				description: "学生証をリーダーにタッチすることで入退出が可能です。",
-			});
-		}
 		expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
 		expect(userRepository.create).not.toHaveBeenCalled();
 		expect(studentCardRepository.findByStudentId).toHaveBeenCalledWith(
@@ -155,13 +145,6 @@ describe("RegisterStudentCardUseCase", () => {
 
 		// 検証
 		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			expect(result.value).toEqual({
-				title: "学生証の登録が完了しました🎉",
-				description:
-					"学生証をリーダーにタッチすることで入退出が可能です。なお元の学生証は無効になります。",
-			});
-		}
 		expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
 		expect(studentCardRepository.findByStudentId).toHaveBeenCalledWith(
 			newStudentId,
@@ -193,15 +176,13 @@ describe("RegisterStudentCardUseCase", () => {
 		// 検証
 		expect(result.isErr()).toBe(true);
 		if (result.isErr()) {
-			expect(result.error).toBeInstanceOf(AppError);
-			expect(result.error.errorCode).toBe(
-				ERROR_CODE.STUDENT_CARD_ALREADY_REGISTERED,
-			);
-			expect(result.error.userMessage).toEqual({
-				title: "学生証の登録に失敗しました",
-				description: "すでに登録されている学生証番号です。",
-			});
+			expect(result.error).toBeInstanceOf(RegisterStudentCardError);
+			expect(result.error.meta.code).toBe("STUDENT_CARD_ALREADY_REGISTERED");
 		}
+		expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
+		expect(studentCardRepository.findByStudentId).toHaveBeenCalledWith(
+			duplicateStudentId,
+		);
 	});
 
 	it("例外が発生した場合にエラーを返すこと", async () => {
@@ -219,13 +200,8 @@ describe("RegisterStudentCardUseCase", () => {
 		// 検証
 		expect(result.isErr()).toBe(true);
 		if (result.isErr()) {
-			expect(result.error).toBeInstanceOf(AppError);
-			expect(result.error.errorCode).toBe(ERROR_CODE.UNKNOWN);
-			expect(result.error.userMessage).toEqual({
-				title: "学生証の登録に失敗しました",
-				description:
-					"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
-			});
+			expect(result.error).toBeInstanceOf(RegisterStudentCardError);
+			expect(result.error.meta.code).toBe("UNKNOWN");
 		}
 	});
 });
