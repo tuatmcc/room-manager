@@ -1,10 +1,7 @@
 use std::{pin::Pin, sync::Arc, time::Duration};
 
 use crate::domain::DoorLock;
-use rppal::{
-    gpio::{Gpio, OutputPin},
-    pwm::{Channel, Polarity, Pwm},
-};
+use rppal::gpio::{Gpio, OutputPin};
 use tokio::{
     sync::{Mutex, mpsc},
     time::{self, Sleep},
@@ -12,9 +9,9 @@ use tokio::{
 
 const SERVO_PIN: u8 = 18;
 const SERVO_PERIOD: Duration = Duration::from_millis(20);
-// 0.5ms ~ 2.4ms
+// 0.5ms ~ 2.5ms
 const SERVO_MIN_DUTY_CYCLE: Duration = Duration::from_micros(500);
-const SERVO_MAX_DUTY_CYCLE: Duration = Duration::from_micros(2400);
+const SERVO_MAX_DUTY_CYCLE: Duration = Duration::from_micros(2500);
 
 const SERVO_MOVE_WAIT_TIME: Duration = Duration::from_secs(1);
 const AUTO_LOCK_DELAY: Duration = Duration::from_secs(10);
@@ -43,11 +40,9 @@ impl DoorLockInternal {
             return Ok(());
         }
 
-        self.output_pin
-            .set_pwm(SERVO_PERIOD, Duration::from_micros(500))?;
+        self.set_unlock_angle()?;
         time::sleep(SERVO_MOVE_WAIT_TIME).await;
-        self.output_pin
-            .set_pwm(SERVO_PERIOD, Duration::from_micros(1500))?;
+        self.set_neutral_angle()?;
         time::sleep(SERVO_MOVE_WAIT_TIME).await;
         self.output_pin.clear_pwm()?;
         self.is_unlocked = true;
@@ -60,11 +55,9 @@ impl DoorLockInternal {
             return Ok(());
         }
 
-        self.output_pin
-            .set_pwm(SERVO_PERIOD, Duration::from_micros(2500))?;
+        self.set_lock_angle()?;
         time::sleep(SERVO_MOVE_WAIT_TIME).await;
-        self.output_pin
-            .set_pwm(SERVO_PERIOD, Duration::from_micros(1500))?;
+        self.set_neutral_angle()?;
         time::sleep(SERVO_MOVE_WAIT_TIME).await;
         self.output_pin.clear_pwm()?;
         self.is_unlocked = false;
@@ -72,12 +65,28 @@ impl DoorLockInternal {
         Ok(())
     }
 
-    // angle: -90 ~ 90
-    fn set_angle(&mut self, angle: f64) -> anyhow::Result<()> {
-        let duty_cycle = (SERVO_MIN_DUTY_CYCLE + (SERVO_MAX_DUTY_CYCLE - SERVO_MIN_DUTY_CYCLE))
-            .mul_f64((angle + 90.0) / 180.0);
+    // 180度にセット
+    fn set_lock_angle(&mut self) -> anyhow::Result<()> {
+        self.output_pin
+            .set_pwm(SERVO_PERIOD, SERVO_MAX_DUTY_CYCLE)?;
 
-        self.output_pin.set_pwm(SERVO_PERIOD, duty_cycle)?;
+        Ok(())
+    }
+
+    // 0度にセット
+    fn set_unlock_angle(&mut self) -> anyhow::Result<()> {
+        self.output_pin
+            .set_pwm(SERVO_PERIOD, SERVO_MIN_DUTY_CYCLE)?;
+
+        Ok(())
+    }
+
+    // 90度にセット
+    fn set_neutral_angle(&mut self) -> anyhow::Result<()> {
+        self.output_pin.set_pwm(
+            SERVO_PERIOD,
+            (SERVO_MIN_DUTY_CYCLE + SERVO_MAX_DUTY_CYCLE) / 2,
+        )?;
 
         Ok(())
     }
