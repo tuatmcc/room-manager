@@ -1,5 +1,7 @@
 pub mod entities;
 
+pub use entities::*;
+
 pub trait CardApi {
     async fn touch(&self, req: TouchCardRequest) -> anyhow::Result<TouchCardResponse>;
 }
@@ -16,14 +18,3 @@ pub trait Clock {
 pub trait DoorLock {
     async fn unlock(&self) -> anyhow::Result<()>;
 }
-
-pub trait ServoController: Send + Sync {
-    fn open(&self) -> anyhow::Result<()>;
-    fn close(&self) -> anyhow::Result<()>;
-}
-
-pub trait I2cIrSensor {
-    fn read(&self) -> anyhow::Result<u8>;
-}
-
-pub use entities::*;
