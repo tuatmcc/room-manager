@@ -78,7 +78,7 @@ impl Usb {
         })
     }
 
-    pub fn from_id(vender_id: u16, product_id: u16) -> anyhow::Result<Self> {
+    pub fn from_id(vendor_id: u16, product_id: u16) -> anyhow::Result<Self> {
         let context = Context::new()?;
 
         let dev = context
@@ -89,7 +89,7 @@ impl Usb {
                     return false;
                 };
 
-                dev_desc.vendor_id() == vender_id && dev_desc.product_id() == product_id
+                dev_desc.vendor_id() == vendor_id && dev_desc.product_id() == product_id
             })
             .context("device not found")?;
 

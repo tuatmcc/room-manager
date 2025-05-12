@@ -16,7 +16,7 @@ use infra::{HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
 use pasori::rusb::{Context as RusbContext, UsbContext};
 use tracing::{error, info, warn};
 
-const VENDER_ID: u16 = 0x054c;
+const VENDOR_ID: u16 = 0x054c;
 const PRODUCT_ID: u16 = 0x06c3;
 
 #[tokio::main]
@@ -51,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
                 return false;
             };
 
-            dev_desc.vendor_id() == VENDER_ID && dev_desc.product_id() == PRODUCT_ID
+            dev_desc.vendor_id() == VENDOR_ID && dev_desc.product_id() == PRODUCT_ID
         })
         .map(|dev| PasoriReader::spawn(dev).map(|reader| reader.into_stream().boxed()))
         .collect::<Result<Vec<_>, _>>()?;
