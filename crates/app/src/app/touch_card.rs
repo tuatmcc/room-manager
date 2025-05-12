@@ -1,37 +1,39 @@
-use std::sync::Arc;
-
 use crate::domain::{
-    Card, CardApi, Clock, ErrorCode, I2cIrSensor, RoomEntryStatus, ServoController, SoundEvent, SoundPlayer, TouchCardRequest, TouchCardResponse
+    Card, CardApi, Clock, DoorLock, ErrorCode, RoomEntryStatus, SoundEvent, SoundPlayer,
+    TouchCardRequest, TouchCardResponse,
 };
 use chrono::Timelike;
 use tracing::{info, warn};
 
-pub struct TouchCardUseCase<A, P, C, Ir>
+pub struct TouchCardUseCase<A, P, C, D>
 where
     A: CardApi,
     P: SoundPlayer,
     C: Clock,
-    Ir: I2cIrSensor
+    D: DoorLock,
 {
     api: A,
     player: P,
     clock: C,
-    servo: Arc<dyn ServoController + Send + Sync>,
-    door_sensor: Ir,
+    door_lock: D,
 }
 
-impl<A, P, C, Ir> TouchCardUseCase<A, P, C, Ir>
+impl<A, P, C, D> TouchCardUseCase<A, P, C, D>
 where
     A: CardApi,
     P: SoundPlayer,
     C: Clock,
-    Ir: I2cIrSensor,
+    D: DoorLock,
 {
-    pub fn new(api: A, player: P, clock: C, servo: Arc<dyn ServoController + Send + Sync>, door_sensor: Ir) -> Self {
-        Self { api, player, clock, servo, door_sensor }
+    pub fn new(api: A, player: P, clock: C, door_lock: D) -> Self {
+        Self {
+            api,
+            player,
+            clock,
+            door_lock,
+        }
     }
 
-    
     pub async fn execute(&self, card: &Card) -> anyhow::Result<()> {
         let req: TouchCardRequest = card.clone().into();
         info!("Sending touch card request: {:?}", req);
@@ -46,27 +48,13 @@ where
                     status, entries
                 );
                 self.play_success(status, entries)?;
-                self.servo.open()?; // 鍵を開ける
-
-                // 自動閉鍵処理（30秒後に閉じる）
-                let servo = self.servo.clone();
-                tokio::spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_secs(10)).await;
-                    if let Err(e) = servo.close() {
-                        warn!("Failed to close the door automatically: {:?}", e);
-                    } else {
-                        info!("Door closed automatically after timeout.");
-                    }
-                });
+                self.door_lock.unlock().await?;
             }
             TouchCardResponse::Error { error_code, .. } => {
                 warn!("Touch card error: error_code={:?}", error_code);
                 self.play_error(error_code)?;
             }
         }
-
-        let distance = self.door_sensor.read()?;
-        info!("IR sensor distance: {}", distance);
 
         Ok(())
     }

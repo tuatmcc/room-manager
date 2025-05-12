@@ -13,8 +13,8 @@ pub trait Clock {
     fn now(&self) -> chrono::DateTime<chrono::Local>;
 }
 
-pub trait DoerLock {
-    fn open(&self) -> anyhow::Result<()>;
+pub trait DoorLock {
+    async fn unlock(&self) -> anyhow::Result<()>;
 }
 
 pub trait ServoController: Send + Sync {
