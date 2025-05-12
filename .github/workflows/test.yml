@@ -1,0 +1,36 @@
+name: Test
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test_node:
+    name: Test (Node.js)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
+
+      - name: Run | Test
+        run: pnpm run -r test
+
+  test_rust:
+    name: Test (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Rust development environment
+        uses: ./.github/actions/setup-rust
+
+      - name: Run | Test
+        run: cross test --all-targets --all-features

@@ -9,31 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  build_node:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup | Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup | Node.js development environment
-        uses: ./.github/actions/setup-node
-
-      - name: Run | Build
-        run: pnpm run -r build
-
-  build_rust:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup | Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup | Rust development environment
-        uses: ./.github/actions/setup-rust
-
-      - name: Run | Build
-        run: cross build --release --locked
-
   typecheck_node:
+    name: Typecheck (Node.js)
     runs-on: ubuntu-latest
     steps:
       - name: Setup | Checkout
@@ -46,6 +23,7 @@ jobs:
         run: pnpm run -r typecheck
 
   lint_node:
+    name: Lint (Node.js)
     runs-on: ubuntu-latest
     steps:
       - name: Setup | Checkout
@@ -58,6 +36,7 @@ jobs:
         run: pnpm run -r lint
 
   lint_rust:
+    name: Lint (Rust)
     runs-on: ubuntu-latest
     steps:
       - name: Setup | Checkout
@@ -70,6 +49,7 @@ jobs:
         run: cross clippy --all-targets --all-features -- -D warnings
 
   format_node:
+    name: Format (Node.js)
     runs-on: ubuntu-latest
     steps:
       - name: Setup | Checkout
@@ -82,6 +62,7 @@ jobs:
         run: pnpm run -r format:check
 
   format_rust:
+    name: Format (Rust)
     runs-on: ubuntu-latest
     steps:
       - name: Setup | Checkout
@@ -92,27 +73,3 @@ jobs:
 
       - name: Run | Format
         run: cargo fmt --all -- --check
-
-  test_node:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup | Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup | Node.js development environment
-        uses: ./.github/actions/setup-node
-
-      - name: Run | Test
-        run: pnpm run -r test
-
-  test_rust:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup | Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: Setup | Rust development environment
-        uses: ./.github/actions/setup-rust
-
-      - name: Run | Test
-        run: cross test --all-targets --all-features

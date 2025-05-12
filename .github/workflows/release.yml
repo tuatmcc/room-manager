@@ -28,15 +28,8 @@ jobs:
       - name: Run | Build
         run: cross build --release --locked
 
-      - name: Run | Compress
-        run: |
-          tar czvf \
-            room-manager-aarch64-unknown-linux-gnu.tar.gz \
-            target/aarch64-unknown-linux-gnu/release/room-manager \
-            README.md
-
       - name: Run | Upload
-        run: gh release upload ${{ inputs.tag_name }} room-manager-aarch64-unknown-linux-gnu.tar.gz
+        run: gh release upload ${{ inputs.tag_name }} target/aarch64-unknown-linux-gnu/release/room-manager
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
