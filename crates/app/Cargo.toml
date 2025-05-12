@@ -28,6 +28,8 @@ chrono = "0.4.40"
 thiserror = "1.0.57"
 if_chain = "1.0.2"
 clap = { version = "4.5.37", features = ["derive", "env"] }
+futures-util = "0.3.31"
+async-stream = "0.3.6"
 
 [dev-dependencies]
 mockall = "0.12.1"
