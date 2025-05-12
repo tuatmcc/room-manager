@@ -62,11 +62,9 @@ async fn main() -> anyhow::Result<()> {
     let mut readers = select_all(readers);
     info!("Card readers spawned successfully");
 
-    info!("Initialized card reader, API client, and sound player");
-
-    info!("Initializing door lock");
+    info!("Spawning door lock");
     let door_lock = GpioDoorLock::spawn().await?;
-    info!("Door lock initialized successfully");
+    info!("Door lock spawned successfully");
 
     info!("Creating TouchCardUseCase");
     let touch_card_use_case = TouchCardUseCase::new(api, player, clock, door_lock);
