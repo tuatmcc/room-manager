@@ -127,7 +127,7 @@ export class TouchCardHandler implements LocalDeviceHandler {
 				case "NFC_CARD_NOT_REGISTERED":
 					return {
 						title: "登録されていないNFCカードです",
-						description: `</room register nfc-card ${error.meta.unknownNfcCard.code}:${this.env.DISCORD_ROOM_COMMAND_ID}>でNFCカードを登録してください。`,
+						description: `</room register nfc-card:${this.env.DISCORD_ROOM_COMMAND_ID}>で\`${error.meta.unknownNfcCard.code}\`を使用してNFCカードを登録してください。`,
 						color: colorToHex("red"),
 					};
 				case "UNKNOWN":
