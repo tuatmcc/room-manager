@@ -2,3 +2,5 @@
 pub mod device;
 pub mod felica;
 pub mod transport;
+
+pub use rusb;

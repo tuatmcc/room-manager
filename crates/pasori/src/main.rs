@@ -2,11 +2,11 @@ use pasori::device::{Bitrate, Device, rcs380::RCS380};
 use pasori::felica::{BlockCode, PollingRequestCode, PollingTimeSlot, ServiceCode};
 use pasori::transport::Usb;
 
-const VENDER_ID: u16 = 0x054c;
+const VENDOR_ID: u16 = 0x054c;
 const PRODUCT_ID: u16 = 0x06c3;
 
 fn main() -> anyhow::Result<()> {
-    let transport = Usb::from_id(VENDER_ID, PRODUCT_ID)?;
+    let transport = Usb::from_id(VENDOR_ID, PRODUCT_ID)?;
 
     let device = RCS380::new(transport)?;
 

@@ -1,10 +1,13 @@
 use std::{thread, time::Duration};
 
 use anyhow::anyhow;
+use async_stream::stream;
+use futures_util::Stream;
 use if_chain::if_chain;
 use pasori::{
     device::{Device, rcs380::RCS380},
     felica,
+    rusb::{Context as RusbContext, Device as RusbDevice},
     transport::Usb,
 };
 use tokio::sync::{
@@ -13,12 +16,9 @@ use tokio::sync::{
 };
 use tracing::{error, info};
 
-use crate::domain::{Card, CardReader};
+use crate::domain::Card;
 
 type DeviceReader = Box<dyn Device + Send + Sync>;
-
-const VENDER_ID: u16 = 0x054c;
-const PRODUCT_ID: u16 = 0x06c3;
 
 const STUDENT_CARD_SYSTEM_CODE: u16 = 0x809c;
 const STUDENT_CARD_SERVICE_CODE: u16 = 0x200b;
@@ -30,8 +30,8 @@ struct InternalPasoriReader {
 }
 
 impl InternalPasoriReader {
-    pub fn new() -> anyhow::Result<Self> {
-        let transport = Usb::from_id(VENDER_ID, PRODUCT_ID)?;
+    pub fn new(dev: RusbDevice<RusbContext>) -> anyhow::Result<Self> {
+        let transport = Usb::from_device(dev)?;
         let device = RCS380::new(transport)?;
 
         Ok(Self {
@@ -167,10 +167,11 @@ pub struct PasoriReader {
 }
 
 impl PasoriReader {
-    pub fn spawn() -> anyhow::Result<Self> {
+    pub fn spawn(dev: RusbDevice<RusbContext>) -> anyhow::Result<Self> {
         let (tx, rx) = mpsc::unbounded_channel();
         let (stop_tx, mut stop_rx) = oneshot::channel();
-        let mut reader = InternalPasoriReader::new()?;
+
+        let mut reader = InternalPasoriReader::new(dev)?;
 
         let handle = thread::Builder::new()
             .name("pasori_reader".to_string())
@@ -204,9 +205,7 @@ impl PasoriReader {
             handle: Some(handle),
         })
     }
-}
 
-impl CardReader for PasoriReader {
     async fn next(&mut self) -> anyhow::Result<Option<Card>> {
         if_chain! {
             if let Some(handle) = &self.handle;
@@ -225,6 +224,14 @@ impl CardReader for PasoriReader {
         }
 
         Ok(self.rx.recv().await)
+    }
+
+    pub fn into_stream(mut self) -> impl Stream<Item = anyhow::Result<Card>> {
+        stream! {
+            while let Some(card) = self.next().await? {
+                yield Ok(card);
+            }
+        }
     }
 }
 
