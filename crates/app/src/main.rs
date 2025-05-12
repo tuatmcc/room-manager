@@ -6,12 +6,18 @@ mod infra;
 #[cfg(test)]
 mod tests;
 
+use anyhow::bail;
 use app::TouchCardUseCase;
 use clap::Parser;
 use config::Config;
-use domain::CardReader as _;
+use futures_util::StreamExt as _;
+use futures_util::stream::select_all;
 use infra::{HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
+use pasori::rusb::{Context as RusbContext, UsbContext};
 use tracing::{error, info, warn};
+
+const VENDER_ID: u16 = 0x054c;
+const PRODUCT_ID: u16 = 0x06c3;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -36,9 +42,24 @@ async fn main() -> anyhow::Result<()> {
     info!("Initializing system clock");
     let clock = SystemClock::new();
 
-    info!("Spawning Pasori card reader");
-    let mut reader = PasoriReader::spawn()?;
-    info!("Card reader spawned successfully");
+    info!("Spawning Pasori card readers");
+    let readers = RusbContext::new()?
+        .devices()?
+        .iter()
+        .filter(|dev| {
+            let Ok(dev_desc) = dev.device_descriptor() else {
+                return false;
+            };
+
+            dev_desc.vendor_id() == VENDER_ID && dev_desc.product_id() == PRODUCT_ID
+        })
+        .map(|dev| PasoriReader::spawn(dev).map(|reader| reader.into_stream().boxed()))
+        .collect::<Result<Vec<_>, _>>()?;
+    if readers.is_empty() {
+        bail!("No Pasori reader found");
+    }
+    let mut readers = select_all(readers);
+    info!("Card readers spawned successfully");
 
     info!("Initialized card reader, API client, and sound player");
 
@@ -46,9 +67,10 @@ async fn main() -> anyhow::Result<()> {
     let touch_card_use_case = TouchCardUseCase::new(api, player, clock);
 
     info!("Starting card reader loop");
-    while let Some(card_id) = reader.next().await? {
-        info!("Card scanned: {:?}", card_id);
-        if let Err(e) = touch_card_use_case.execute(&card_id).await {
+    while let Some(card) = readers.next().await {
+        let card = card?;
+        info!("Card scanned: {:?}", card);
+        if let Err(e) = touch_card_use_case.execute(&card).await {
             error!("Error processing card: {}", e);
         }
         info!("Card processing completed");
