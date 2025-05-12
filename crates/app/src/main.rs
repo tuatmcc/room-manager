@@ -10,7 +10,6 @@ use anyhow::bail;
 use app::TouchCardUseCase;
 use clap::Parser;
 use config::Config;
-use domain::CardReader as _;
 use futures_util::StreamExt as _;
 use futures_util::stream::select_all;
 use infra::{GpioDoorLock, HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
