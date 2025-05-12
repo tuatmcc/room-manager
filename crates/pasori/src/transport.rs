@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use anyhow::Context as _;
-use rusb::{Context, DeviceHandle, Direction, TransferType, UsbContext};
+use rusb::{Context, Device, DeviceHandle, Direction, TransferType, UsbContext};
 
 // デフォルトではタイムアウトしない(ゼロだと無限)
 const DEFAULT_TIMEOUT: Duration = Duration::ZERO;
@@ -21,24 +21,10 @@ pub struct Usb {
 }
 
 impl Usb {
-    pub fn from_id(vender_id: u16, product_id: u16) -> anyhow::Result<Self> {
-        let context = Context::new()?;
-
-        let (dev, dev_desc) = context
-            .devices()?
-            .iter()
-            .find_map(|dev| {
-                let Ok(dev_desc) = dev.device_descriptor() else {
-                    return None;
-                };
-
-                if dev_desc.vendor_id() == vender_id && dev_desc.product_id() == product_id {
-                    Some((dev, dev_desc))
-                } else {
-                    None
-                }
-            })
-            .context("device not found")?;
+    pub fn from_device(dev: Device<Context>) -> anyhow::Result<Self> {
+        let Ok(dev_desc) = dev.device_descriptor() else {
+            anyhow::bail!("no device descriptor");
+        };
 
         let handle = dev.open()?;
 
@@ -90,6 +76,24 @@ impl Usb {
             addr_bulk_in,
             addr_bulk_out,
         })
+    }
+
+    pub fn from_id(vender_id: u16, product_id: u16) -> anyhow::Result<Self> {
+        let context = Context::new()?;
+
+        let dev = context
+            .devices()?
+            .iter()
+            .find(|dev| {
+                let Ok(dev_desc) = dev.device_descriptor() else {
+                    return false;
+                };
+
+                dev_desc.vendor_id() == vender_id && dev_desc.product_id() == product_id
+            })
+            .context("device not found")?;
+
+        Self::from_device(dev)
     }
 }
 
