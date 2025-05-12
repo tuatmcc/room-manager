@@ -12,9 +12,9 @@ use clap::Parser;
 use config::Config;
 use futures_util::StreamExt as _;
 use futures_util::stream::select_all;
-use infra::{HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
+use infra::{GpioDoorLock, HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
 use pasori::rusb::{Context as RusbContext, UsbContext};
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 const VENDOR_ID: u16 = 0x054c;
 const PRODUCT_ID: u16 = 0x06c3;
@@ -61,10 +61,12 @@ async fn main() -> anyhow::Result<()> {
     let mut readers = select_all(readers);
     info!("Card readers spawned successfully");
 
-    info!("Initialized card reader, API client, and sound player");
+    info!("Spawning door lock");
+    let door_lock = GpioDoorLock::spawn().await?;
+    info!("Door lock spawned successfully");
 
     info!("Creating TouchCardUseCase");
-    let touch_card_use_case = TouchCardUseCase::new(api, player, clock);
+    let touch_card_use_case = TouchCardUseCase::new(api, player, clock, door_lock);
 
     info!("Starting card reader loop");
     while let Some(card) = readers.next().await {

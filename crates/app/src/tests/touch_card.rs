@@ -1,7 +1,9 @@
 use mockall::predicate::*;
 use mockall::*;
 
-use crate::domain::{Card, CardApi, Clock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse};
+use crate::domain::{
+    Card, CardApi, Clock, DoorLock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse,
+};
 
 // モッククラスの自動生成
 mock! {
@@ -23,6 +25,13 @@ mock! {
     pub Clock {}
     impl Clock for Clock {
         fn now(&self) -> chrono::DateTime<chrono::Local>;
+    }
+}
+
+mock! {
+    pub DoorLock {}
+    impl DoorLock for DoorLock {
+        async fn unlock(&self) -> anyhow::Result<()>;
     }
 }
 
@@ -74,8 +83,11 @@ mod tests {
             .times(1)
             .returning(|_| Ok(()));
 
+        let mut mock_door_lock = MockDoorLock::new();
+        mock_door_lock.expect_unlock().times(1).returning(|| Ok(()));
+
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock);
+        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_door_lock);
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();
@@ -124,8 +136,12 @@ mod tests {
             .times(1)
             .returning(|_| Ok(()));
 
+        // ドアロックのモック設定
+        let mut mock_door_lock = MockDoorLock::new();
+        mock_door_lock.expect_unlock().times(1).returning(|| Ok(()));
+
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock);
+        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_door_lock);
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();
@@ -166,8 +182,11 @@ mod tests {
         // 時計のモック
         let mock_clock = MockClock::new();
 
+        // ドアロックのモック
+        let mock_door_lock = MockDoorLock::new();
+
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock);
+        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_door_lock);
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();

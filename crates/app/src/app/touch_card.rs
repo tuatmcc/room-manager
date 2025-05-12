@@ -1,29 +1,37 @@
 use crate::domain::{
-    Card, CardApi, Clock, ErrorCode, RoomEntryStatus, SoundEvent, SoundPlayer, TouchCardRequest,
-    TouchCardResponse,
+    Card, CardApi, Clock, DoorLock, ErrorCode, RoomEntryStatus, SoundEvent, SoundPlayer,
+    TouchCardRequest, TouchCardResponse,
 };
 use chrono::Timelike;
 use tracing::{info, warn};
 
-pub struct TouchCardUseCase<A, P, C>
+pub struct TouchCardUseCase<A, P, C, D>
 where
     A: CardApi,
     P: SoundPlayer,
     C: Clock,
+    D: DoorLock,
 {
     api: A,
     player: P,
     clock: C,
+    door_lock: D,
 }
 
-impl<A, P, C> TouchCardUseCase<A, P, C>
+impl<A, P, C, D> TouchCardUseCase<A, P, C, D>
 where
     A: CardApi,
     P: SoundPlayer,
     C: Clock,
+    D: DoorLock,
 {
-    pub fn new(api: A, player: P, clock: C) -> Self {
-        Self { api, player, clock }
+    pub fn new(api: A, player: P, clock: C, door_lock: D) -> Self {
+        Self {
+            api,
+            player,
+            clock,
+            door_lock,
+        }
     }
 
     pub async fn execute(&self, card: &Card) -> anyhow::Result<()> {
@@ -40,6 +48,7 @@ where
                     status, entries
                 );
                 self.play_success(status, entries)?;
+                self.door_lock.unlock().await?;
             }
             TouchCardResponse::Error { error_code, .. } => {
                 warn!("Touch card error: error_code={:?}", error_code);

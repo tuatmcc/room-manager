@@ -1,5 +1,7 @@
 pub mod entities;
 
+pub use entities::*;
+
 pub trait CardApi {
     async fn touch(&self, req: TouchCardRequest) -> anyhow::Result<TouchCardResponse>;
 }
@@ -13,4 +15,6 @@ pub trait Clock {
     fn now(&self) -> chrono::DateTime<chrono::Local>;
 }
 
-pub use entities::*;
+pub trait DoorLock {
+    async fn unlock(&self) -> anyhow::Result<()>;
+}
