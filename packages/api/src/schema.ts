@@ -19,6 +19,12 @@ export const users = sqliteTable("users", {
 		.$onUpdateFn(() => Temporal.Now.instant().epochMilliseconds),
 });
 
+export const usersRelations = relations(users, ({ many }) => ({
+	studentCards: many(studentCards),
+	nfcCards: many(nfcCards),
+	roomEntryLogs: many(roomEntryLogs),
+}));
+
 export const studentCards = sqliteTable(
 	"student_cards",
 	{
