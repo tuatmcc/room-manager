@@ -42,6 +42,13 @@ jobs:
       - name: Setup | Node.js development environment
         uses: ./.github/actions/setup-node
 
+      - name: Run | Migrate
+        run: pnpm run ci:migrate
+        working-directory: packages/api
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
       - name: Run | Deploy
         run: pnpm run ci:deploy
         working-directory: packages/api
