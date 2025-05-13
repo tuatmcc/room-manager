@@ -19,6 +19,12 @@ export const users = sqliteTable("users", {
 		.$onUpdateFn(() => Temporal.Now.instant().epochMilliseconds),
 });
 
+export const usersRelations = relations(users, ({ many }) => ({
+	studentCards: many(studentCards),
+	nfcCards: many(nfcCards),
+	roomEntryLogs: many(roomEntryLogs),
+}));
+
 export const studentCards = sqliteTable(
 	"student_cards",
 	{
@@ -65,7 +71,6 @@ export const nfcCards = sqliteTable(
 		idm: text("idm").notNull().unique(),
 		userId: integer("user_id")
 			.notNull()
-			.unique()
 			.references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
 
 		// timestamps

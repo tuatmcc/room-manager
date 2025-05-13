@@ -8,6 +8,13 @@
       "when": 1745601795983,
       "tag": "0000_typical_tattoo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1747153030797,
+      "tag": "0001_nice_sunfire",
+      "breakpoints": true
     }
   ]
 }

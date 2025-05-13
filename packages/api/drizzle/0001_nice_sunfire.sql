@@ -1,0 +1,1 @@
+DROP INDEX `nfc_cards_user_id_unique`;
