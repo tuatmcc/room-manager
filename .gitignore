@@ -2,7 +2,10 @@ node_modules/
 target/
 .wrangler/
 dist/
+direnv/
 
 .env
 .dev.vars
 worker-configuration.d.ts
+
+.envrc
