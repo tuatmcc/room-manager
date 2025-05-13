@@ -65,7 +65,6 @@ export const nfcCards = sqliteTable(
 		idm: text("idm").notNull().unique(),
 		userId: integer("user_id")
 			.notNull()
-			.unique()
 			.references(() => users.id, { onDelete: "cascade", onUpdate: "cascade" }),
 
 		// timestamps
