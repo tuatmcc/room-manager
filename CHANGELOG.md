@@ -1,5 +1,21 @@
 # room-manager
 
+## [0.2.0](https://github.com/tuatmcc/room-manager/compare/v0.1.0...v0.2.0) (2025-05-13)
+
+
+### Features
+
+* Discordコマンドのハンドル処理を大幅に改善 ([ecb7b63](https://github.com/tuatmcc/room-manager/commit/ecb7b63957f9553626510bdc2185267e7d3823f3))
+* Discordコマンドのペイロードをパースする関数を追加 ([38d1b17](https://github.com/tuatmcc/room-manager/commit/38d1b171f0a0f14c51ccf1b5dc66b9a828e39d09))
+* ドアロック操作機能を追加 ([#43](https://github.com/tuatmcc/room-manager/issues/43)) ([9632f61](https://github.com/tuatmcc/room-manager/commit/9632f6162404c96e2cb566318aa408e6b8c84cf6))
+* 複数のNFCカードリーダーに対応 ([#53](https://github.com/tuatmcc/room-manager/issues/53)) ([03d1314](https://github.com/tuatmcc/room-manager/commit/03d13144ed987d42959613d58d77535059264a2d))
+
+
+### Bug Fixes
+
+* DBスキーマの修正 ([#56](https://github.com/tuatmcc/room-manager/issues/56)) ([2cefa9f](https://github.com/tuatmcc/room-manager/commit/2cefa9f29d9b40cb6e56a58cf31ff018adecb125))
+* 未登録NFCカードのメッセージに含まれるコマンドメンション形式を修正 ([#42](https://github.com/tuatmcc/room-manager/issues/42)) ([a6ea908](https://github.com/tuatmcc/room-manager/commit/a6ea908a58a4f78eb365844d8764e289eb129735))
+
 ## [0.1.0](https://github.com/tuatmcc/room-manager/compare/v0.0.1...v0.1.0) (2025-05-10)
 
 
