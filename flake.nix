@@ -40,6 +40,7 @@
 
             # Common dependencies
             pkg-config
+            cargo-cross
             nodejs-slim
             pnpm
             # Add rust toolchain based on mise.toml configuration
