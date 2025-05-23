@@ -1159,7 +1159,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "pasori"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "if_chain",
@@ -1440,7 +1440,7 @@ dependencies = [
 
 [[package]]
 name = "room-manager"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-stream",

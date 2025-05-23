@@ -14,7 +14,7 @@ const SERVO_MIN_DUTY_CYCLE: Duration = Duration::from_micros(500);
 const SERVO_MAX_DUTY_CYCLE: Duration = Duration::from_micros(2500);
 
 const SERVO_MOVE_WAIT_TIME: Duration = Duration::from_secs(1);
-const AUTO_LOCK_DELAY: Duration = Duration::from_secs(10);
+const AUTO_LOCK_DELAY: Duration = Duration::from_secs(30);
 
 #[derive(Debug)]
 struct DoorLockInternal {
