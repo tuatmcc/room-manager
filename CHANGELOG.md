@@ -1,5 +1,12 @@
 # room-manager
 
+## [0.2.1](https://github.com/tuatmcc/room-manager/compare/v0.2.0...v0.2.1) (2025-05-23)
+
+
+### Bug Fixes
+
+* 自動ドアロックの時間を30秒に延長 ([#58](https://github.com/tuatmcc/room-manager/issues/58)) ([0c3f064](https://github.com/tuatmcc/room-manager/commit/0c3f064e60103c2b0645baf43d74dfba76cca37e))
+
 ## [0.2.0](https://github.com/tuatmcc/room-manager/compare/v0.1.0...v0.2.0) (2025-05-13)
 
 
