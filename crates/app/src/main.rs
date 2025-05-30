@@ -12,7 +12,7 @@ use clap::Parser;
 use config::Config;
 use futures_util::StreamExt as _;
 use futures_util::stream::select_all;
-use infra::{GpioDoorLock, HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
+use infra::{Gp2y0aDistanceSensor, GpioDoorLock, HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
 use pasori::rusb::{Context as RusbContext, UsbContext};
 use tracing::{error, info};
 
