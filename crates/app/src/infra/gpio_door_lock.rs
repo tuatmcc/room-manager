@@ -113,8 +113,8 @@ impl GpioDoorLock {
         {
             let internal = Arc::clone(&internal);
             tokio::spawn(async move {
-                // unlockされたら10秒後にlockする
-                // ただし、10秒以内に別のメッセージが来たらその10秒後にlockをする。
+                // unlockされたら30秒後にlockする
+                // ただし、30秒以内に別のメッセージが来たらその30秒後にlockをする。
                 let mut timer: Option<Pin<Box<Sleep>>> = None;
                 loop {
                     tokio::select! {
