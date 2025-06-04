@@ -1,40 +1,44 @@
 use crate::domain::{
-    Card, CardApi, Clock, DoorLock, ErrorCode, RoomEntryStatus, SoundEvent, SoundPlayer,
-    TouchCardRequest, TouchCardResponse,
+    Card, CardApi, Clock, DoorLock, DoorSensor, ErrorCode, RoomEntryStatus, SoundEvent,
+    SoundPlayer, TouchCardRequest, TouchCardResponse,
 };
 use chrono::Timelike;
 use tracing::{info, warn};
 
-pub struct TouchCardUseCase<A, P, C, D>
+pub struct TouchCardUseCase<A, P, C, D, S>
 where
     A: CardApi,
     P: SoundPlayer,
     C: Clock,
     D: DoorLock,
+    S: DoorSensor,
 {
     api: A,
     player: P,
     clock: C,
     door_lock: D,
+    door_sensor: S,
 }
 
-impl<A, P, C, D> TouchCardUseCase<A, P, C, D>
+impl<A, P, C, D, S> TouchCardUseCase<A, P, C, D, S>
 where
     A: CardApi,
     P: SoundPlayer,
     C: Clock,
     D: DoorLock,
+    S: DoorSensor,
 {
-    pub fn new(api: A, player: P, clock: C, door_lock: D) -> Self {
+    pub fn new(api: A, player: P, clock: C, door_lock: D, door_sensor: S) -> Self {
         Self {
             api,
             player,
             clock,
             door_lock,
+            door_sensor,
         }
     }
 
-    pub async fn execute(&self, card: &Card) -> anyhow::Result<()> {
+    pub async fn execute(&mut self, card: &Card) -> anyhow::Result<()> {
         let req: TouchCardRequest = card.clone().into();
         info!("Sending touch card request: {:?}", req);
 
@@ -49,6 +53,25 @@ where
                 );
                 self.play_success(status, entries)?;
                 self.door_lock.unlock().await?;
+
+                // 退室時にドアセンサーでドアの状態を確認してから施錠
+                if status == RoomEntryStatus::Exit {
+                    info!("Exit detected, checking door status for potential auto-lock");
+                    match self
+                        .door_lock
+                        .lock_with_sensor_check(&mut self.door_sensor)
+                        .await?
+                    {
+                        true => {
+                            info!("Door was closed and locked successfully");
+                            self.player.play(SoundEvent::Touch)?; // ロック成功音
+                        }
+                        false => {
+                            warn!("Door is still open, cannot lock automatically");
+                            // TODO: ドアが開いている警告音（必要に応じて追加）
+                        }
+                    }
+                }
             }
             TouchCardResponse::Error { error_code, .. } => {
                 warn!("Touch card error: error_code={:?}", error_code);

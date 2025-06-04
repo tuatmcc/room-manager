@@ -12,7 +12,9 @@ use clap::Parser;
 use config::Config;
 use futures_util::StreamExt as _;
 use futures_util::stream::select_all;
-use infra::{Gp2y0aDistanceSensor, GpioDoorLock, HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
+use infra::{
+    Gp2y0aDistanceSensor, GpioDoorLock, HttpCardApi, PasoriReader, RodioPlayer, SystemClock,
+};
 use pasori::rusb::{Context as RusbContext, UsbContext};
 use tracing::{error, info};
 
@@ -65,8 +67,12 @@ async fn main() -> anyhow::Result<()> {
     let door_lock = GpioDoorLock::spawn().await?;
     info!("Door lock spawned successfully");
 
+    info!("Initializing door sensor");
+    let door_sensor = Gp2y0aDistanceSensor::new(0, 30.0)?; // チャンネル0、閾値30cm
+    info!("Door sensor initialized successfully");
+
     info!("Creating TouchCardUseCase");
-    let touch_card_use_case = TouchCardUseCase::new(api, player, clock, door_lock);
+    let mut touch_card_use_case = TouchCardUseCase::new(api, player, clock, door_lock, door_sensor);
 
     info!("Starting card reader loop");
     while let Some(card) = readers.next().await {
