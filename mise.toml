@@ -1,7 +1,6 @@
 [tools]
 node = "22.14.0"
 "npm:pnpm" = "10.10.0"
-rust = { version = "1.86.0", profile = "default", targets = "aarch64-unknown-linux-gnu" }
 
 [env]
 _.file = ".env"
@@ -10,4 +9,4 @@ _.file = ".env"
 run = "docker run --rm -p 16686:16686 -p 4318:4318 jaegertracing/all-in-one:latest"
 
 [settings]
-experimental = true
+idiomatic_version_file_enable_tools = []
