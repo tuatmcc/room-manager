@@ -66,7 +66,7 @@ impl<T: Transport> Device for RCS380<T> {
         let pmm = res[10..18].try_into().unwrap();
 
         let request_result = if res.len() == 0x14 {
-            Some((u16::from(res[18]) << 8) | res[19] as u16)
+            Some((u16::from(res[18]) << 8) | u16::from(res[19]))
         } else {
             None
         };
