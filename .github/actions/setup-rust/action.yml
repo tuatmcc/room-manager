@@ -34,11 +34,11 @@ runs:
         path: ~/.cargo/bin/cross
         key: ${{ runner.os }}-cross
 
+    - name: Setup | Fetch cargo dependencies
+      shell: bash
+      run: cargo fetch
+
     - name: Setup | Install cross
       shell: bash
       if: steps.cache-cross.outputs.cache-hit != 'true'
       run: cargo install cross --git https://github.com/cross-rs/cross.git --rev 9e2298e17170655342d3248a9c8ac37ef92ba38f
-
-    - name: Setup | Fetch cargo dependencies
-      shell: bash
-      run: cargo fetch
