@@ -110,7 +110,7 @@ impl<T: Transport> Device for RCS380<T> {
         }
 
         // ブロック数
-        req.push(service_codes.len() as u8);
+        req.push(block_codes.len() as u8);
         // ブロックコード
         for block_code in block_codes {
             req.extend_from_slice(&block_code.to_bytes());
