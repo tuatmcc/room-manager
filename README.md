@@ -53,7 +53,7 @@ pnpm install
 
 ```sh
 # Rustアプリケーションの実行（開発モード）
-cargo run -p app
+cargo run -p room-manager
 
 # APIサーバーの開発実行
 cd packages/api
@@ -64,7 +64,7 @@ pnpm dev
 
 ```sh
 # Rustアプリケーションのリリースビルド
-cargo build --release -p app
+cargo build --release -p room-manager
 
 # 実行ファイルは target/release/app に生成されます
 ```
