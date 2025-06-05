@@ -1,6 +1,5 @@
 pub mod entities;
 
-use async_trait::async_trait;
 pub use entities::*;
 
 pub trait CardApi {

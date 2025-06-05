@@ -40,16 +40,12 @@ pub enum MCP3002Channel {
 pub enum SensorError {
     #[error("SPI communication failed: {0}")]
     SpiError(#[from] rppal::spi::Error),
-    #[error("Invalid channel: {0}. Must be 0 or 1")]
-    InvalidChannel(u8),
-    #[error("Measurement out of range: {0}cm")]
-    OutOfRange(f32),
     #[error("Hardware lock contention")]
     LockContention,
 }
 
 /// SPI通信の抽象化trait（テスト用）
-pub trait SpiInterface: Send + Sync {
+pub trait SpiInterface: Send {
     fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), SensorError>;
 }
 
@@ -69,7 +65,8 @@ impl RppalSpiAdapter {
 
 impl SpiInterface for RppalSpiAdapter {
     fn transfer(&mut self, read: &mut [u8], write: &[u8]) -> Result<(), SensorError> {
-        self.spi.transfer(read, write).map_err(SensorError::from)
+        self.spi.transfer(read, write).map_err(SensorError::from)?;
+        Ok(())
     }
 }
 
@@ -172,18 +169,6 @@ impl<T: SpiInterface> Gp2y0aDistanceSensor<T> {
         }
     }
 
-    /// カスタムキャリブレーションテーブルで作成
-    pub fn new_with_calibration(
-        spi: T,
-        config: SensorConfig,
-        calibration: DistanceCalibrationTable,
-    ) -> Self {
-        Self {
-            spi: Mutex::new(spi),
-            config,
-            calibration_table: calibration,
-        }
-    }
 
     /// MCP3002からA/D変換値を読み取り
     #[instrument(skip(self), level = "debug")]

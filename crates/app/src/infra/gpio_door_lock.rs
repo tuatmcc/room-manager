@@ -96,7 +96,6 @@ impl DoorLockInternal {
 #[derive(Debug)]
 pub struct GpioDoorLock {
     internal: Arc<Mutex<DoorLockInternal>>,
-    tx_unlock: mpsc::Sender<()>,
 }
 
 impl GpioDoorLock {
@@ -104,11 +103,10 @@ impl GpioDoorLock {
         let internal = DoorLockInternal::new().await?;
         let internal = Arc::new(Mutex::new(internal));
 
-        let (tx_unlock, mut rx_unlock) = mpsc::channel(1);
+        let (_tx_unlock, mut rx_unlock) = mpsc::channel(1);
 
         let lock = Self {
             internal: Arc::clone(&internal),
-            tx_unlock,
         };
 
         {
@@ -154,7 +152,7 @@ impl DoorLock for GpioDoorLock {
     where
         S: DoorSensor,
     {
-        use tokio::time::{Duration, sleep};
+        use tokio::time::sleep;
         use tracing::{info, warn};
 
         info!("Starting infinite door monitoring for auto-lock");

@@ -6,10 +6,7 @@ pub mod reader_pasori;
 pub mod system_clock;
 
 pub use api_reqwest::HttpCardApi;
-pub use distance_sensor::{
-    DistanceCalibrationTable, Gp2y0aDistanceSensor, MCP3002Channel, RppalSpiAdapter, SensorConfig,
-    SensorError, SpiInterface,
-};
+pub use distance_sensor::Gp2y0aDistanceSensor;
 pub use gpio_door_lock::GpioDoorLock;
 pub use player_rodio::RodioPlayer;
 pub use reader_pasori::PasoriReader;
