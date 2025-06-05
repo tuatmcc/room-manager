@@ -58,6 +58,68 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
+2. **カスタム設定での使用例**
+```rust
+use room_manager::infra::{
+    Gp2y0aDistanceSensor, RppalSpiAdapter, SensorConfig, MCP3002Channel,
+    DistanceCalibrationTable
+};
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    // カスタム設定
+    let config = SensorConfig {
+        channel: MCP3002Channel::Channel0,
+        reference_voltage: 3.3,
+        threshold_distance: 25.0,
+        measurement_count: 5,
+        measurement_interval: 20,
+    };
+    
+    // SPI初期化
+    let spi_adapter = RppalSpiAdapter::new()?;
+    
+    // センサー作成
+    let sensor = Gp2y0aDistanceSensor::new_with_config(spi_adapter, config);
+    
+    // カスタムキャリブレーションテーブルも使用可能
+    let custom_calibration = DistanceCalibrationTable::default();
+    let sensor_with_calibration = Gp2y0aDistanceSensor::new_with_calibration(
+        spi_adapter, 
+        config, 
+        custom_calibration
+    );
+    
+    Ok(())
+}
+```
+
+3. **テスト用モック実装**
+```rust
+use room_manager::infra::{SpiInterface, SensorError, Gp2y0aDistanceSensor, SensorConfig};
+
+// テスト用のモックSPI
+struct MockSpi;
+impl SpiInterface for MockSpi {
+    fn transfer(&mut self, read: &mut [u8], _write: &[u8]) -> Result<(), SensorError> {
+        // モックデータを返す
+        read[0] = 0x02;  // 高位バイト
+        read[1] = 0xBC;  // 低位バイト（約700の10ビット値）
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn test_with_mock() {
+    let config = SensorConfig::default();
+    let mock_spi = MockSpi;
+    let sensor = Gp2y0aDistanceSensor::new_with_config(mock_spi, config);
+    
+    let distance = sensor.measure_distance().await.unwrap();
+    assert!(distance > 0.0);
+}
+```
+
 2. **サンプルプログラムの実行**
 ```bash
 cd crates/app

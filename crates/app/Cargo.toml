@@ -35,7 +35,3 @@ async-trait = "0.1.82"
 
 [dev-dependencies]
 mockall = "0.12.1"
-
-[[example]]
-name = "door_detection"
-path = "examples/door_detection.rs"
