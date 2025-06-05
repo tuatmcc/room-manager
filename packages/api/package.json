@@ -1,6 +1,6 @@
 {
 	"name": "@room-manager/api",
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"type": "module",
 	"scripts": {
 		"build": "wrangler deploy --minify src/index.ts --dry-run --outdir dist",
