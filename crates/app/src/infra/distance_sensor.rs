@@ -235,7 +235,7 @@ impl<T: SpiInterface> Gp2y0aDistanceSensor<T> {
         );
 
         // 測定値が有効範囲外の場合は警告
-        if median < 5.0 || median > 85.0 {
+        if median < DISTANCE_SENSOR_MIN_VALID_RANGE || median > DISTANCE_SENSOR_MAX_VALID_RANGE {
             warn!(
                 "Distance sensor reading out of valid range: {:.2}cm",
                 median
