@@ -68,7 +68,7 @@ async fn main() -> anyhow::Result<()> {
     info!("Door lock spawned successfully");
 
     info!("Initializing door sensor");
-    let door_sensor = Gp2y0aDistanceSensor::new()?; // チャンネル0、閾値30cm
+    let door_sensor = Gp2y0aDistanceSensor::new()?;
     info!("Door sensor initialized successfully");
 
     info!("Creating TouchCardUseCase");

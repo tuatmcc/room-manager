@@ -32,6 +32,9 @@ mock! {
     pub DoorLock {}
     impl DoorLock for DoorLock {
         async fn unlock(&self) -> anyhow::Result<()>;
+        async fn lock_with_sensor_check<S>(&self, door_sensor: &mut S) -> anyhow::Result<bool>
+        where
+            S: crate::domain::DoorSensor;
     }
 }
 
@@ -86,8 +89,16 @@ mod tests {
         let mut mock_door_lock = MockDoorLock::new();
         mock_door_lock.expect_unlock().times(1).returning(|| Ok(()));
 
+        let mock_door_sensor = MockDoorSensor::new();
+
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_door_lock);
+        let use_case = TouchCardUseCase::new(
+            mock_api,
+            mock_player,
+            mock_clock,
+            mock_door_lock,
+            mock_door_sensor,
+        );
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();
@@ -140,8 +151,16 @@ mod tests {
         let mut mock_door_lock = MockDoorLock::new();
         mock_door_lock.expect_unlock().times(1).returning(|| Ok(()));
 
+        let mock_door_sensor = MockDoorSensor::new();
+
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_door_lock);
+        let use_case = TouchCardUseCase::new(
+            mock_api,
+            mock_player,
+            mock_clock,
+            mock_door_lock,
+            mock_door_sensor,
+        );
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();
@@ -185,8 +204,16 @@ mod tests {
         // ドアロックのモック
         let mock_door_lock = MockDoorLock::new();
 
+        let mock_door_sensor = MockDoorSensor::new();
+
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_door_lock);
+        let use_case = TouchCardUseCase::new(
+            mock_api,
+            mock_player,
+            mock_clock,
+            mock_door_lock,
+            mock_door_sensor,
+        );
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();
