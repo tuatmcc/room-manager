@@ -1,0 +1,167 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# ディレクトリ構成ガイド
+
+このプロジェクトは Rust と TypeScript を組み合わせたハイブリッド構成のルーム管理システムです。
+
+## プロジェクト全体構成
+
+```
+room-manager/
+├── crates/           # Rust ワークスペース
+├── packages/         # TypeScript/Node.js パッケージ
+├── target/           # Rust ビルド出力
+├── node_modules/     # Node.js 依存関係
+├── .cursor/          # Cursor エディタ設定
+├── .github/          # GitHub Actions 設定
+├── .devcontainer/    # 開発コンテナ設定
+└── 設定ファイル群
+```
+
+## Rust プロジェクト（`crates/`）
+
+### crates/app - メインアプリケーション
+NFCカードリーダーを使用したルーム入退室管理の Rust アプリケーション
+
+```
+crates/app/
+├── src/
+│   ├── app/                  # アプリケーション層
+│   │   ├── touch_card.rs     # カードタッチ処理
+│   │   └── mod.rs
+│   ├── domain/               # ドメイン層
+│   │   ├── entities.rs       # エンティティ定義
+│   │   └── mod.rs
+│   ├── infra/                # インフラ層
+│   │   ├── gpio_door_lock.rs # GPIOドアロック制御
+│   │   ├── reader_pasori.rs  # PaSoRi NFCリーダー
+│   │   ├── player_rodio.rs   # 音声再生
+│   │   ├── api_reqwest.rs    # HTTP API クライアント
+│   │   ├── system_clock.rs   # システム時刻
+│   │   └── mod.rs
+│   ├── assets/               # アセットファイル
+│   │   └── sounds/           # 音声ファイル
+│   ├── tests/                # テストファイル
+│   ├── main.rs               # エントリーポイント
+│   └── config.rs             # 設定
+└── Cargo.toml                # Rust パッケージ設定
+```
+
+### crates/pasori - PaSoRi ライブラリ
+FeliCa/NFCカードリーダー PaSoRi 用の低レベルライブラリ
+
+```
+crates/pasori/
+├── src/
+│   ├── device/               # デバイス制御
+│   ├── lib.rs                # ライブラリエントリーポイント
+│   ├── main.rs               # CLI エントリーポイント
+│   ├── transport.rs          # USB通信レイヤー
+│   └── felica.rs             # FeliCa プロトコル
+└── Cargo.toml                # Rust パッケージ設定
+```
+
+## TypeScript プロジェクト（`packages/`）
+
+### packages/api - Cloudflare Workers API
+Discord Bot と Rust アプリケーション用の REST API（Cloudflare Workers）
+
+```
+packages/api/
+├── src/
+│   ├── handlers/             # API ハンドラー
+│   │   ├── local-device/     # ローカルデバイス用エンドポイント
+│   │   ├── slash-command/    # Discord スラッシュコマンド
+│   │   └── scheduled/        # スケジュール実行ハンドラー
+│   ├── models/               # データモデル
+│   │   ├── NfcCard.ts        # NFCカードモデル
+│   │   ├── User.ts           # ユーザーモデル
+│   │   ├── StudentCard.ts    # 学生証モデル
+│   │   ├── UnknownNfcCard.ts # 未知のNFCカード
+│   │   └── RoomEntryLog.ts   # 入退室ログ
+│   ├── repositories/         # データアクセス層
+│   │   ├── UserRepository.ts
+│   │   ├── NfcCardRepository.ts
+│   │   ├── StudentCardRepository.ts
+│   │   ├── UnknownNfcCardRepository.ts
+│   │   ├── RoomEntryLogRepository.ts
+│   │   └── index.ts
+│   ├── usecase/              # ビジネスロジック層
+│   │   ├── TouchCard.ts      # カードタッチ処理
+│   │   ├── RegisterStudentCard.ts
+│   │   ├── RegisterNfcCard.ts
+│   │   ├── ListEntryUsers.ts
+│   │   ├── ExitAllEntryUsers.ts
+│   │   ├── __tests__/        # ユースケーステスト
+│   │   └── index.ts
+│   ├── services/             # 外部サービス連携
+│   │   ├── DiscordService.ts # Discord API 連携
+│   │   └── index.ts
+│   ├── __tests__/            # テストファイル
+│   ├── index.ts              # Workers エントリーポイント
+│   ├── schema.ts             # データベーススキーマ
+│   ├── database.ts           # DB接続設定
+│   ├── discord.ts            # Discord 設定
+│   ├── env.ts                # 環境変数
+│   ├── commands.ts           # Discord コマンド定義
+│   ├── message.ts            # メッセージ定義
+│   ├── error.ts              # エラー処理
+│   ├── trace.ts              # トレーシング
+│   └── utils.ts              # ユーティリティ
+├── drizzle/                  # データベースマイグレーション
+│   └── meta/
+├── scripts/                  # スクリプト
+├── dist/                     # ビルド出力
+├── .wrangler/                # Wrangler 設定
+├── package.json              # Node.js パッケージ設定
+├── tsconfig.json             # TypeScript 設定
+├── wrangler.toml             # Cloudflare Workers 設定
+├── drizzle.config.ts         # Drizzle ORM 設定
+├── vitest.config.ts          # テスト設定
+└── worker-configuration.d.ts # Worker 型定義
+```
+
+## 設定ファイル
+
+### Rust 関連
+- [`Cargo.toml`](mdc:Cargo.toml) - Rust ワークスペース設定
+- [`rust-toolchain.toml`](mdc:rust-toolchain.toml) - Rust ツールチェイン固定
+- [`Cross.toml`](mdc:Cross.toml) - クロスコンパイル設定
+
+### Node.js/TypeScript 関連
+- [`package.json`](mdc:package.json) - Node.js プロジェクト設定
+- [`pnpm-workspace.yaml`](mdc:pnpm-workspace.yaml) - PNPM ワークスペース設定
+- [`pnpm-lock.yaml`](mdc:pnpm-lock.yaml) - PNPM ロックファイル
+- [`tsconfig.json`](mdc:tsconfig.json) - TypeScript 設定
+- [`eslint.config.js`](mdc:eslint.config.js) - ESLint 設定
+- [`prettier.config.js`](mdc:prettier.config.js) - Prettier 設定
+
+### 開発環境
+- [`mise.toml`](mdc:mise.toml) - ツールバージョン管理
+- [`mise.lock`](mdc:mise.lock) - Mise ロックファイル
+- [`flake.nix`](mdc:flake.nix) - Nix 開発環境
+- [`flake.lock`](mdc:flake.lock) - Nix ロックファイル
+
+### CI/CD・リリース
+- [`release-please-config.json`](mdc:release-please-config.json) - リリース設定
+- [`CHANGELOG.md`](mdc:CHANGELOG.md) - 変更履歴
+
+## アーキテクチャ
+
+### システム構成
+1. **Rust アプリケーション** (`crates/app`) - ローカル実行される入退室管理システム
+2. **PaSoRi ライブラリ** (`crates/pasori`) - NFCカードリーダー制御
+3. **Cloudflare Workers API** (`packages/api`) - クラウド API・Discord Bot
+
+### データフロー
+```
+NFCカード → PaSoRi → Rust App → HTTP API → Cloudflare Workers → Discord
+```
+
+### レイヤード・アーキテクチャ
+- **ドメイン層**: ビジネスロジックとエンティティ
+- **アプリケーション層**: ユースケース実装
+- **インフラ層**: 外部システム連携（GPIO、USB、HTTP、Discord）
