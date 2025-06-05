@@ -36,7 +36,7 @@
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
             # System-specific dependencies
-            (lib.optional (!stdenv.isDarwin) alsa-lib)
+            (if system == "aarch64-darwin" then "" else alsa-lib)
 
             # Common dependencies
             pkg-config
@@ -46,6 +46,7 @@
             # Add rust toolchain based on mise.toml configuration
             (rust-bin.stable.latest.default.override {
               extensions = [ "rust-src" "rust-analyzer" ];
+              targets = [ "aarch64-unknown-linux-gnu" ];
             })
           ];
         };
