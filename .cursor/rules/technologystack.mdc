@@ -1,0 +1,171 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# 技術スタックガイド
+
+このプロジェクトは Rust と TypeScript のハイブリッド構成で、IoT デバイス管理と Discord Bot を組み合わせたルーム管理システムです。
+
+## プログラミング言語・エディション
+
+### Rust
+- **バージョン**: 1.86.0（[`rust-toolchain.toml`](mdc:rust-toolchain.toml)で固定）
+- **エディション**: 2024（[`crates/app/Cargo.toml`](mdc:crates/app/Cargo.toml), [`crates/pasori/Cargo.toml`](mdc:crates/pasori/Cargo.toml)）
+- **ターゲット**: aarch64-unknown-linux-gnu（ARM64 Linux）
+- **ワークスペース**: Cargo resolver v2
+
+### TypeScript/JavaScript
+- **TypeScript**: 5.8.3
+- **Node.js**: 22.14.0（[`mise.toml`](mdc:mise.toml)で管理）
+- **ES Target**: ES2022
+- **モジュール**: ESNext + Bundler解決
+- **厳密なTypeScript設定**: 有効（[`tsconfig.json`](mdc:tsconfig.json)）
+
+## パッケージマネージャー
+
+### Rust
+- **Cargo**: Rustの標準パッケージマネージャー
+- **Cross**: クロスコンパイル用（[`Cross.toml`](mdc:Cross.toml)）
+
+### Node.js
+- **PNPM**: 10.10.0（モノレポワークスペース対応）
+- **ワークスペース設定**: [`pnpm-workspace.yaml`](mdc:pnpm-workspace.yaml)
+
+## フレームワーク・ランタイム
+
+### Cloudflare Workers
+- **Hono**: 4.7.8（高速Webフレームワーク）
+- **Wrangler**: 4.13.2（開発・デプロイツール）
+- **互換性日付**: 2024-06-20
+- **Node.js互換**: 有効
+
+### 非同期ランタイム
+- **Tokio**: 1.44.2（Rust非同期ランタイム）
+  - マルチスレッド、ネットワーキング、同期、マクロ対応
+
+## データベース・ORM
+
+### Cloudflare D1
+- **Drizzle ORM**: 0.43.1
+- **データベース**: SQLite（Cloudflare D1）
+- **マイグレーション**: [`packages/api/drizzle/`](mdc:packages/api/drizzle)
+- **スキーマ**: [`packages/api/src/schema.ts`](mdc:packages/api/src/schema.ts)
+
+### キーバリューストア
+- **Cloudflare KV**: セッション・キャッシュ管理
+
+## 外部API・連携
+
+### Discord API
+- **Discord.js Builders**: 1.11.1（コマンド構築）
+- **Discord.js REST**: 2.5.0（REST API）
+- **Discord Interactions**: 4.1.1（相互作用処理）
+- **Discord API Types**: 0.38.1（型定義）
+
+### HTTP クライアント
+- **Reqwest**: 0.12.15（Rust、JSON・TLS対応）
+
+## IoT・ハードウェア
+
+### GPIO制御
+- **RPPAL**: 0.22.1（Raspberry Pi GPIO制御）
+
+### NFCカードリーダー
+- **自作PaSoRiライブラリ**: [`crates/pasori`](mdc:crates/pasori)
+- **libusb**: rusb 0.9.4（USB通信）
+- **FeliCa対応**: 独自実装
+
+### 音声再生
+- **Rodio**: 0.20.1（WAVファイル再生）
+
+## 開発ツール・CI/CD
+
+### コード品質
+- **ESLint**: 9.25.1（JavaScript/TypeScript linter）
+- **Prettier**: 3.5.3（コードフォーマッター）
+- **スタイルガイド**: @shun-shobon/style-guide 0.4.0
+
+### テスト
+- **Vitest**: 3.1.3（TypeScript単体テスト）
+- **Mockall**: 0.12.1（Rustモック）
+
+### ビルド・デプロイ
+- **Cross**: クロスコンパイル（ARM64 Linux対応）
+- **Wrangler**: Cloudflare Workers デプロイ
+- **Release Please**: 自動リリース管理
+
+### 開発環境管理
+- **Mise**: ツールバージョン管理（Node.js, PNPM）
+- **Nix Flakes**: 再現可能な開発環境
+- **Rust Overlay**: Nixでのカスタムツールチェイン
+
+## 監視・オブザーバビリティ
+
+### 分散トレーシング
+- **OpenTelemetry**: 1.9.0
+- **Hono OpenTelemetry**: 0.1.1
+- **Cloudflare Workers OpenTelemetry**: 1.0.0-rc.49
+- **Jaeger**: 分散トレーシング（開発時）
+
+### ログ・エラー処理
+- **Tracing**: 0.1.41（Rust構造化ログ）
+- **Tracing Subscriber**: 0.3.19
+- **Anyhow**: 1.0.98（Rustエラーハンドリング）
+- **Thiserror**: 1.0.57（カスタムエラー型）
+
+## ユーティリティライブラリ
+
+### Rust
+- **Serde**: 1.0.219（シリアライゼーション）
+- **Chrono**: 0.4.40（日時処理）
+- **If Chain**: 1.0.2（条件分岐）
+- **Clap**: 4.5.37（CLI引数解析）
+- **Futures Util**: 0.3.31（非同期ユーティリティ）
+- **Async Stream**: 0.3.6（非同期ストリーム）
+
+### TypeScript
+- **Zod**: 3.24.3（スキーマ検証）
+- **TS Pattern**: 5.7.0（パターンマッチング）
+- **Neverthrow**: 8.2.0（Result型）
+- **JS Temporal Polyfill**: 0.5.1（日時API）
+
+## スケジューリング
+
+### Cron Job
+- **Cloudflare Workers Cron**: 毎日11:15 GMT（日本時間20:15）
+- **自動処理**: 入室ユーザー一括退室
+
+## セキュリティ・認証
+
+### TLS/暗号化
+- **rustls-tls**: Rustでの現代的TLS実装
+- **Discord公開鍵検証**: Webhook署名検証
+
+### 環境変数管理
+- **Cloudflare Workers Vars**: 環境別設定
+- **Local Environment**: .env ファイル（開発時）
+
+## アーキテクチャパターン
+
+### Clean Architecture
+- **Domain層**: エンティティとビジネスルール
+- **Application層**: ユースケース実装
+- **Infrastructure層**: 外部システム連携
+
+### Repository Pattern
+- **型安全なデータアクセス**: Drizzle ORM
+- **モック対応**: テスト時の依存注入
+
+## 本番環境
+
+### Cloudflare Platform
+- **Workers**: エッジコンピューティング
+- **D1**: SQLiteデータベース
+- **KV**: キーバリューストア
+- **グローバル配信**: エッジロケーション
+
+### IoTデバイス
+- **Raspberry Pi**: ARM64 Linux
+- **GPIO制御**: ドアロック連携
+- **USB接続**: PaSoRi NFCリーダー
