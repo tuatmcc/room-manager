@@ -10,6 +10,9 @@ use tracing::{debug, instrument, warn};
 const DOOR_SENSOR_MCP3002_CHANNEL: MCP3002Channel = MCP3002Channel::Channel0;
 const DOOR_SENSOR_THRESHOLD_DISTANCE: f32 = 5.0; // cm
 
+const DISTANCE_SENSOR_MIN_VALID_RANGE: f32 = 0.0; // cm
+const DISTANCE_SENSOR_MAX_VALID_RANGE: f32 = 80.0; // cm
+
 /// 距離センサー設定
 #[derive(Debug, Clone)]
 pub struct SensorConfig {
