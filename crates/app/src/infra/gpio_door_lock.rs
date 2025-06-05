@@ -147,7 +147,6 @@ impl GpioDoorLock {
 impl DoorLock for GpioDoorLock {
     async fn unlock(&self) -> anyhow::Result<()> {
         // センサーベース制御のため、従来の自動ロックタイマーは無効化
-        // self.tx_unlock.send(()).await?;
         self.internal.lock().await.unlock().await
     }
 
