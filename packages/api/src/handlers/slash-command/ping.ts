@@ -1,5 +1,5 @@
 import type { APIInteractionResponse } from "discord-api-types/v10";
-import { InteractionResponseType } from "discord-api-types/v10";
+import { InteractionResponseType, MessageFlags } from "discord-api-types/v10";
 
 export class PingHandler {
 	handle(): APIInteractionResponse {
@@ -7,6 +7,7 @@ export class PingHandler {
 			type: InteractionResponseType.ChannelMessageWithSource,
 			data: {
 				content: "pong",
+				flags: MessageFlags.Ephemeral,
 			},
 		};
 	}
