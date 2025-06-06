@@ -4,6 +4,7 @@ use mockall::*;
 use crate::domain::{
     Card, CardApi, Clock, DoorLock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse,
 };
+use std::{future::Future, pin::Pin};
 
 // モッククラスの自動生成
 mock! {
@@ -35,6 +36,25 @@ mock! {
         async fn lock_with_sensor_check<S>(&self, door_sensor: &mut S) -> anyhow::Result<bool>
         where
             S: crate::domain::DoorSensor;
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct MockDoorSensor;
+
+impl MockDoorSensor {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl crate::domain::DoorSensor for MockDoorSensor {
+    fn is_door_open(&self) -> Pin<Box<dyn Future<Output = anyhow::Result<bool>> + Send + '_>> {
+        Box::pin(async { Ok(false) })
+    }
+
+    fn measure_distance(&self) -> Pin<Box<dyn Future<Output = anyhow::Result<f32>> + Send + '_>> {
+        Box::pin(async { Ok(0.0) })
     }
 }
 

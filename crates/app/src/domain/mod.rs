@@ -1,6 +1,6 @@
 pub mod entities;
 
-use async_trait::async_trait;
+use std::{future::Future, pin::Pin};
 pub use entities::*;
 
 pub trait CardApi {
@@ -25,10 +25,13 @@ pub trait DoorLock {
 }
 
 /// ドアセンサー - ドアの開閉状態を検知
-#[async_trait::async_trait]
 pub trait DoorSensor: Send + Sync {
-    async fn is_door_open(&self) -> anyhow::Result<bool>;
+    fn is_door_open(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<bool>> + Send + '_>>;
 
     /// 距離を測定（デバッグ用）
-    async fn measure_distance(&self) -> anyhow::Result<f32>;
+    fn measure_distance(
+        &self,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<f32>> + Send + '_>>;
 }

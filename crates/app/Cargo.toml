@@ -31,7 +31,6 @@ clap = { version = "4.5.37", features = ["derive", "env"] }
 futures-util = "0.3.31"
 async-stream = "0.3.6"
 rppal = "0.22.1"
-async-trait = "0.1.82"
 
 [dev-dependencies]
 mockall = "0.12.1"

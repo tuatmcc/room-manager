@@ -6,6 +6,7 @@ use std::time::Duration;
 use thiserror::Error;
 use tokio::time::sleep;
 use tracing::{debug, instrument, warn};
+use std::{future::Future, pin::Pin};
 
 const DOOR_SENSOR_MCP3002_CHANNEL: MCP3002Channel = MCP3002Channel::Channel0;
 const DOOR_SENSOR_THRESHOLD_DISTANCE: f32 = 5.0; // cm
@@ -268,23 +269,24 @@ impl Gp2y0aDistanceSensor<RppalSpiAdapter> {
     }
 }
 
-#[async_trait::async_trait]
 impl<T: SpiInterface> DoorSensor for Gp2y0aDistanceSensor<T> {
-    async fn is_door_open(&self) -> Result<bool> {
-        let distance = self.measure_distance_internal().await?;
+    fn is_door_open(&self) -> Pin<Box<dyn Future<Output = Result<bool>> + Send + '_>> {
+        Box::pin(async move {
+            let distance = self.measure_distance_internal().await?;
 
-        let is_open = distance < self.config.threshold_distance;
+            let is_open = distance < self.config.threshold_distance;
 
-        debug!(
-            "Door sensor: distance={:.2}cm, threshold={:.2}cm, is_open={}",
-            distance, self.config.threshold_distance, is_open
-        );
+            debug!(
+                "Door sensor: distance={:.2}cm, threshold={:.2}cm, is_open={}",
+                distance, self.config.threshold_distance, is_open
+            );
 
-        Ok(is_open)
+            Ok(is_open)
+        })
     }
 
-    async fn measure_distance(&self) -> Result<f32> {
-        self.measure_distance_internal().await
+    fn measure_distance(&self) -> Pin<Box<dyn Future<Output = Result<f32>> + Send + '_>> {
+        Box::pin(async move { self.measure_distance_internal().await })
     }
 }
 

@@ -53,7 +53,7 @@ pnpm install
 
 ```sh
 # Rustアプリケーションの実行（開発モード）
-cargo run -p app
+cargo run -p room-manager
 
 # APIサーバーの開発実行
 cd packages/api
@@ -64,9 +64,9 @@ pnpm dev
 
 ```sh
 # Rustアプリケーションのリリースビルド
-cargo build --release -p app
+cargo build --release -p room-manager
 
-# 実行ファイルは target/release/app に生成されます
+# 実行ファイルは target/release/room-manager に生成されます
 ```
 
 ### クロスコンパイル（Raspberry Piなど向け）
@@ -80,5 +80,5 @@ cargo install cross --git https://github.com/cross-rs/cross
 # aarch64向けビルド
 cross build --release
 
-# 実行ファイルは target/aarch64-unknown-linux-gnu/release/app に生成されます
+# 実行ファイルは target/aarch64-unknown-linux-gnu/release/room-manager に生成されます
 ```
