@@ -24,7 +24,6 @@ pub trait DoorLock {
 }
 
 /// ドアセンサー - ドアの開閉状態を検知
-#[async_trait::async_trait]
 pub trait DoorSensor: Send + Sync {
     async fn is_door_open(&self) -> anyhow::Result<bool>;
 

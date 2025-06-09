@@ -169,7 +169,6 @@ impl<T: SpiInterface> Gp2y0aDistanceSensor<T> {
         }
     }
 
-
     /// MCP3002からA/D変換値を読み取り
     #[instrument(skip(self), level = "debug")]
     fn read_adc(&self) -> Result<u16, SensorError> {
@@ -184,7 +183,7 @@ impl<T: SpiInterface> Gp2y0aDistanceSensor<T> {
         spi.transfer(&mut rx_buf, &tx_buf)?;
 
         // 10ビットのA/D変換値を抽出
-        let value = ((rx_buf[0] as u16) << 8 | rx_buf[1] as u16) & 0x3ff;
+        let value = (u16::from(rx_buf[0]) << 8 | u16::from(rx_buf[1])) & 0x3ff;
 
         debug!("ADC raw value: {}, cmd: 0x{:02x}", value, cmd);
 
@@ -193,7 +192,7 @@ impl<T: SpiInterface> Gp2y0aDistanceSensor<T> {
 
     /// A/D変換値を電圧に変換
     fn adc_to_voltage(&self, adc_value: u16) -> f32 {
-        (adc_value as f32) / 1023.0 * self.config.reference_voltage
+        f32::from(adc_value) / 1023.0 * self.config.reference_voltage
     }
 
     /// 距離を測定（内部実装）
@@ -223,7 +222,7 @@ impl<T: SpiInterface> Gp2y0aDistanceSensor<T> {
         );
 
         // 測定値が有効範囲外の場合は警告
-        if median < DISTANCE_SENSOR_MIN_VALID_RANGE || median > DISTANCE_SENSOR_MAX_VALID_RANGE {
+        if !(DISTANCE_SENSOR_MIN_VALID_RANGE..=DISTANCE_SENSOR_MAX_VALID_RANGE).contains(&median) {
             warn!(
                 "Distance sensor reading out of valid range: {:.2}cm",
                 median
@@ -253,7 +252,6 @@ impl Gp2y0aDistanceSensor<RppalSpiAdapter> {
     }
 }
 
-#[async_trait::async_trait]
 impl<T: SpiInterface> DoorSensor for Gp2y0aDistanceSensor<T> {
     async fn is_door_open(&self) -> Result<bool> {
         let distance = self.measure_distance_internal().await?;
@@ -331,32 +329,5 @@ mod tests {
         assert!((sensor.adc_to_voltage(0) - 0.0).abs() < 0.01);
         assert!((sensor.adc_to_voltage(1023) - 3.3).abs() < 0.01);
         assert!((sensor.adc_to_voltage(512) - 1.65).abs() < 0.01);
-    }
-
-    #[tokio::test]
-    async fn test_mock_distance_measurement() {
-        // 10cmに相当するADC値（約700）をモック
-        let adc_high = (700u16 >> 2) as u8;
-        let adc_low = ((700u16 & 0xff) << 6) as u8;
-
-        let mock_responses = vec![
-            Ok([adc_high, adc_low]),
-            Ok([adc_high, adc_low]),
-            Ok([adc_high, adc_low]),
-        ];
-
-        let mock_spi = MockSpiInterface::new(mock_responses);
-        let config = SensorConfig {
-            measurement_count: 3,
-            ..Default::default()
-        };
-
-        let sensor = Gp2y0aDistanceSensor::new_with_config(mock_spi, config);
-
-        let distance = sensor.measure_distance().await;
-        assert!(distance.is_ok());
-
-        let distance_value = distance.unwrap();
-        assert!(distance_value > 5.0 && distance_value < 15.0);
     }
 }

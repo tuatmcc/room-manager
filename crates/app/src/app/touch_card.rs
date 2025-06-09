@@ -57,19 +57,16 @@ where
                 // 退室時にドアセンサーでドアの状態を確認してから施錠
                 if status == RoomEntryStatus::Exit {
                     info!("Exit detected, checking door status for potential auto-lock");
-                    match self
+                    if self
                         .door_lock
                         .lock_with_sensor_check(&mut self.door_sensor)
                         .await?
                     {
-                        true => {
-                            info!("Door was closed and locked successfully");
-                            self.player.play(SoundEvent::Touch)?; // ロック成功音
-                        }
-                        false => {
-                            warn!("Door is still open, cannot lock automatically");
-                            // TODO: ドアが開いている警告音（必要に応じて追加）
-                        }
+                        info!("Door was closed and locked successfully");
+                        self.player.play(SoundEvent::Touch)?; // ロック成功音
+                    } else {
+                        warn!("Door is still open, cannot lock automatically");
+                        // TODO: ドアが開いている警告音（必要に応じて追加）
                     }
                 }
             }
