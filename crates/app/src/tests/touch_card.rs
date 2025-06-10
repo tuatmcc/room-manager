@@ -125,7 +125,7 @@ mod tests {
             .times(1)
             .returning(|_| Ok(()));
 
-        let mut mock_door_lock = MockDoorLock::new();
+        let mock_door_lock = MockDoorLock::new();
         mock_door_lock.expect_unlock().times(1).returning(|| Ok(()));
 
         let mock_door_sensor = MockDoorSensor::new();
