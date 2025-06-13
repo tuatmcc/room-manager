@@ -30,7 +30,8 @@ mock! {
 pub struct MockDoorLock {
     pub unlock_calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     pub expected_unlock_calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
-    pub unlock_behavior: std::sync::Arc<std::sync::Mutex<Box<dyn Fn() -> anyhow::Result<()> + Send>>>,
+    pub unlock_behavior:
+        std::sync::Arc<std::sync::Mutex<Box<dyn Fn() -> anyhow::Result<()> + Send>>>,
 }
 
 impl MockDoorLock {
@@ -43,16 +44,19 @@ impl MockDoorLock {
     }
 
     pub fn expect_unlock(&self) -> MockDoorLockExpectation {
-        MockDoorLockExpectation {
-            mock: self,
-        }
+        MockDoorLockExpectation { mock: self }
     }
 
     pub fn verify(&self) {
         let actual = self.unlock_calls.load(std::sync::atomic::Ordering::SeqCst);
-        let expected = self.expected_unlock_calls.load(std::sync::atomic::Ordering::SeqCst);
+        let expected = self
+            .expected_unlock_calls
+            .load(std::sync::atomic::Ordering::SeqCst);
         if expected > 0 && actual != expected {
-            panic!("Expected unlock to be called {} times, but was called {} times", expected, actual);
+            panic!(
+                "Expected unlock to be called {} times, but was called {} times",
+                expected, actual
+            );
         }
     }
 }
@@ -63,7 +67,9 @@ pub struct MockDoorLockExpectation<'a> {
 
 impl<'a> MockDoorLockExpectation<'a> {
     pub fn times(self, count: usize) -> Self {
-        self.mock.expected_unlock_calls.store(count, std::sync::atomic::Ordering::SeqCst);
+        self.mock
+            .expected_unlock_calls
+            .store(count, std::sync::atomic::Ordering::SeqCst);
         self
     }
 
