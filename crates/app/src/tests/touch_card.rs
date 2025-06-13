@@ -28,28 +28,50 @@ mock! {
 
 // DoorLockの手動実装（mockallはジェネリックメソッドをサポートしないため）
 pub struct MockDoorLock {
-    pub unlock_calls: std::sync::atomic::AtomicUsize,
+    pub unlock_calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pub expected_unlock_calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pub unlock_behavior: std::sync::Arc<std::sync::Mutex<Box<dyn Fn() -> anyhow::Result<()> + Send>>>,
 }
 
 impl MockDoorLock {
     pub fn new() -> Self {
         Self {
-            unlock_calls: std::sync::atomic::AtomicUsize::new(0),
+            unlock_calls: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            expected_unlock_calls: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            unlock_behavior: std::sync::Arc::new(std::sync::Mutex::new(Box::new(|| Ok(())))),
         }
     }
 
-    pub fn expect_unlock(&self) -> &Self {
+    pub fn expect_unlock(&self) -> MockDoorLockExpectation {
+        MockDoorLockExpectation {
+            mock: self,
+        }
+    }
+
+    pub fn verify(&self) {
+        let actual = self.unlock_calls.load(std::sync::atomic::Ordering::SeqCst);
+        let expected = self.expected_unlock_calls.load(std::sync::atomic::Ordering::SeqCst);
+        if expected > 0 && actual != expected {
+            panic!("Expected unlock to be called {} times, but was called {} times", expected, actual);
+        }
+    }
+}
+
+pub struct MockDoorLockExpectation<'a> {
+    mock: &'a MockDoorLock,
+}
+
+impl<'a> MockDoorLockExpectation<'a> {
+    pub fn times(self, count: usize) -> Self {
+        self.mock.expected_unlock_calls.store(count, std::sync::atomic::Ordering::SeqCst);
         self
     }
 
-    pub fn times(&self, _: usize) -> &Self {
-        self
-    }
-
-    pub fn returning<F>(&self, _: F) -> &Self
+    pub fn returning<F>(self, f: F) -> Self
     where
-        F: Fn() -> anyhow::Result<()>,
+        F: Fn() -> anyhow::Result<()> + Send + 'static,
     {
+        *self.mock.unlock_behavior.lock().unwrap() = Box::new(f);
         self
     }
 }
@@ -58,7 +80,9 @@ impl crate::domain::DoorLock for MockDoorLock {
     async fn unlock(&self) -> anyhow::Result<()> {
         self.unlock_calls
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-        Ok(())
+        // 設定された動作を実行
+        let behavior = self.unlock_behavior.lock().unwrap();
+        behavior()
     }
 
     async fn lock_with_sensor_check<S>(&self, _door_sensor: &mut S) -> anyhow::Result<bool>
