@@ -1,9 +1,7 @@
 use mockall::predicate::*;
 use mockall::*;
 
-use crate::domain::{
-    Card, CardApi, Clock, DoorLock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse,
-};
+use crate::domain::{Card, CardApi, Clock, ErrorCode, SoundEvent, SoundPlayer, TouchCardResponse};
 
 // モッククラスの自動生成
 mock! {
@@ -28,10 +26,84 @@ mock! {
     }
 }
 
+// DoorLockの手動実装（mockallはジェネリックメソッドをサポートしないため）
+pub struct MockDoorLock {
+    pub unlock_calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pub expected_unlock_calls: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pub unlock_behavior:
+        std::sync::Arc<std::sync::Mutex<Box<dyn Fn() -> anyhow::Result<()> + Send>>>,
+}
+
+impl MockDoorLock {
+    pub fn new() -> Self {
+        Self {
+            unlock_calls: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            expected_unlock_calls: std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0)),
+            unlock_behavior: std::sync::Arc::new(std::sync::Mutex::new(Box::new(|| Ok(())))),
+        }
+    }
+
+    pub fn expect_unlock(&self) -> MockDoorLockExpectation {
+        MockDoorLockExpectation { mock: self }
+    }
+
+    pub fn verify(&self) {
+        let actual = self.unlock_calls.load(std::sync::atomic::Ordering::SeqCst);
+        let expected = self
+            .expected_unlock_calls
+            .load(std::sync::atomic::Ordering::SeqCst);
+        if expected > 0 && actual != expected {
+            panic!(
+                "Expected unlock to be called {} times, but was called {} times",
+                expected, actual
+            );
+        }
+    }
+}
+
+pub struct MockDoorLockExpectation<'a> {
+    mock: &'a MockDoorLock,
+}
+
+impl<'a> MockDoorLockExpectation<'a> {
+    pub fn times(self, count: usize) -> Self {
+        self.mock
+            .expected_unlock_calls
+            .store(count, std::sync::atomic::Ordering::SeqCst);
+        self
+    }
+
+    pub fn returning<F>(self, f: F) -> Self
+    where
+        F: Fn() -> anyhow::Result<()> + Send + 'static,
+    {
+        *self.mock.unlock_behavior.lock().unwrap() = Box::new(f);
+        self
+    }
+}
+
+impl crate::domain::DoorLock for MockDoorLock {
+    async fn unlock(&self) -> anyhow::Result<()> {
+        self.unlock_calls
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        // 設定された動作を実行
+        let behavior = self.unlock_behavior.lock().unwrap();
+        behavior()
+    }
+
+    async fn lock_with_sensor_check<S>(&self, _door_sensor: &mut S) -> anyhow::Result<bool>
+    where
+        S: crate::domain::DoorSensor,
+    {
+        Ok(true)
+    }
+}
+
 mock! {
-    pub DoorLock {}
-    impl DoorLock for DoorLock {
-        async fn unlock(&self) -> anyhow::Result<()>;
+    pub DoorSensor {}
+    impl crate::domain::DoorSensor for DoorSensor {
+        async fn is_door_open(&self) -> anyhow::Result<bool>;
+        async fn measure_distance(&self) -> anyhow::Result<f32>;
     }
 }
 
@@ -83,11 +155,19 @@ mod tests {
             .times(1)
             .returning(|_| Ok(()));
 
-        let mut mock_door_lock = MockDoorLock::new();
+        let mock_door_lock = MockDoorLock::new();
         mock_door_lock.expect_unlock().times(1).returning(|| Ok(()));
 
+        let mock_door_sensor = MockDoorSensor::new();
+
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_door_lock);
+        let mut use_case = TouchCardUseCase::new(
+            mock_api,
+            mock_player,
+            mock_clock,
+            mock_door_lock,
+            mock_door_sensor,
+        );
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();
@@ -123,7 +203,7 @@ mod tests {
         mock_player
             .expect_play()
             .with(eq(SoundEvent::Touch))
-            .times(1)
+            .times(2) // 初回とドアロック成功時の2回
             .returning(|_| Ok(()));
         mock_player
             .expect_play()
@@ -137,11 +217,19 @@ mod tests {
             .returning(|_| Ok(()));
 
         // ドアロックのモック設定
-        let mut mock_door_lock = MockDoorLock::new();
+        let mock_door_lock = MockDoorLock::new();
         mock_door_lock.expect_unlock().times(1).returning(|| Ok(()));
 
+        let mock_door_sensor = MockDoorSensor::new();
+
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_door_lock);
+        let mut use_case = TouchCardUseCase::new(
+            mock_api,
+            mock_player,
+            mock_clock,
+            mock_door_lock,
+            mock_door_sensor,
+        );
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();
@@ -185,8 +273,16 @@ mod tests {
         // ドアロックのモック
         let mock_door_lock = MockDoorLock::new();
 
+        let mock_door_sensor = MockDoorSensor::new();
+
         // テスト実行
-        let use_case = TouchCardUseCase::new(mock_api, mock_player, mock_clock, mock_door_lock);
+        let mut use_case = TouchCardUseCase::new(
+            mock_api,
+            mock_player,
+            mock_clock,
+            mock_door_lock,
+            mock_door_sensor,
+        );
 
         // executeを非同期で直接呼び出す
         use_case.execute(&card_id).await.unwrap();

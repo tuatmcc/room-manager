@@ -1,6 +1,6 @@
 use std::{pin::Pin, sync::Arc, time::Duration};
 
-use crate::domain::DoorLock;
+use crate::domain::{DoorLock, DoorSensor};
 use rppal::gpio::{Gpio, OutputPin};
 use tokio::{
     sync::{Mutex, mpsc},
@@ -15,6 +15,7 @@ const SERVO_MAX_DUTY_CYCLE: Duration = Duration::from_micros(2500);
 
 const SERVO_MOVE_WAIT_TIME: Duration = Duration::from_secs(1);
 const AUTO_LOCK_DELAY: Duration = Duration::from_secs(30);
+const CHECK_INTERVAL: Duration = Duration::from_secs(10);
 
 #[derive(Debug)]
 struct DoorLockInternal {
@@ -95,7 +96,6 @@ impl DoorLockInternal {
 #[derive(Debug)]
 pub struct GpioDoorLock {
     internal: Arc<Mutex<DoorLockInternal>>,
-    tx_unlock: mpsc::Sender<()>,
 }
 
 impl GpioDoorLock {
@@ -103,11 +103,10 @@ impl GpioDoorLock {
         let internal = DoorLockInternal::new().await?;
         let internal = Arc::new(Mutex::new(internal));
 
-        let (tx_unlock, mut rx_unlock) = mpsc::channel(1);
+        let (_tx_unlock, mut rx_unlock) = mpsc::channel(1);
 
         let lock = Self {
             internal: Arc::clone(&internal),
-            tx_unlock,
         };
 
         {
@@ -145,7 +144,51 @@ impl GpioDoorLock {
 
 impl DoorLock for GpioDoorLock {
     async fn unlock(&self) -> anyhow::Result<()> {
-        self.tx_unlock.send(()).await?;
+        // センサーベース制御のため、従来の自動ロックタイマーは無効化
         self.internal.lock().await.unlock().await
+    }
+
+    async fn lock_with_sensor_check<S>(&self, door_sensor: &mut S) -> anyhow::Result<bool>
+    where
+        S: DoorSensor,
+    {
+        use tokio::time::sleep;
+        use tracing::{info, warn};
+
+        info!("Starting infinite door monitoring for auto-lock");
+
+        let mut cycle = 0;
+
+        loop {
+            cycle += 1;
+            info!("Door check cycle #{}", cycle);
+
+            let is_door_open = door_sensor.is_door_open().await?;
+
+            if !is_door_open {
+                info!(
+                    "Door is closed! Proceeding with lock after {} checks",
+                    cycle
+                );
+
+                // ドアが閉まっていたら施錠
+                self.internal.lock().await.lock().await?;
+
+                info!("Door locked successfully");
+                return Ok(true);
+            }
+
+            // デバッグ用に距離も表示
+            let distance = door_sensor.measure_distance().await?;
+            warn!(
+                "Door is still open (distance: {:.2}cm). Waiting {} seconds... (check #{})",
+                distance,
+                CHECK_INTERVAL.as_secs(),
+                cycle
+            );
+
+            // 10秒待機
+            sleep(CHECK_INTERVAL).await;
+        }
     }
 }
