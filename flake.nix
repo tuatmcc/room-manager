@@ -40,15 +40,34 @@
 
             # Common dependencies
             pkg-config
-            cargo-cross
+            rustup
+            # Build cross from source using cargo install
+            (pkgs.writeShellScriptBin "cross" ''
+              export PATH="$HOME/.cargo/bin:$PATH"
+              if [ ! -f "$HOME/.cargo/bin/cross" ]; then
+                cargo install cross --git https://github.com/cross-rs/cross.git --rev 9e2298e17170655342d3248a9c8ac37ef92ba38f
+              fi
+              exec "$HOME/.cargo/bin/cross" "$@"
+            '')
             nodejs-slim
             pnpm
+            docker
             # Add rust toolchain based on mise.toml configuration
-            (rust-bin.stable.latest.default.override {
+            (rust-bin.stable."1.86.0".default.override {
               extensions = [ "rust-src" "rust-analyzer" ];
               targets = [ "aarch64-unknown-linux-gnu" ];
             })
           ];
+
+          # FIXME: cross needs rustup
+          shellHook = ''
+            export PATH="${pkgs.rustup}/bin:$HOME/.cargo/bin:$PATH"
+            
+            # Initialize rustup if not already done
+            if [ ! -d "$HOME/.rustup" ]; then
+              rustup-init -y --no-modify-path
+            fi
+          '';
         };
       };
     };
