@@ -203,7 +203,7 @@ mod tests {
         mock_player
             .expect_play()
             .with(eq(SoundEvent::Touch))
-            .times(1)
+            .times(2) // 初回とドアロック成功時の2回
             .returning(|_| Ok(()));
         mock_player
             .expect_play()
