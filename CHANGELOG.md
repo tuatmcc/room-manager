@@ -1,5 +1,14 @@
 # room-manager
 
+## [0.2.2](https://github.com/tuatmcc/room-manager/compare/v0.2.1...v0.2.2) (2025-09-30)
+
+
+### Bug Fixes
+
+* `read_without_encryption`のロジック修正 ([#64](https://github.com/tuatmcc/room-manager/issues/64)) ([5e84f2f](https://github.com/tuatmcc/room-manager/commit/5e84f2f79a7c6fddce851e01478cd3e2db530a71))
+* pingコマンドを実行者以外見えないように修正 ([#69](https://github.com/tuatmcc/room-manager/issues/69)) ([773287f](https://github.com/tuatmcc/room-manager/commit/773287f193c62d61cd49385b1daf2b94d8fa8227))
+* ドアロックのサーボの角度を反転 ([#74](https://github.com/tuatmcc/room-manager/issues/74)) ([9ec9337](https://github.com/tuatmcc/room-manager/commit/9ec933782fec978d1b18c03154c348d07ab9c758))
+
 ## [0.2.1](https://github.com/tuatmcc/room-manager/compare/v0.2.0...v0.2.1) (2025-05-23)
 
 
