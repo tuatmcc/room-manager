@@ -1,5 +1,12 @@
 # room-manager
 
+## [0.2.3](https://github.com/tuatmcc/room-manager/compare/v0.2.2...v0.2.3) (2025-10-01)
+
+
+### Bug Fixes
+
+* サーボモータの角度をもとに戻す ([#75](https://github.com/tuatmcc/room-manager/issues/75)) ([fca02d3](https://github.com/tuatmcc/room-manager/commit/fca02d34ae37a94a659b1b50072eb1e6ad6b172c))
+
 ## [0.2.2](https://github.com/tuatmcc/room-manager/compare/v0.2.1...v0.2.2) (2025-09-30)
 
 
