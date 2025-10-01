@@ -65,18 +65,18 @@ impl DoorLockInternal {
         Ok(())
     }
 
-    // 0度にセット
+    // 180度にセット
     fn set_lock_angle(&mut self) -> anyhow::Result<()> {
         self.output_pin
-            .set_pwm(SERVO_PERIOD, SERVO_MIN_DUTY_CYCLE)?;
+            .set_pwm(SERVO_PERIOD, SERVO_MAX_DUTY_CYCLE)?;
 
         Ok(())
     }
 
-    // 180度にセット
+    // 0度にセット
     fn set_unlock_angle(&mut self) -> anyhow::Result<()> {
         self.output_pin
-            .set_pwm(SERVO_PERIOD, SERVO_MAX_DUTY_CYCLE)?;
+            .set_pwm(SERVO_PERIOD, SERVO_MIN_DUTY_CYCLE)?;
 
         Ok(())
     }
