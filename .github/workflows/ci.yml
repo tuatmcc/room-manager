@@ -1,0 +1,169 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck-node:
+    name: Typecheck (Node.js)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
+
+      - name: Run | Typecheck
+        run: pnpm run -r typecheck
+
+  lint-node:
+    name: Lint (Node.js)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
+
+      - name: Run | Lint
+        run: pnpm run -r lint
+
+  lint-rust-portable:
+    name: Lint (Rust, portable)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Rust development environment
+        uses: ./.github/actions/setup-rust
+
+      - name: Run | Lint (Rust)
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+
+  lint-rust-arm:
+    name: Lint (Rust, arm)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Rust development environment
+        uses: ./.github/actions/setup-rust
+        with:
+          apt-packages: libasound2-dev
+
+      - name: Run | Lint (Rust)
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+
+  format-node:
+    name: Format (Node.js)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
+
+      - name: Run | Format
+        run: pnpm run -r format:check
+
+  format-rust:
+    name: Format (Rust)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Rust development environment
+        uses: ./.github/actions/setup-rust
+
+      - name: Run | Format
+        run: cargo fmt --all -- --check
+
+  test-node:
+    name: Test (Node.js)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
+
+      - name: Run | Test
+        run: pnpm run -r test
+
+  test-rust:
+    name: Test (Rust, portable)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Rust development environment
+        uses: ./.github/actions/setup-rust
+
+      - name: Run | Test
+        run: cargo test --locked --workspace --all-targets --all-features
+
+  build-node:
+    name: Build (Node.js)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
+
+      - name: Run | Build
+        run: pnpm run -r build
+
+  build-rust:
+    name: Build (Rust, arm)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Rust development environment
+        uses: ./.github/actions/setup-rust
+        with:
+          apt-packages: libasound2-dev
+
+      - name: Run | Build
+        run: cargo build -p room-manager --release --locked
+
+      - name: Upload | Artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: room-manager
+          path: target/release/room-manager
+
+  ci-status:
+    name: CI Status
+    # 依存ジョブの結果が failure または cancelled の場合に実行
+    if: ${{ always() && (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ubuntu-slim
+    needs:
+      - typecheck-node
+      - lint-node
+      - lint-rust-portable
+      - lint-rust-arm
+      - format-node
+      - format-rust
+      - test-node
+      - test-rust
+      - build-node
+      - build-rust
+    steps:
+      - run: exit 1

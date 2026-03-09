@@ -16,7 +16,7 @@ permissions:
   contents: write
 
 jobs:
-  deploy_app:
+  deploy-app:
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Setup | Checkout
@@ -35,7 +35,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  deploy_api:
+  deploy-api:
     runs-on: ubuntu-latest
     steps:
       - name: Setup | Checkout
