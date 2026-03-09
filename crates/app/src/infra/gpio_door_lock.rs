@@ -9,9 +9,17 @@ use tokio::{
 
 const SERVO_PIN: u8 = 18;
 const SERVO_PERIOD: Duration = Duration::from_millis(20);
+
 // 0.5ms ~ 2.5ms
-const SERVO_MIN_DUTY_CYCLE: Duration = Duration::from_micros(500);
-const SERVO_MAX_DUTY_CYCLE: Duration = Duration::from_micros(2500);
+const SERVO_MIN_DUTY_CYCLE_US: u64 = 500;
+const SERVO_MAX_DUTY_CYCLE_US: u64 = 2500;
+
+const SERVO_MIN_ANGLE: u16 = 0;
+const SERVO_MAX_ANGLE: u16 = 180;
+
+const LOCK_ANGLE: u16 = 0;
+const UNLOCK_ANGLE: u16 = 180;
+const NEUTRAL_ANGLE: u16 = 90;
 
 const SERVO_MOVE_WAIT_TIME: Duration = Duration::from_secs(1);
 const AUTO_LOCK_DELAY: Duration = Duration::from_secs(30);
@@ -36,10 +44,6 @@ impl DoorLockInternal {
     }
 
     async fn unlock(&mut self) -> anyhow::Result<()> {
-        if self.is_unlocked {
-            return Ok(());
-        }
-
         self.set_unlock_angle()?;
         time::sleep(SERVO_MOVE_WAIT_TIME).await;
         self.set_neutral_angle()?;
@@ -65,30 +69,32 @@ impl DoorLockInternal {
         Ok(())
     }
 
-    // 180度にセット
+    fn set_angle(&mut self, angle: u16) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            angle <= SERVO_MAX_ANGLE,
+            "servo angle must be between {SERVO_MIN_ANGLE} and {SERVO_MAX_ANGLE}: {angle}"
+        );
+
+        let duty_cycle_us = SERVO_MIN_DUTY_CYCLE_US
+            + (SERVO_MAX_DUTY_CYCLE_US - SERVO_MIN_DUTY_CYCLE_US) * u64::from(angle)
+                / u64::from(SERVO_MAX_ANGLE);
+
+        self.output_pin
+            .set_pwm(SERVO_PERIOD, Duration::from_micros(duty_cycle_us))?;
+
+        Ok(())
+    }
+
     fn set_lock_angle(&mut self) -> anyhow::Result<()> {
-        self.output_pin
-            .set_pwm(SERVO_PERIOD, SERVO_MAX_DUTY_CYCLE)?;
-
-        Ok(())
+        self.set_angle(LOCK_ANGLE)
     }
 
-    // 0度にセット
     fn set_unlock_angle(&mut self) -> anyhow::Result<()> {
-        self.output_pin
-            .set_pwm(SERVO_PERIOD, SERVO_MIN_DUTY_CYCLE)?;
-
-        Ok(())
+        self.set_angle(UNLOCK_ANGLE)
     }
 
-    // 90度にセット
     fn set_neutral_angle(&mut self) -> anyhow::Result<()> {
-        self.output_pin.set_pwm(
-            SERVO_PERIOD,
-            (SERVO_MIN_DUTY_CYCLE + SERVO_MAX_DUTY_CYCLE) / 2,
-        )?;
-
-        Ok(())
+        self.set_angle(NEUTRAL_ANGLE)
     }
 }
 
