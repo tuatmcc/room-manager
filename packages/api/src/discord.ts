@@ -30,6 +30,7 @@ export const interactionVerifier = createMiddleware<AppEnv>(async (c, next) => {
 		return c.text("Unauthorized", 401);
 	}
 
+	c.set("verifiedInteractionBody", body);
 	await next();
 });
 

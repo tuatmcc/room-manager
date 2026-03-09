@@ -100,32 +100,13 @@ export class TouchCardUseCase {
 
 	private async toggleUserRoomPresence(user: User): Promise<TouchCardResult> {
 		const now = Temporal.Now.instant();
-
-		const oldLastEntryLog =
-			await this.roomEntryLogRepository.findLastEntryByUserId(user.id);
-		// すでに入室している場合は、入室ログを更新して終了
-		if (oldLastEntryLog) {
-			const newLastEntryLog = oldLastEntryLog.exitRoom(now);
-			await this.roomEntryLogRepository.save(newLastEntryLog);
-
-			// 入室中のユーザーを取得
-			const entryUsers = await this.userRepository.findAllEntryUsers();
-
-			return {
-				status: "exit",
-				entries: entryUsers.length,
-				user,
-			};
-		}
-
-		// 入室していない場合は入室ログを新規作成
-		await this.roomEntryLogRepository.create(user.id, now);
+		const status = await this.roomEntryLogRepository.toggle(user.id, now);
 
 		// 入室中のユーザーを取得
 		const entryUsers = await this.userRepository.findAllEntryUsers();
 
 		return {
-			status: "entry",
+			status,
 			entries: entryUsers.length,
 			user,
 		};

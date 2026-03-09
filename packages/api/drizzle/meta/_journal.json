@@ -1,20 +1,27 @@
 {
-  "version": "7",
-  "dialect": "sqlite",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "6",
-      "when": 1745601795983,
-      "tag": "0000_typical_tattoo",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1747153030797,
-      "tag": "0001_nice_sunfire",
-      "breakpoints": true
-    }
-  ]
+	"version": "7",
+	"dialect": "sqlite",
+	"entries": [
+		{
+			"idx": 0,
+			"version": "6",
+			"when": 1745601795983,
+			"tag": "0000_typical_tattoo",
+			"breakpoints": true
+		},
+		{
+			"idx": 1,
+			"version": "6",
+			"when": 1747153030797,
+			"tag": "0001_nice_sunfire",
+			"breakpoints": true
+		},
+		{
+			"idx": 2,
+			"version": "6",
+			"when": 1773050156091,
+			"tag": "0002_familiar_hitman",
+			"breakpoints": true
+		}
+	]
 }

@@ -1,6 +1,6 @@
 use std::{thread, time::Duration};
 
-use anyhow::anyhow;
+use anyhow::{anyhow, ensure};
 use async_stream::stream;
 use futures_util::Stream;
 use if_chain::if_chain;
@@ -38,7 +38,7 @@ impl InternalPasoriReader {
         })
     }
 
-    #[allow(clippy::unnecessary_wraps)]
+    #[allow(clippy::unnecessary_wraps, clippy::too_many_lines)]
     fn scan_card(&mut self) -> anyhow::Result<Option<(felica::Card, Card)>> {
         let Ok(polling_res) = self.device.polling(
             pasori::device::Bitrate::Bitrate212kbs,
@@ -84,9 +84,27 @@ impl InternalPasoriReader {
                     }
                 };
 
-                let read_data = &read_res.block_data[0];
-                let student_id = std::str::from_utf8(&read_data[7..15])?;
-                let student_id = student_id.parse::<u32>()?;
+                let Some(read_data) = read_res.block_data.first() else {
+                    error!("Student card response did not contain any blocks");
+                    let card = Card {
+                        idm,
+                        student_id: None,
+                        balance: None,
+                    };
+                    return Ok(Some((felica_card, card)));
+                };
+                let student_id = match parse_student_card_block(read_data) {
+                    Ok(student_id) => student_id,
+                    Err(e) => {
+                        error!("Failed to parse student card data: {:?}", e);
+                        let card = Card {
+                            idm,
+                            student_id: None,
+                            balance: None,
+                        };
+                        return Ok(Some((felica_card, card)));
+                    }
+                };
 
                 info!("Student ID: {}", student_id);
                 let card = Card {
@@ -111,8 +129,17 @@ impl InternalPasoriReader {
                     }
                 };
 
-                let read_data = &read_res.block_data[0];
-                let balance = u32::from_le_bytes([read_data[10], read_data[11], 0, 0]);
+                let Some(read_data) = read_res.block_data.first() else {
+                    error!("Suica response did not contain any blocks");
+                    return Ok(None);
+                };
+                let balance = match parse_suica_balance_block(read_data) {
+                    Ok(balance) => balance,
+                    Err(e) => {
+                        error!("Failed to parse Suica card data: {:?}", e);
+                        return Ok(None);
+                    }
+                };
 
                 info!("Suica balance: {} yen", balance);
                 let card = Card {
@@ -252,4 +279,73 @@ fn idm_to_string(idm: &[u8]) -> String {
         write!(result, "{byte:02x}").unwrap();
     }
     result
+}
+
+fn parse_student_card_block(block: &[u8]) -> anyhow::Result<u32> {
+    ensure!(block.len() >= 15, "student card block too short");
+    let student_id = std::str::from_utf8(&block[7..15])?;
+
+    Ok(student_id.parse::<u32>()?)
+}
+
+fn parse_suica_balance_block(block: &[u8]) -> anyhow::Result<u32> {
+    ensure!(block.len() >= 12, "suica block too short");
+
+    Ok(u32::from_le_bytes([block[10], block[11], 0, 0]))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_student_card_block, parse_suica_balance_block};
+
+    #[test]
+    fn parse_student_card_block_parses_student_id() {
+        let mut block = [0_u8; 16];
+        block[7..15].copy_from_slice(b"12345678");
+
+        let student_id = parse_student_card_block(&block).unwrap();
+
+        assert_eq!(student_id, 12_345_678);
+    }
+
+    #[test]
+    fn parse_student_card_block_rejects_short_block() {
+        let err = parse_student_card_block(&[0; 14]).unwrap_err();
+
+        assert!(err.to_string().contains("too short"));
+    }
+
+    #[test]
+    fn parse_student_card_block_rejects_invalid_utf8() {
+        let mut block = [0_u8; 16];
+        block[7..15].copy_from_slice(&[0xff; 8]);
+
+        parse_student_card_block(&block).unwrap_err();
+    }
+
+    #[test]
+    fn parse_student_card_block_rejects_non_numeric_id() {
+        let mut block = [0_u8; 16];
+        block[7..15].copy_from_slice(b"abcd1234");
+
+        parse_student_card_block(&block).unwrap_err();
+    }
+
+    #[test]
+    fn parse_suica_balance_block_parses_balance() {
+        let mut block = [0_u8; 16];
+        block[10] = 0x39;
+        block[11] = 0x05;
+
+        let balance = parse_suica_balance_block(&block).unwrap();
+
+        assert_eq!(balance, 1337);
+    }
+
+    #[test]
+    fn parse_suica_balance_block_rejects_short_block() {
+        let err = parse_suica_balance_block(&[0; 11]).unwrap_err();
+
+        assert!(err.to_string().contains("too short"));
+    }
 }

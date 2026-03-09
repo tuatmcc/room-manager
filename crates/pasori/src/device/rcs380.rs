@@ -58,32 +58,7 @@ impl<T: Transport> Device for RCS380<T> {
         req.push(time_slot as u8);
 
         let res = self.chipset.in_comm_rf(&req, Duration::from_millis(10))?;
-
-        ensure!(res[0] == res.len() as u8, "invalid response");
-        ensure!(res[1] == 0x01, "invalid response");
-
-        let idm = res[2..10].try_into().unwrap();
-        let pmm = res[10..18].try_into().unwrap();
-
-        let request_result = if res.len() == 0x14 {
-            Some(((res[18] as u16) << 8) | res[19] as u16)
-        } else {
-            None
-        };
-
-        let system_code = if_chain! {
-            if let Some(system_code) = request_result;
-            if request_code == PollingRequestCode::SystemCode;
-            then { Some(system_code) }
-            else { None }
-        };
-
-        let card = Card::new(idm, pmm, system_code);
-
-        Ok(PollingResponse {
-            card,
-            request_result,
-        })
+        parse_polling_response(&res, request_code)
     }
 
     fn read_without_encryption(
@@ -131,36 +106,80 @@ impl<T: Transport> Device for RCS380<T> {
         let timeout = Duration::from_secs_f64(timeout / 1_000.0);
 
         let res = self.chipset.in_comm_rf(&req, timeout)?;
-
-        ensure!(res[0] == res.len() as u8, "invalid response");
-        ensure!(res[1] == 0x07, "invalid response");
-        ensure!(res[2..10] == card.idm(), "invalid response");
-
-        let status_flag1 = res[10];
-        let status_flag2 = res[11];
-
-        if status_flag1 != 0x00 || status_flag2 != 0x00 {
-            // TODO: https://www.sony.co.jp/Products/felica/business/tech-support/data/card_usersmanual_2.21j.pdf の4.5を参考にエラーを返す
-            bail!(
-                "read without encryption failed: status_flag1 = {:#x}, status_flag2 = {:#x}",
-                status_flag1,
-                status_flag2
-            );
-        }
-
-        let block_data_len = res[12] as usize;
-
-        let mut block_data = Vec::new();
-        for i in 0..block_data_len {
-            block_data.push(res[(13 + i)..(13 + i + 16)].to_vec());
-        }
-
-        Ok(ReadWithoutEncryptionResponse {
-            status_flag1,
-            status_flag2,
-            block_data,
-        })
+        parse_read_without_encryption_response(&res, card)
     }
+}
+
+fn parse_polling_response(
+    res: &[u8],
+    request_code: PollingRequestCode,
+) -> anyhow::Result<PollingResponse> {
+    ensure!(res.len() >= 18, "invalid response");
+    ensure!(res[0] == res.len() as u8, "invalid response");
+    ensure!(res[1] == 0x01, "invalid response");
+    ensure!(matches!(res.len(), 18 | 20), "invalid response");
+
+    let idm = res[2..10].try_into()?;
+    let pmm = res[10..18].try_into()?;
+
+    let request_result = if res.len() == 0x14 {
+        Some(((res[18] as u16) << 8) | res[19] as u16)
+    } else {
+        None
+    };
+
+    let system_code = if_chain! {
+        if let Some(system_code) = request_result;
+        if request_code == PollingRequestCode::SystemCode;
+        then { Some(system_code) }
+        else { None }
+    };
+
+    let card = Card::new(idm, pmm, system_code);
+
+    Ok(PollingResponse {
+        card,
+        request_result,
+    })
+}
+
+fn parse_read_without_encryption_response(
+    res: &[u8],
+    card: &Card,
+) -> anyhow::Result<ReadWithoutEncryptionResponse> {
+    ensure!(res.len() >= 13, "invalid response");
+    ensure!(res[0] == res.len() as u8, "invalid response");
+    ensure!(res[1] == 0x07, "invalid response");
+    ensure!(res[2..10] == card.idm(), "invalid response");
+
+    let status_flag1 = res[10];
+    let status_flag2 = res[11];
+
+    if status_flag1 != 0x00 || status_flag2 != 0x00 {
+        // TODO: https://www.sony.co.jp/Products/felica/business/tech-support/data/card_usersmanual_2.21j.pdf の4.5を参考にエラーを返す
+        bail!(
+            "read without encryption failed: status_flag1 = {:#x}, status_flag2 = {:#x}",
+            status_flag1,
+            status_flag2
+        );
+    }
+
+    let block_data_len = res[12] as usize;
+    let expected_len = 13 + block_data_len * 16;
+    ensure!(res.len() >= expected_len, "invalid response");
+
+    let mut block_data = Vec::with_capacity(block_data_len);
+    for i in 0..block_data_len {
+        let start = 13 + i * 16;
+        let end = start + 16;
+        block_data.push(res[start..end].to_vec());
+    }
+
+    Ok(ReadWithoutEncryptionResponse {
+        status_flag1,
+        status_flag2,
+        block_data,
+    })
 }
 
 struct Chipset<T: Transport> {
@@ -229,6 +248,7 @@ impl<T: Transport> Chipset<T> {
         cmd_data[3..].copy_from_slice(send_data);
 
         let data = self.send_packet(CmdCode::InCommRF, &cmd_data)?;
+        ensure!(data.len() >= 5, "comm rf failed");
         ensure!(data[0..4] == [0, 0, 0, 0], "comm rf failed");
 
         Ok(data[5..].to_vec())
@@ -243,6 +263,7 @@ impl<T: Transport> Chipset<T> {
 
     pub fn get_firmware_version(&self) -> anyhow::Result<String> {
         let data = self.send_packet(CmdCode::GetFirmwareVersion, &[])?;
+        ensure!(data.len() >= 2, "firmware version response too short");
 
         let version = format!("{:x}.{:02x}", data[1], data[0]);
         Ok(version)
@@ -560,6 +581,7 @@ impl<'a> Packet<'a> {
             return Ok(Self::Err);
         }
 
+        ensure!(packet.len() >= 8, "invalid packet");
         if packet[0..5] != [0x00, 0x00, 0xff, 0xff, 0xff] {
             bail!("invalid packet");
         }
@@ -570,7 +592,9 @@ impl<'a> Packet<'a> {
         let calc_checksum = Self::checksum(&packet[5..7]);
         ensure!(recv_checksum == calc_checksum, "len checksum failed");
 
+        ensure!(packet.len() > 8 + len as usize, "invalid packet");
         let body = &packet[8..8 + len as usize];
+        ensure!(body.len() >= 2, "invalid packet");
         ensure!(body[0] == 0xd7, "invalid packet");
 
         let recv_checksum = packet[8 + len as usize];
@@ -592,10 +616,33 @@ impl<'a> Packet<'a> {
 
 #[cfg(test)]
 mod test {
+    use super::{
+        Packet, PollingRequestCode, parse_polling_response, parse_read_without_encryption_response,
+    };
+    use crate::felica::Card;
+
     #[test]
     fn checksum() {
         assert_eq!(super::Packet::checksum(&[20, 20]), 216);
         assert_eq!(super::Packet::checksum(&[255, 255]), 2);
         assert_eq!(super::Packet::checksum(&[0, 0]), 0);
+    }
+
+    #[test]
+    fn parse_polling_response_rejects_short_response() {
+        parse_polling_response(&[0x11; 17], PollingRequestCode::None).unwrap_err();
+    }
+
+    #[test]
+    fn parse_read_without_encryption_response_rejects_short_block() {
+        let card = Card::new([0; 8], [0; 8], None);
+        let response = vec![16, 0x07, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 3];
+
+        parse_read_without_encryption_response(&response, &card).unwrap_err();
+    }
+
+    #[test]
+    fn deserialize_rejects_short_packet() {
+        Packet::deserialize(&[0x00, 0x00, 0xff]).unwrap_err();
     }
 }

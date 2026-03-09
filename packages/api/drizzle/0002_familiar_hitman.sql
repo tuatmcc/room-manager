@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `idx_room_entry_logs_open_user` ON `room_entry_logs` (`user_id`) WHERE "room_entry_logs"."exit_at" IS NULL;

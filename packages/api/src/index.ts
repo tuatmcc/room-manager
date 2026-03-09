@@ -8,11 +8,9 @@ import {
 	InteractionResponseType,
 	InteractionType,
 } from "discord-api-types/v10";
-import { drizzle } from "drizzle-orm/d1";
 import { Hono } from "hono";
 
-import * as schema from "@/schema";
-
+import { createDatabase } from "./database";
 import { interactionVerifier } from "./discord";
 import type { AppEnv, Env } from "./env";
 import { EnvSchema } from "./env";
@@ -26,18 +24,27 @@ import { createRepositories } from "./repositories";
 import { createServices } from "./services";
 import { createUseCases } from "./usecase";
 
+function createAppContext(env: Env) {
+	const db = createDatabase(env.DB);
+	const repositories = createRepositories(db);
+	const services = createServices(env);
+	const usecases = createUseCases(repositories);
+
+	return {
+		env,
+		services,
+		usecases,
+	};
+}
+
 const app = new Hono<AppEnv>()
 	.use(async (c, next) => {
 		const env = EnvSchema.parse(c.env);
+		const appContext = createAppContext(env);
 
-		const db = drizzle(env.DB, { schema });
-		const repositories = createRepositories(db);
-		const services = createServices(env);
-		const usecases = createUseCases(repositories);
-
-		c.set("env", env);
-		c.set("usecases", usecases);
-		c.set("services", services);
+		c.set("env", appContext.env);
+		c.set("usecases", appContext.usecases);
+		c.set("services", appContext.services);
 
 		await next();
 	})
@@ -78,8 +85,17 @@ const app = new Hono<AppEnv>()
 		const usecases = c.get("usecases");
 		const services = c.get("services");
 		const slashCommandHandlers = createSlashCommandHandlers(usecases, services);
+		const rawBody = c.get("verifiedInteractionBody");
+		if (!rawBody) {
+			return c.text("Invalid request", 400);
+		}
 
-		const interaction: APIInteraction = await c.req.json();
+		let interaction: APIInteraction;
+		try {
+			interaction = JSON.parse(rawBody) as APIInteraction;
+		} catch {
+			return c.text("Invalid request", 400);
+		}
 
 		switch (interaction.type) {
 			case InteractionType.Ping:
@@ -107,12 +123,11 @@ const scheduled: ExportedHandlerScheduledHandler<Env> = (
 	ctx,
 ) => {
 	const env = EnvSchema.parse(unknownEnv);
-
-	const db = drizzle(env.DB, { schema });
-	const repositories = createRepositories(db);
-	const services = createServices(env);
-	const usecases = createUseCases(repositories);
-	const handlers = createScheduledHandlers(usecases, services);
+	const appContext = createAppContext(env);
+	const handlers = createScheduledHandlers(
+		appContext.usecases,
+		appContext.services,
+	);
 
 	ctx.waitUntil(handlers.exitAllEntryUsers.handle());
 };
