@@ -4,13 +4,13 @@
 	"type": "module",
 	"license": "UNLICENSED",
 	"private": true,
-	"packageManager": "pnpm@10.10.0",
+	"packageManager": "pnpm@10.31.0",
 	"scripts": {},
 	"devDependencies": {
-		"@changesets/cli": "2.29.3",
-		"@shun-shobon/style-guide": "0.4.0",
-		"eslint": "9.25.1",
-		"prettier": "3.5.3",
-		"typescript": "5.8.3"
+		"@changesets/cli": "2.30.0",
+		"@shun-shobon/style-guide": "5.1.1",
+		"eslint": "10.0.3",
+		"prettier": "3.8.1",
+		"typescript": "5.9.3"
 	}
 }

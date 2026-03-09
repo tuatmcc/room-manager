@@ -128,7 +128,7 @@ describe("RegisterNfcCardUseCase", () => {
 		// 検証
 		expect(result.isOk()).toBe(true);
 		expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
-		expect(userRepository.create).not.toHaveBeenCalled();
+		expect(userRepository.create).toHaveBeenCalledTimes(0);
 		expect(unknownNfcCardRepository.findByCode).toHaveBeenCalledWith(code);
 		expect(nfcCardRepository.findByIdm).toHaveBeenCalledWith(idm);
 		expect(unknownNfcCardRepository.deleteById).toHaveBeenCalledWith(2);

@@ -212,7 +212,7 @@ impl PasoriReader {
             if let Some(handle) = self.handle.take();
             then {
                 handle.join()
-                    .map_err(|payload| anyhow!("PasoriReader thread panicked: {:?}", payload))??;
+                    .map_err(|payload| anyhow!("PasoriReader thread panicked: {payload:?}"))??;
 
                 return Ok(None);
             }

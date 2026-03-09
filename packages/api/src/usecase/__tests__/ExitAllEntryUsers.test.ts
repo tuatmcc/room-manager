@@ -65,7 +65,7 @@ describe("ExitAllEntryUsersUseCase", () => {
 			expect(result.value).toEqual({ users: [] });
 		}
 		expect(roomEntryLogRepository.findAllEntry).toHaveBeenCalled();
-		expect(roomEntryLogRepository.setManyExitAt).not.toHaveBeenCalled();
+		expect(roomEntryLogRepository.setManyExitAt).toHaveBeenCalledTimes(0);
 	});
 
 	it("入室中のユーザーがいる場合は全員を退出させてユーザー一覧を返すこと", async () => {
