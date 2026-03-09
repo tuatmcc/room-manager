@@ -44,10 +44,6 @@ impl DoorLockInternal {
     }
 
     async fn unlock(&mut self) -> anyhow::Result<()> {
-        if self.is_unlocked {
-            return Ok(());
-        }
-
         self.set_unlock_angle()?;
         time::sleep(SERVO_MOVE_WAIT_TIME).await;
         self.set_neutral_angle()?;
