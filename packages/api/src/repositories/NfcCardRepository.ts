@@ -35,7 +35,7 @@ export class DBNfcCardRepository implements NfcCardRepository {
 				idm: nfcCard.idm,
 				userId: nfcCard.userId,
 			})
-			.where(eq(schema.studentCards.id, nfcCard.id))
+			.where(eq(schema.nfcCards.id, nfcCard.id))
 			.returning()
 			.get();
 	}
