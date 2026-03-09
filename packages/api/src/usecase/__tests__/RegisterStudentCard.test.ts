@@ -103,7 +103,7 @@ describe("RegisterStudentCardUseCase", () => {
 		// 検証
 		expect(result.isOk()).toBe(true);
 		expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
-		expect(userRepository.create).not.toHaveBeenCalled();
+		expect(userRepository.create).toHaveBeenCalledTimes(0);
 		expect(studentCardRepository.findByStudentId).toHaveBeenCalledWith(
 			studentId,
 		);

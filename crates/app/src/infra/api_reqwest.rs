@@ -48,8 +48,8 @@ impl CardApi for HttpCardApi {
             .send()
             .await
             .map_err(|e| {
-                error!("API request failed: {}", e);
-                anyhow::anyhow!("API request failed: {}", e)
+                error!("API request failed: {e}");
+                anyhow::anyhow!("API request failed: {e}")
             })?;
         info!("API request successful: status={}", response.status());
         if !response.status().is_success() {
@@ -59,8 +59,8 @@ impl CardApi for HttpCardApi {
             ));
         }
         let response = response.json::<TouchCardResponse>().await.map_err(|e| {
-            error!("Failed to parse API response: {}", e);
-            anyhow::anyhow!("Failed to parse API response: {}", e)
+            error!("Failed to parse API response: {e}");
+            anyhow::anyhow!("Failed to parse API response: {e}")
         })?;
 
         let elapsed = start.elapsed();

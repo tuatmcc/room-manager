@@ -1,26 +1,24 @@
 use std::io::Cursor;
 
-use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
+use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player};
 use room_manager::domain::{SoundEvent, SoundPlayer};
 use tracing::info;
 
 pub struct RodioPlayer {
-    _stream: OutputStream,
-    _stream_handle: OutputStreamHandle,
-    sink: Sink,
+    _sink: MixerDeviceSink,
+    player: Player,
 }
 
 impl RodioPlayer {
     pub fn new() -> anyhow::Result<Self> {
         info!("Initializing RodioPlayer");
 
-        let (stream, stream_handle) = OutputStream::try_default()?;
-        let sink = Sink::try_new(&stream_handle)?;
+        let sink = DeviceSinkBuilder::open_default_sink()?;
+        let player = Player::connect_new(sink.mixer());
 
         let player = Self {
-            _stream: stream,
-            _stream_handle: stream_handle,
-            sink,
+            _sink: sink,
+            player,
         };
         player.play(SoundEvent::Boot)?;
         Ok(player)
@@ -34,15 +32,15 @@ impl SoundPlayer for RodioPlayer {
         let reader = sound_to_reader(sound);
         let source = Decoder::new(reader)?;
 
-        self.sink.append(source);
+        self.player.append(source);
         info!("Sound queued for playback");
 
         Ok(())
     }
 
     fn reset(&self) {
-        self.sink.clear();
-        self.sink.play();
+        self.player.clear();
+        self.player.play();
     }
 }
 
