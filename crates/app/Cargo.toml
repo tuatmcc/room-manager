@@ -5,7 +5,13 @@ edition = "2024"
 
 [features]
 default = ["raspi-runtime"]
-raspi-runtime = []
+raspi-runtime = [
+  "dep:async-stream",
+  "dep:if_chain",
+  "dep:pasori",
+  "dep:rodio",
+  "dep:rppal",
+]
 
 [dependencies]
 tokio = { version = "1.44.2", features = [
@@ -33,10 +39,10 @@ futures-util = "0.3.31"
 mockall = "0.12.1"
 
 [target.'cfg(all(target_os = "linux", any(target_arch = "arm", target_arch = "aarch64")))'.dependencies]
-pasori = { path = "../pasori" }
+pasori = { path = "../pasori", optional = true }
 rodio = { version = "0.20.1", default-features = false, features = [
   "symphonia-wav",
-] }
-rppal = "0.22.1"
-if_chain = "1.0.2"
-async-stream = "0.3.6"
+], optional = true }
+rppal = { version = "0.22.1", optional = true }
+if_chain = { version = "1.0.2", optional = true }
+async-stream = { version = "0.3.6", optional = true }
