@@ -1,5 +1,12 @@
 # room-manager
 
+## [0.2.4](https://github.com/tuatmcc/room-manager/compare/v0.2.3...v0.2.4) (2026-03-09)
+
+
+### Bug Fixes
+
+* 全体的なリアーキテクチャ ([#80](https://github.com/tuatmcc/room-manager/issues/80)) ([4df1106](https://github.com/tuatmcc/room-manager/commit/4df1106bfe80907456ff1c8a448f2cd6257e2ad3))
+
 ## [0.2.3](https://github.com/tuatmcc/room-manager/compare/v0.2.2...v0.2.3) (2025-10-01)
 
 
