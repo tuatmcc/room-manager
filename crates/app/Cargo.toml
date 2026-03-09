@@ -42,7 +42,7 @@ mockall = "0.14.0"
 pasori = { path = "../pasori", optional = true }
 rodio = { version = "0.22.2", default-features = false, features = [
   "playback",
-  "symphonia-wav",
+  "wav",
 ], optional = true }
 rppal = { version = "0.22.1", optional = true }
 if_chain = { version = "1.0.3", optional = true }
