@@ -1,5 +1,4 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { trace } from "@opentelemetry/api";
 import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
@@ -9,7 +8,6 @@ import type { User } from "@/models/User";
 import type { RoomEntryLogRepository } from "@/repositories/RoomEntryLogRepository";
 import type { UnknownNfcCardRepository } from "@/repositories/UnknownNfcCardRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
-import { tracer } from "@/trace";
 
 export type TouchCardStatus = "entry" | "exit";
 
@@ -33,47 +31,32 @@ export class TouchCardUseCase {
 		idm: string;
 		studentId?: number;
 	}): Promise<Result<TouchCardResult, TouchCardError>> {
-		return await tracer.startActiveSpan(
-			"room_manager.usecase.touch_card",
-			{
-				attributes: {
-					"room_manager.nfc_card.idm": idm,
-					"room_manager.student_card.student_id": studentId,
+		try {
+			// ユーザーを特定
+			const userResult =
+				studentId != null
+					? await this.findUserByStudentId(studentId)
+					: await this.findUserByNfcIdm(idm);
+			if (userResult.isErr()) {
+				return err(userResult.error);
+			}
+			const user = userResult.value;
+
+			// 入退室処理を実行
+			const result = await this.toggleUserRoomPresence(user);
+
+			return ok(result);
+		} catch (caughtError) {
+			const cause = caughtError instanceof Error ? caughtError : undefined;
+			const error = new TouchCardError("Failed to touch card.", {
+				cause,
+				meta: {
+					code: "UNKNOWN",
 				},
-			},
-			async (span) => {
-				try {
-					// ユーザーを特定
-					const userResult =
-						studentId != null
-							? await this.findUserByStudentId(studentId)
-							: await this.findUserByNfcIdm(idm);
-					if (userResult.isErr()) {
-						return err(userResult.error);
-					}
-					const user = userResult.value;
-					user.setAttributes();
+			});
 
-					// 入退室処理を実行
-					const result = await this.toggleUserRoomPresence(user);
-
-					return ok(result);
-				} catch (caughtError) {
-					const cause = caughtError instanceof Error ? caughtError : undefined;
-					const error = new TouchCardError("Failed to touch card.", {
-						cause,
-						meta: {
-							code: "UNKNOWN",
-						},
-					});
-
-					span.recordException(error);
-					return err(error);
-				} finally {
-					span.end();
-				}
-			},
-		);
+			return err(error);
+		}
 	}
 
 	private async findUserByStudentId(
@@ -116,8 +99,6 @@ export class TouchCardUseCase {
 	}
 
 	private async toggleUserRoomPresence(user: User): Promise<TouchCardResult> {
-		const span = trace.getActiveSpan();
-
 		const now = Temporal.Now.instant();
 
 		const oldLastEntryLog =
@@ -126,11 +107,9 @@ export class TouchCardUseCase {
 		if (oldLastEntryLog) {
 			const newLastEntryLog = oldLastEntryLog.exitRoom(now);
 			await this.roomEntryLogRepository.save(newLastEntryLog);
-			newLastEntryLog.setAttributes();
 
 			// 入室中のユーザーを取得
 			const entryUsers = await this.userRepository.findAllEntryUsers();
-			span?.setAttribute("room_manager.user.count", entryUsers.length);
 
 			return {
 				status: "exit",
@@ -140,12 +119,10 @@ export class TouchCardUseCase {
 		}
 
 		// 入室していない場合は入室ログを新規作成
-		const newEntryLog = await this.roomEntryLogRepository.create(user.id, now);
-		newEntryLog.setAttributes();
+		await this.roomEntryLogRepository.create(user.id, now);
 
 		// 入室中のユーザーを取得
 		const entryUsers = await this.userRepository.findAllEntryUsers();
-		span?.setAttribute("room_manager.user.count", entryUsers.length);
 
 		return {
 			status: "entry",

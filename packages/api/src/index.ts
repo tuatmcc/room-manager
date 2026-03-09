@@ -1,6 +1,3 @@
-import { otel } from "@hono/otel";
-import type { ResolveConfigFn } from "@microlabs/otel-cf-workers";
-import { instrument } from "@microlabs/otel-cf-workers";
 import type {
 	APIChatInputApplicationCommandInteraction,
 	APIInteraction,
@@ -29,23 +26,7 @@ import { createRepositories } from "./repositories";
 import { createServices } from "./services";
 import { createUseCases } from "./usecase";
 
-const config: ResolveConfigFn<Env> = (env) => {
-	return {
-		exporter: {
-			url: env.OTEL_EXPORTER_URL,
-			headers: {
-				Authorization: `Basic ${env.OTEL_EXPORTER_TOKEN}`,
-			},
-		},
-		service: {
-			name: "api",
-			namespace: "room-manager",
-		},
-	};
-};
-
 const app = new Hono<AppEnv>()
-	.use(otel())
 	.use(async (c, next) => {
 		const env = EnvSchema.parse(c.env);
 
@@ -120,7 +101,7 @@ const app = new Hono<AppEnv>()
 		return c.text("Unknown interaction", 400);
 	});
 
-const scheduled: ExportedHandlerScheduledHandler = (
+const scheduled: ExportedHandlerScheduledHandler<Env> = (
 	_event,
 	unknownEnv,
 	ctx,
@@ -136,10 +117,7 @@ const scheduled: ExportedHandlerScheduledHandler = (
 	ctx.waitUntil(handlers.exitAllEntryUsers.handle());
 };
 
-export default instrument(
-	{
-		fetch: app.fetch,
-		scheduled,
-	},
-	config,
-);
+export default {
+	fetch: app.fetch,
+	scheduled,
+} satisfies ExportedHandler<Env>;

@@ -20,10 +20,7 @@
 	"dependencies": {
 		"@discordjs/builders": "1.11.1",
 		"@discordjs/rest": "2.5.0",
-		"@hono/otel": "0.1.1",
 		"@js-temporal/polyfill": "0.5.1",
-		"@microlabs/otel-cf-workers": "1.0.0-rc.49",
-		"@opentelemetry/api": "1.9.0",
 		"discord-interactions": "4.1.1",
 		"drizzle-orm": "0.43.1",
 		"hono": "4.7.8",
