@@ -4,7 +4,7 @@
 	"type": "module",
 	"license": "UNLICENSED",
 	"private": true,
-	"packageManager": "pnpm@10.10.0",
+	"packageManager": "pnpm@10.31.0",
 	"scripts": {},
 	"devDependencies": {
 		"@changesets/cli": "2.29.3",

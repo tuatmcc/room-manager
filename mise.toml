@@ -1,9 +1,2 @@
-[tools]
-node = "22.14.0"
-"npm:pnpm" = "10.10.0"
-
 [env]
 _.file = ".env"
-
-[settings]
-idiomatic_version_file_enable_tools = []
