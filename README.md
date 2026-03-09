@@ -77,16 +77,13 @@ cargo build --release -p room-manager
 # 実行ファイルは target/release/room-manager に生成されます
 ```
 
-### クロスコンパイル（Raspberry Piなど向け）
+### Arm Linux でのビルド
 
-ARM系デバイス向けにクロスコンパイルする場合：
+Raspberry Pi など Arm Linux 環境では、そのまま native にビルドします。
 
 ```sh
-# 依存ツールのインストール(最新版が必要なので注意)
-cargo install cross --git https://github.com/cross-rs/cross
+# Arm Linux 環境上でリリースビルド
+cargo build --release -p room-manager
 
-# aarch64向けビルド
-cross build --release --target aarch64-unknown-linux-gnu -p room-manager
-
-# 実行ファイルは target/aarch64-unknown-linux-gnu/release/room-manager に生成されます
+# 実行ファイルは target/release/room-manager に生成されます
 ```

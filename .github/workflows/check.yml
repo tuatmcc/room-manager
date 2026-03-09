@@ -35,8 +35,8 @@ jobs:
       - name: Run | Lint
         run: pnpm run -r lint
 
-  lint_rust:
-    name: Lint (Rust)
+  lint_rust_portable:
+    name: Lint (Rust, portable)
     runs-on: ubuntu-latest
     steps:
       - name: Setup | Checkout
@@ -46,7 +46,22 @@ jobs:
         uses: ./.github/actions/setup-rust
 
       - name: Run | Lint (Rust)
-        run: cross clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+
+  lint_rust_arm:
+    name: Lint (Rust, arm)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup | Rust development environment
+        uses: ./.github/actions/setup-rust
+        with:
+          apt-packages: libasound2-dev
+
+      - name: Run | Lint (Rust)
+        run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 
   format_node:
     name: Format (Node.js)

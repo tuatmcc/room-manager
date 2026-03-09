@@ -23,7 +23,7 @@ jobs:
         run: pnpm run -r test
 
   test_rust:
-    name: Test (Rust)
+    name: Test (Rust, portable)
     runs-on: ubuntu-latest
     steps:
       - name: Setup | Checkout
@@ -33,4 +33,4 @@ jobs:
         uses: ./.github/actions/setup-rust
 
       - name: Run | Test
-        run: cross test --all-targets --all-features
+        run: cargo test --locked --workspace --all-targets --all-features
