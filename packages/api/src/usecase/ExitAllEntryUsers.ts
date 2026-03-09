@@ -6,7 +6,6 @@ import { AppError } from "@/error";
 import type { User } from "@/models/User";
 import type { RoomEntryLogRepository } from "@/repositories/RoomEntryLogRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
-import { tracer } from "@/trace";
 
 export interface ExitAllEntryUsersResult {
 	users: User[];
@@ -21,51 +20,37 @@ export class ExitAllEntryUsersUseCase {
 	async execute(): Promise<
 		Result<ExitAllEntryUsersResult, ExitAllEntryUsersError>
 	> {
-		return await tracer.startActiveSpan(
-			"room_manager.usecase.exit_all_entry_users",
-			async (
-				span,
-			): Promise<Result<ExitAllEntryUsersResult, ExitAllEntryUsersError>> => {
-				try {
-					const entryLogs = await this.roomEntryLogRepository.findAllEntry();
-					span.setAttribute(
-						"room_manager.room_entry_log.count",
-						entryLogs.length,
-					);
-					if (entryLogs.length === 0) {
-						return ok({ users: [] });
-					}
+		try {
+			const entryLogs = await this.roomEntryLogRepository.findAllEntry();
+			if (entryLogs.length === 0) {
+				return ok({ users: [] });
+			}
 
-					const now = Temporal.Now.instant();
-					await this.roomEntryLogRepository.setManyExitAt(
-						entryLogs.map((log) => log.id),
-						now,
-					);
+			const now = Temporal.Now.instant();
+			await this.roomEntryLogRepository.setManyExitAt(
+				entryLogs.map((log) => log.id),
+				now,
+			);
 
-					const users = await this.userRepository.findByIds(
-						entryLogs.map((log) => log.userId),
-					);
+			const users = await this.userRepository.findByIds(
+				entryLogs.map((log) => log.userId),
+			);
 
-					return ok({ users });
-				} catch (caughtError) {
-					const cause = caughtError instanceof Error ? caughtError : undefined;
-					const error = new ExitAllEntryUsersError(
-						"Failed to exit all entry users.",
-						{
-							cause,
-							meta: {
-								code: "UNKNOWN",
-							},
-						},
-					);
+			return ok({ users });
+		} catch (caughtError) {
+			const cause = caughtError instanceof Error ? caughtError : undefined;
+			const error = new ExitAllEntryUsersError(
+				"Failed to exit all entry users.",
+				{
+					cause,
+					meta: {
+						code: "UNKNOWN",
+					},
+				},
+			);
 
-					span.recordException(error);
-					return err(error);
-				} finally {
-					span.end();
-				}
-			},
-		);
+			return err(error);
+		}
 	}
 }
 
