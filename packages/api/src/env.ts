@@ -23,5 +23,6 @@ export interface AppEnv {
 		env: Env;
 		usecases: UseCases;
 		services: Services;
+		verifiedInteractionBody?: string;
 	};
 }

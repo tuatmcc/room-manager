@@ -3,9 +3,17 @@ import type {
 	APIChatInputApplicationCommandInteractionData,
 } from "discord-api-types/v10";
 import { ApplicationCommandOptionType } from "discord-api-types/v10";
-import { describe, expect, it } from "vitest";
+import { Hono } from "hono";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { parseCommand } from "../discord";
+import { interactionVerifier, parseCommand } from "../discord";
+import type { AppEnv, Env } from "../env";
+
+const verifyKeyMock = vi.hoisted(() => vi.fn());
+
+vi.mock("discord-interactions", () => ({
+	verifyKey: verifyKeyMock,
+}));
 
 // 完全なテスト用インターフェースを作成
 interface MockInteractionData {
@@ -28,6 +36,10 @@ function createMockInteraction(
 }
 
 describe("parseCommand", () => {
+	beforeEach(() => {
+		verifyKeyMock.mockReset();
+	});
+
 	it("単純なコマンドを正しくパースできること", () => {
 		const interaction = createMockInteraction({
 			name: "test",
@@ -189,5 +201,53 @@ describe("parseCommand", () => {
 			commands: ["ping"],
 			options: {},
 		});
+	});
+});
+
+describe("interactionVerifier", () => {
+	const createEnv = (): Env =>
+		({
+			API_TOKEN: "token",
+			DISCORD_PUBLIC_KEY: "public-key",
+			DISCORD_BOT_TOKEN: "bot-token",
+			DISCORD_GUILD_ID: "guild-id",
+			DISCORD_CHANNEL_ID: "channel-id",
+			DISCORD_ROOM_COMMAND_ID: "123456",
+			DISCORD_ROOM_ADMIN_COMMAND_ID: "654321",
+			DB: {} as D1Database,
+			KV: {} as KVNamespace,
+		}) satisfies Env;
+
+	it("検証済み raw body を context に保持すること", async () => {
+		verifyKeyMock.mockResolvedValue(true);
+		const app = new Hono<AppEnv>()
+			.use(async (c, next) => {
+				c.set("env", createEnv());
+				await next();
+			})
+			.post("/interaction", interactionVerifier, (c) =>
+				c.json({ body: c.get("verifiedInteractionBody") }),
+			);
+
+		const res = await app.request("http://localhost/interaction", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-Signature-Ed25519": "signature",
+				"X-Signature-Timestamp": "timestamp",
+			},
+			body: JSON.stringify({ hello: "world" }),
+		});
+
+		expect(res.status).toBe(200);
+		await expect(res.json()).resolves.toEqual({
+			body: '{"hello":"world"}',
+		});
+		expect(verifyKeyMock).toHaveBeenCalledWith(
+			'{"hello":"world"}',
+			"signature",
+			"timestamp",
+			"public-key",
+		);
 	});
 });

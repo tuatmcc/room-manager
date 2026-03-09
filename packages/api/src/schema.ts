@@ -1,6 +1,12 @@
 import { Temporal } from "@js-temporal/polyfill";
-import { relations } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { relations, sql } from "drizzle-orm";
+import {
+	index,
+	integer,
+	sqliteTable,
+	text,
+	uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
 	// primary key
@@ -148,6 +154,9 @@ export const roomEntryLogs = sqliteTable(
 		index("idx_room_entry_logs_user_id").on(table.userId),
 		index("idx_room_entry_logs_entry_at").on(table.entryAt),
 		index("idx_room_entry_logs_exit_at").on(table.exitAt),
+		uniqueIndex("idx_room_entry_logs_open_user")
+			.on(table.userId)
+			.where(sql`${table.exitAt} IS NULL`),
 	],
 );
 

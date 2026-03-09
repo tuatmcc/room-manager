@@ -24,11 +24,9 @@ const createMockUserRepository = () => {
 
 const createMockRoomEntryLogRepository = () => {
 	return {
-		create: vi.fn(),
-		save: vi.fn(),
 		findAllEntry: vi.fn(),
-		findLastEntryByUserId: vi.fn(),
 		setManyExitAt: vi.fn(),
+		toggle: vi.fn(),
 	} satisfies RoomEntryLogRepository;
 };
 

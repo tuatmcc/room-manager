@@ -1,7 +1,6 @@
 import { Temporal } from "@js-temporal/polyfill";
 import { describe, expect, it, vi } from "vitest";
 
-import { RoomEntryLog } from "@/models/RoomEntryLog";
 import { UnknownNfcCard } from "@/models/UnknownNfcCard";
 import { User } from "@/models/User";
 import type { RoomEntryLogRepository } from "@/repositories/RoomEntryLogRepository";
@@ -23,11 +22,9 @@ const createMockUserRepository = () => {
 
 const createMockRoomEntryLogRepository = () => {
 	return {
-		create: vi.fn(),
-		save: vi.fn(),
 		findAllEntry: vi.fn(),
-		findLastEntryByUserId: vi.fn(),
 		setManyExitAt: vi.fn(),
+		toggle: vi.fn(),
 	} satisfies RoomEntryLogRepository;
 };
 
@@ -119,14 +116,8 @@ describe("TouchCardUseCase", () => {
 		const idm = "registered-idm";
 		const userId = 1;
 		const user = new User(userId, "discord-user-1");
-		const now = Temporal.Now.instant();
-		const newEntryLogId = 1;
-
 		userRepository.findByNfcIdm.mockResolvedValue(user);
-		roomEntryLogRepository.findLastEntryByUserId.mockResolvedValue(null);
-		roomEntryLogRepository.create.mockResolvedValue(
-			new RoomEntryLog(newEntryLogId, userId, now, null),
-		);
+		roomEntryLogRepository.toggle.mockResolvedValue("entry");
 		userRepository.findAllEntryUsers.mockResolvedValue([user]);
 
 		// 実行
@@ -140,10 +131,7 @@ describe("TouchCardUseCase", () => {
 			expect(result.value.user).toEqual(user);
 		}
 		expect(userRepository.findByNfcIdm).toHaveBeenCalledWith(idm);
-		expect(roomEntryLogRepository.findLastEntryByUserId).toHaveBeenCalledWith(
-			userId,
-		);
-		expect(roomEntryLogRepository.create).toHaveBeenCalledWith(
+		expect(roomEntryLogRepository.toggle).toHaveBeenCalledWith(
 			userId,
 			expect.any(Temporal.Instant),
 		);
@@ -158,19 +146,8 @@ describe("TouchCardUseCase", () => {
 		const idm = "registered-idm";
 		const userId = 1;
 		const user = new User(userId, "discord-user-1");
-		const now = Temporal.Now.instant();
-		const entryLogId = 1;
-		const oldEntryLog = new RoomEntryLog(
-			entryLogId,
-			userId,
-			Temporal.Instant.from("2023-01-01T10:00:00Z"),
-			null,
-		);
-		const newEntryLog = oldEntryLog.exitRoom(now);
-
 		userRepository.findByNfcIdm.mockResolvedValue(user);
-		roomEntryLogRepository.findLastEntryByUserId.mockResolvedValue(oldEntryLog);
-		roomEntryLogRepository.save.mockResolvedValue(newEntryLog);
+		roomEntryLogRepository.toggle.mockResolvedValue("exit");
 		userRepository.findAllEntryUsers.mockResolvedValue([]);
 
 		// 実行
@@ -184,16 +161,9 @@ describe("TouchCardUseCase", () => {
 			expect(result.value.user).toEqual(user);
 		}
 		expect(userRepository.findByNfcIdm).toHaveBeenCalledWith(idm);
-		expect(roomEntryLogRepository.findLastEntryByUserId).toHaveBeenCalledWith(
+		expect(roomEntryLogRepository.toggle).toHaveBeenCalledWith(
 			userId,
-		);
-		expect(roomEntryLogRepository.save).toHaveBeenCalledWith(
-			expect.objectContaining({
-				id: entryLogId,
-				userId,
-				// eslint-disable-next-line typescript/no-unsafe-assignment
-				exitAt: expect.any(Temporal.Instant),
-			}),
+			expect.any(Temporal.Instant),
 		);
 		expect(userRepository.findAllEntryUsers).toHaveBeenCalled();
 	});
