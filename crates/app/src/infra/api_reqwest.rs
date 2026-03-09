@@ -1,9 +1,8 @@
 use std::time::Duration;
 
 use reqwest::{Client, header::HeaderMap};
+use room_manager::domain::{CardApi, TouchCardRequest, TouchCardResponse};
 use tracing::{error, info};
-
-use crate::domain::{CardApi, TouchCardRequest, TouchCardResponse};
 
 const API_TIMEOUT_SECS: u64 = 5;
 

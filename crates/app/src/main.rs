@@ -1,23 +1,16 @@
 #![warn(clippy::all, clippy::pedantic)]
-mod app;
 mod config;
-mod domain;
 mod infra;
-#[cfg(test)]
-mod tests;
+mod runtime;
 
-use anyhow::bail;
-use app::TouchCardUseCase;
 use clap::Parser;
 use config::Config;
 use futures_util::StreamExt as _;
 use futures_util::stream::select_all;
-use infra::{GpioDoorLock, HttpCardApi, PasoriReader, RodioPlayer, SystemClock};
-use pasori::rusb::{Context as RusbContext, UsbContext};
+use infra::{HttpCardApi, SystemClock};
+use room_manager::app::TouchCardUseCase;
+use runtime::{new_sound_player, spawn_door_lock, spawn_readers};
 use tracing::{error, info};
-
-const VENDOR_ID: u16 = 0x054c;
-const PRODUCT_ID: u16 = 0x06c3;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -36,33 +29,19 @@ async fn main() -> anyhow::Result<()> {
     info!("API client initialized successfully");
 
     info!("Initializing sound player");
-    let player = RodioPlayer::new()?;
+    let player = new_sound_player()?;
     info!("Sound player initialized successfully");
 
     info!("Initializing system clock");
     let clock = SystemClock::new();
 
     info!("Spawning Pasori card readers");
-    let readers = RusbContext::new()?
-        .devices()?
-        .iter()
-        .filter(|dev| {
-            let Ok(dev_desc) = dev.device_descriptor() else {
-                return false;
-            };
-
-            dev_desc.vendor_id() == VENDOR_ID && dev_desc.product_id() == PRODUCT_ID
-        })
-        .map(|dev| PasoriReader::spawn(dev).map(|reader| reader.into_stream().boxed()))
-        .collect::<Result<Vec<_>, _>>()?;
-    if readers.is_empty() {
-        bail!("No Pasori reader found");
-    }
+    let readers = spawn_readers()?;
     let mut readers = select_all(readers);
     info!("Card readers spawned successfully");
 
     info!("Spawning door lock");
-    let door_lock = GpioDoorLock::spawn().await?;
+    let door_lock = spawn_door_lock().await?;
     info!("Door lock spawned successfully");
 
     info!("Creating TouchCardUseCase");

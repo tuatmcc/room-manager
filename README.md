@@ -52,21 +52,29 @@ pnpm install
 ### 開発環境での実行
 
 ```sh
+# Rustアプリケーションのテスト
+cargo test -p room-manager
+
+# Rustアプリケーションのビルド
+cargo build -p room-manager
+
 # Rustアプリケーションの実行（開発モード）
-cargo run -p app
+cargo run -p room-manager
 
 # APIサーバーの開発実行
 cd packages/api
 pnpm dev
 ```
 
+`room-manager` は通常の `cargo` ではホストターゲット向けにビルドされます。Arm Linux 以外では、カードリーダー・音声・ドアロックは noop runtime で起動し、カードイベントなしで待機します。ローカルでのビルド確認・起動確認用の挙動です。
+
 ### リリースビルド
 
 ```sh
 # Rustアプリケーションのリリースビルド
-cargo build --release -p app
+cargo build --release -p room-manager
 
-# 実行ファイルは target/release/app に生成されます
+# 実行ファイルは target/release/room-manager に生成されます
 ```
 
 ### クロスコンパイル（Raspberry Piなど向け）
@@ -78,7 +86,7 @@ ARM系デバイス向けにクロスコンパイルする場合：
 cargo install cross --git https://github.com/cross-rs/cross
 
 # aarch64向けビルド
-cross build --release
+cross build --release --target aarch64-unknown-linux-gnu -p room-manager
 
-# 実行ファイルは target/aarch64-unknown-linux-gnu/release/app に生成されます
+# 実行ファイルは target/aarch64-unknown-linux-gnu/release/room-manager に生成されます
 ```
