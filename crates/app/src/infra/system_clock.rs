@@ -1,7 +1,6 @@
 use chrono::{DateTime, Local};
+use room_manager::domain::Clock;
 use tracing::info;
-
-use crate::domain::Clock;
 
 pub struct SystemClock;
 

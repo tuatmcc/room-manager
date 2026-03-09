@@ -1,9 +1,8 @@
 use std::io::Cursor;
 
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink};
+use room_manager::domain::{SoundEvent, SoundPlayer};
 use tracing::info;
-
-use crate::domain::{SoundEvent, SoundPlayer};
 
 pub struct RodioPlayer {
     _stream: OutputStream,

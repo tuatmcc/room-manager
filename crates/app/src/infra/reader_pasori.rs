@@ -10,13 +10,12 @@ use pasori::{
     rusb::{Context as RusbContext, Device as RusbDevice},
     transport::Usb,
 };
+use room_manager::domain::Card;
 use tokio::sync::{
     mpsc::{self, UnboundedReceiver},
     oneshot::{self, error::TryRecvError},
 };
 use tracing::{error, info};
-
-use crate::domain::Card;
 
 type DeviceReader = Box<dyn Device + Send + Sync>;
 

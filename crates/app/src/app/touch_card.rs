@@ -34,6 +34,12 @@ where
         }
     }
 
+    /// Executes the touch-card workflow for a single scanned card.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the API request fails, the selected sound cannot be
+    /// queued, or the door lock operation fails.
     pub async fn execute(&self, card: &Card) -> anyhow::Result<()> {
         let req: TouchCardRequest = card.clone().into();
         info!("Sending touch card request: {:?}", req);

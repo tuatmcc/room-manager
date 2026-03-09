@@ -46,6 +46,7 @@ pub enum TouchCardResponse {
 
 #[cfg(test)]
 impl TouchCardResponse {
+    #[must_use]
     pub fn success_entry(entries: u32) -> Self {
         Self::Success {
             status: RoomEntryStatus::Entry,
@@ -53,6 +54,7 @@ impl TouchCardResponse {
         }
     }
 
+    #[must_use]
     pub fn success_exit(entries: u32) -> Self {
         Self::Success {
             status: RoomEntryStatus::Exit,

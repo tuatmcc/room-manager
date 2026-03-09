@@ -1,6 +1,6 @@
 use std::{pin::Pin, sync::Arc, time::Duration};
 
-use crate::domain::DoorLock;
+use room_manager::domain::DoorLock;
 use rppal::gpio::{Gpio, OutputPin};
 use tokio::{
     sync::{Mutex, mpsc},
