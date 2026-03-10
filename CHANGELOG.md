@@ -1,5 +1,13 @@
 # room-manager
 
+## [0.2.5](https://github.com/tuatmcc/room-manager/compare/v0.2.4...v0.2.5) (2026-03-09)
+
+
+### Bug Fixes
+
+* サーボの角度を反転 ([#84](https://github.com/tuatmcc/room-manager/issues/84)) ([ed2a5e0](https://github.com/tuatmcc/room-manager/commit/ed2a5e0cde9d9b1b1fc711f544b665b1d6b56d3d))
+* 音声再生に失敗する不具合を修正 ([#82](https://github.com/tuatmcc/room-manager/issues/82)) ([f9e29e9](https://github.com/tuatmcc/room-manager/commit/f9e29e92db290635f101054d2486b45570278c4b))
+
 ## [0.2.4](https://github.com/tuatmcc/room-manager/compare/v0.2.3...v0.2.4) (2026-03-09)
 
 
