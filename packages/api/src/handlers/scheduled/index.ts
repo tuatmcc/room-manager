@@ -5,19 +5,19 @@ import type { UseCases } from "@/usecase";
 import { ExitAllEntryUsersHandler } from "./exit-all-entry-users";
 
 export interface ScheduledHandlers {
-	exitAllEntryUsers: ExitAllEntryUsersHandler;
+  exitAllEntryUsers: ExitAllEntryUsersHandler;
 }
 
 export function createScheduledHandlers(
-	usecases: UseCases,
-	services: Services,
-	logger: AppLogger,
+  usecases: UseCases,
+  services: Services,
+  logger: AppLogger,
 ): ScheduledHandlers {
-	return {
-		exitAllEntryUsers: new ExitAllEntryUsersHandler(
-			usecases.exitAllEntryUsers,
-			services.discord,
-			logger.child({ tag: "exit-all-entry-users" }),
-		),
-	};
+  return {
+    exitAllEntryUsers: new ExitAllEntryUsersHandler(
+      usecases.exitAllEntryUsers,
+      services.discord,
+      logger.child({ tag: "exit-all-entry-users" }),
+    ),
+  };
 }

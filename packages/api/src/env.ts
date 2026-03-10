@@ -6,25 +6,25 @@ import type { Services } from "./services";
 import type { UseCases } from "./usecase";
 
 export const EnvSchema = z.object({
-	API_TOKEN: z.string(),
-	DISCORD_PUBLIC_KEY: z.string(),
-	DISCORD_BOT_TOKEN: z.string(),
-	DISCORD_GUILD_ID: z.string(),
-	DISCORD_CHANNEL_ID: z.string(),
-	DISCORD_ROOM_COMMAND_ID: z.string(),
-	DISCORD_ROOM_ADMIN_COMMAND_ID: z.string(),
-	DB: z.custom<D1Database>(),
-	KV: z.custom<KVNamespace>(),
+  API_TOKEN: z.string(),
+  DISCORD_PUBLIC_KEY: z.string(),
+  DISCORD_BOT_TOKEN: z.string(),
+  DISCORD_GUILD_ID: z.string(),
+  DISCORD_CHANNEL_ID: z.string(),
+  DISCORD_ROOM_COMMAND_ID: z.string(),
+  DISCORD_ROOM_ADMIN_COMMAND_ID: z.string(),
+  DB: z.custom<D1Database>(),
+  KV: z.custom<KVNamespace>(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
 
 export interface AppEnv {
-	Variables: {
-		env: Env;
-		logger: AppLogger;
-		usecases: UseCases;
-		services: Services;
-		verifiedInteractionBody?: string;
-	};
+  Variables: {
+    env: Env;
+    logger: AppLogger;
+    usecases: UseCases;
+    services: Services;
+    verifiedInteractionBody?: string;
+  };
 }

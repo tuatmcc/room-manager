@@ -1,7 +1,7 @@
 export interface Message {
-	author?: string;
-	title?: string;
-	description?: string;
-	color?: "red" | "green";
-	iconUrl?: string;
+  author?: string;
+  title?: string;
+  description?: string;
+  color?: "red" | "green";
+  iconUrl?: string;
 }

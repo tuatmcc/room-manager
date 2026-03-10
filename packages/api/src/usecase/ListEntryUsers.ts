@@ -8,58 +8,52 @@ import type { User } from "@/models/User";
 import type { UserRepository } from "@/repositories/UserRepository";
 
 export interface ListEntryUsersResult {
-	users: User[];
+  users: User[];
 }
 
 export class ListEntryUsersUseCase {
-	constructor(
-		private readonly userRepository: UserRepository,
-		private readonly logger: AppLogger = noopLogger,
-	) {}
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly logger: AppLogger = noopLogger,
+  ) {}
 
-	async execute(): Promise<Result<ListEntryUsersResult, ListEntryUsersError>> {
-		try {
-			const users = await this.userRepository.findAllEntryUsers();
-			this.logger.info("listed entry users", {
-				userCount: users.length,
-			});
+  async execute(): Promise<Result<ListEntryUsersResult, ListEntryUsersError>> {
+    try {
+      const users = await this.userRepository.findAllEntryUsers();
+      this.logger.info("listed entry users", {
+        userCount: users.length,
+      });
 
-			return ok({ users });
-		} catch (caughtError) {
-			const cause = caughtError instanceof Error ? caughtError : undefined;
-			this.logger.error(
-				"failed to list entry users",
-				serializeError(caughtError),
-			);
-			const error = new ListEntryUsersError("Failed to list entry users.", {
-				cause,
-				meta: {
-					code: "UNKNOWN",
-				},
-			});
+      return ok({ users });
+    } catch (caughtError) {
+      const cause = caughtError instanceof Error ? caughtError : undefined;
+      this.logger.error("failed to list entry users", serializeError(caughtError));
+      const error = new ListEntryUsersError("Failed to list entry users.", {
+        cause,
+        meta: {
+          code: "UNKNOWN",
+        },
+      });
 
-			return err(error);
-		}
-	}
+      return err(error);
+    }
+  }
 }
 
 interface ErrorMeta {
-	code: "UNKNOWN";
+  code: "UNKNOWN";
 }
 
 interface ListEntryUsersErrorOptions extends ErrorOptions {
-	meta: ErrorMeta;
+  meta: ErrorMeta;
 }
 
 export class ListEntryUsersError extends AppError {
-	meta: ErrorMeta;
+  meta: ErrorMeta;
 
-	constructor(
-		message: string,
-		{ meta, ...options }: ListEntryUsersErrorOptions,
-	) {
-		super(message, options);
+  constructor(message: string, { meta, ...options }: ListEntryUsersErrorOptions) {
+    super(message, options);
 
-		this.meta = meta;
-	}
+    this.meta = meta;
+  }
 }

@@ -9,27 +9,27 @@ import { TouchCardHandler } from "./touch-card";
 import { TouchCardPresenter } from "./touch-card-presenter";
 
 export interface LocalDeviceHandler {
-	handle(ctx: Context<AppEnv>): Promise<Response>;
+  handle(ctx: Context<AppEnv>): Promise<Response>;
 }
 
 export interface LocalDeviceHandlers {
-	touchCard: TouchCardHandler;
+  touchCard: TouchCardHandler;
 }
 
 export function createLocalDeviceHandlers(
-	usecases: UseCases,
-	services: Services,
-	env: Env,
-	logger: AppLogger,
+  usecases: UseCases,
+  services: Services,
+  env: Env,
+  logger: AppLogger,
 ): LocalDeviceHandlers {
-	const touchCardPresenter = new TouchCardPresenter(services.discord, env);
+  const touchCardPresenter = new TouchCardPresenter(services.discord, env);
 
-	return {
-		touchCard: new TouchCardHandler(
-			usecases.touchCard,
-			touchCardPresenter,
-			services.discord,
-			logger.child({ tag: "touch-card" }),
-		),
-	};
+  return {
+    touchCard: new TouchCardHandler(
+      usecases.touchCard,
+      touchCardPresenter,
+      services.discord,
+      logger.child({ tag: "touch-card" }),
+    ),
+  };
 }

@@ -10,214 +10,179 @@ import type { UserRepository } from "@/repositories/UserRepository";
 import { RegisterNfcCardUseCase } from "@/usecase/RegisterNfcCard";
 
 const createMockUserRepository = () => {
-	return {
-		create: vi.fn(),
-		save: vi.fn(),
-		findByIds: vi.fn(),
-		findByDiscordId: vi.fn(),
-		findByStudentId: vi.fn(),
-		findByNfcIdm: vi.fn(),
-		findAllEntryUsers: vi.fn(),
-	} satisfies UserRepository;
+  return {
+    create: vi.fn(),
+    save: vi.fn(),
+    findByIds: vi.fn(),
+    findByDiscordId: vi.fn(),
+    findByStudentId: vi.fn(),
+    findByNfcIdm: vi.fn(),
+    findAllEntryUsers: vi.fn(),
+  } satisfies UserRepository;
 };
 
 const createMockNfcCardRepository = () => {
-	return {
-		create: vi.fn(),
-		save: vi.fn(),
-		findByIdm: vi.fn(),
-	} satisfies NfcCardRepository;
+  return {
+    create: vi.fn(),
+    save: vi.fn(),
+    findByIdm: vi.fn(),
+  } satisfies NfcCardRepository;
 };
 
 const createMockUnknownNfcCardRepository = () => {
-	return {
-		create: vi.fn(),
-		findByCode: vi.fn(),
-		findByIdm: vi.fn(),
-		deleteById: vi.fn(),
-	} satisfies UnknownNfcCardRepository;
+  return {
+    create: vi.fn(),
+    findByCode: vi.fn(),
+    findByIdm: vi.fn(),
+    deleteById: vi.fn(),
+  } satisfies UnknownNfcCardRepository;
 };
 
 describe("RegisterNfcCardUseCase", () => {
-	// テスト前に各テストケースで使用するモックとユースケースインスタンスを設定
-	const setup = () => {
-		const userRepository = createMockUserRepository();
-		const nfcCardRepository = createMockNfcCardRepository();
-		const unknownNfcCardRepository = createMockUnknownNfcCardRepository();
-		const useCase = new RegisterNfcCardUseCase(
-			userRepository,
-			nfcCardRepository,
-			unknownNfcCardRepository,
-		);
+  // テスト前に各テストケースで使用するモックとユースケースインスタンスを設定
+  const setup = () => {
+    const userRepository = createMockUserRepository();
+    const nfcCardRepository = createMockNfcCardRepository();
+    const unknownNfcCardRepository = createMockUnknownNfcCardRepository();
+    const useCase = new RegisterNfcCardUseCase(
+      userRepository,
+      nfcCardRepository,
+      unknownNfcCardRepository,
+    );
 
-		return {
-			useCase,
-			userRepository,
-			nfcCardRepository,
-			unknownNfcCardRepository,
-		};
-	};
+    return {
+      useCase,
+      userRepository,
+      nfcCardRepository,
+      unknownNfcCardRepository,
+    };
+  };
 
-	it("新規ユーザーに対してNFCカードを登録できること", async () => {
-		// セットアップ
-		const {
-			useCase,
-			userRepository,
-			nfcCardRepository,
-			unknownNfcCardRepository,
-		} = setup();
-		const discordId = "discord-user-1";
-		const code = "code-1";
-		const name = "テスト用カード";
-		const newUserId = 1;
-		const idm = "idm-12345";
+  it("新規ユーザーに対してNFCカードを登録できること", async () => {
+    // セットアップ
+    const { useCase, userRepository, nfcCardRepository, unknownNfcCardRepository } = setup();
+    const discordId = "discord-user-1";
+    const code = "code-1";
+    const name = "テスト用カード";
+    const newUserId = 1;
+    const idm = "idm-12345";
 
-		// モックの設定
-		userRepository.findByDiscordId.mockResolvedValue(null);
-		userRepository.create.mockResolvedValue(new User(newUserId, discordId));
-		unknownNfcCardRepository.findByCode.mockResolvedValue(
-			new UnknownNfcCard(1, code, idm),
-		);
-		nfcCardRepository.findByIdm.mockResolvedValue(null);
-		nfcCardRepository.create.mockResolvedValue(
-			new NfcCard(1, name, idm, newUserId),
-		);
+    // モックの設定
+    userRepository.findByDiscordId.mockResolvedValue(null);
+    userRepository.create.mockResolvedValue(new User(newUserId, discordId));
+    unknownNfcCardRepository.findByCode.mockResolvedValue(new UnknownNfcCard(1, code, idm));
+    nfcCardRepository.findByIdm.mockResolvedValue(null);
+    nfcCardRepository.create.mockResolvedValue(new NfcCard(1, name, idm, newUserId));
 
-		// 実行
-		const result = await useCase.execute(discordId, code, name);
+    // 実行
+    const result = await useCase.execute(discordId, code, name);
 
-		// 検証
-		expect(result.isOk()).toBe(true);
-		expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
-		expect(userRepository.create).toHaveBeenCalledWith(discordId);
-		expect(unknownNfcCardRepository.findByCode).toHaveBeenCalledWith(code);
-		expect(nfcCardRepository.findByIdm).toHaveBeenCalledWith(idm);
-		expect(unknownNfcCardRepository.deleteById).toHaveBeenCalledWith(1);
-		expect(nfcCardRepository.create).toHaveBeenCalledWith(name, idm, newUserId);
-	});
+    // 検証
+    expect(result.isOk()).toBe(true);
+    expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
+    expect(userRepository.create).toHaveBeenCalledWith(discordId);
+    expect(unknownNfcCardRepository.findByCode).toHaveBeenCalledWith(code);
+    expect(nfcCardRepository.findByIdm).toHaveBeenCalledWith(idm);
+    expect(unknownNfcCardRepository.deleteById).toHaveBeenCalledWith(1);
+    expect(nfcCardRepository.create).toHaveBeenCalledWith(name, idm, newUserId);
+  });
 
-	it("既存ユーザーに対してNFCカードを登録できること", async () => {
-		// セットアップ
-		const {
-			useCase,
-			userRepository,
-			nfcCardRepository,
-			unknownNfcCardRepository,
-		} = setup();
-		const discordId = "discord-user-2";
-		const code = "code-2";
-		const name = "既存ユーザーカード";
-		const existingUserId = 2;
-		const idm = "idm-67890";
+  it("既存ユーザーに対してNFCカードを登録できること", async () => {
+    // セットアップ
+    const { useCase, userRepository, nfcCardRepository, unknownNfcCardRepository } = setup();
+    const discordId = "discord-user-2";
+    const code = "code-2";
+    const name = "既存ユーザーカード";
+    const existingUserId = 2;
+    const idm = "idm-67890";
 
-		// モックの設定
-		userRepository.findByDiscordId.mockResolvedValue(
-			new User(existingUserId, discordId),
-		);
-		unknownNfcCardRepository.findByCode.mockResolvedValue(
-			new UnknownNfcCard(2, code, idm),
-		);
-		nfcCardRepository.findByIdm.mockResolvedValue(null);
-		nfcCardRepository.create.mockResolvedValue(
-			new NfcCard(2, name, idm, existingUserId),
-		);
+    // モックの設定
+    userRepository.findByDiscordId.mockResolvedValue(new User(existingUserId, discordId));
+    unknownNfcCardRepository.findByCode.mockResolvedValue(new UnknownNfcCard(2, code, idm));
+    nfcCardRepository.findByIdm.mockResolvedValue(null);
+    nfcCardRepository.create.mockResolvedValue(new NfcCard(2, name, idm, existingUserId));
 
-		// 実行
-		const result = await useCase.execute(discordId, code, name);
+    // 実行
+    const result = await useCase.execute(discordId, code, name);
 
-		// 検証
-		expect(result.isOk()).toBe(true);
-		expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
-		expect(userRepository.create).toHaveBeenCalledTimes(0);
-		expect(unknownNfcCardRepository.findByCode).toHaveBeenCalledWith(code);
-		expect(nfcCardRepository.findByIdm).toHaveBeenCalledWith(idm);
-		expect(unknownNfcCardRepository.deleteById).toHaveBeenCalledWith(2);
-		expect(nfcCardRepository.create).toHaveBeenCalledWith(
-			name,
-			idm,
-			existingUserId,
-		);
-	});
+    // 検証
+    expect(result.isOk()).toBe(true);
+    expect(userRepository.findByDiscordId).toHaveBeenCalledWith(discordId);
+    expect(userRepository.create).toHaveBeenCalledTimes(0);
+    expect(unknownNfcCardRepository.findByCode).toHaveBeenCalledWith(code);
+    expect(nfcCardRepository.findByIdm).toHaveBeenCalledWith(idm);
+    expect(unknownNfcCardRepository.deleteById).toHaveBeenCalledWith(2);
+    expect(nfcCardRepository.create).toHaveBeenCalledWith(name, idm, existingUserId);
+  });
 
-	it("不明なNFCカードの場合にエラーを返すこと", async () => {
-		// セットアップ
-		const { useCase, userRepository, unknownNfcCardRepository } = setup();
-		const discordId = "discord-user-3";
-		const code = "unknown-code";
-		const name = "不明カード";
-		const existingUserId = 3;
+  it("不明なNFCカードの場合にエラーを返すこと", async () => {
+    // セットアップ
+    const { useCase, userRepository, unknownNfcCardRepository } = setup();
+    const discordId = "discord-user-3";
+    const code = "unknown-code";
+    const name = "不明カード";
+    const existingUserId = 3;
 
-		// モックの設定
-		userRepository.findByDiscordId.mockResolvedValue(
-			new User(existingUserId, discordId),
-		);
-		unknownNfcCardRepository.findByCode.mockResolvedValue(null);
+    // モックの設定
+    userRepository.findByDiscordId.mockResolvedValue(new User(existingUserId, discordId));
+    unknownNfcCardRepository.findByCode.mockResolvedValue(null);
 
-		// 実行
-		const result = await useCase.execute(discordId, code, name);
+    // 実行
+    const result = await useCase.execute(discordId, code, name);
 
-		// 検証
-		expect(result.isErr()).toBe(true);
-		if (result.isErr()) {
-			expect(result.error).toBeInstanceOf(AppError);
-			expect(result.error.meta.code).toBe("NFC_CARD_NOT_FOUND");
-		}
-	});
+    // 検証
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(AppError);
+      expect(result.error.meta.code).toBe("NFC_CARD_NOT_FOUND");
+    }
+  });
 
-	it("既に登録されているNFCカードの場合にエラーを返すこと", async () => {
-		// セットアップ
-		const {
-			useCase,
-			userRepository,
-			nfcCardRepository,
-			unknownNfcCardRepository,
-		} = setup();
-		const discordId = "discord-user-4";
-		const code = "code-4";
-		const name = "重複カード";
-		const existingUserId = 4;
-		const idm = "idm-already-registered";
+  it("既に登録されているNFCカードの場合にエラーを返すこと", async () => {
+    // セットアップ
+    const { useCase, userRepository, nfcCardRepository, unknownNfcCardRepository } = setup();
+    const discordId = "discord-user-4";
+    const code = "code-4";
+    const name = "重複カード";
+    const existingUserId = 4;
+    const idm = "idm-already-registered";
 
-		// モックの設定
-		userRepository.findByDiscordId.mockResolvedValue(
-			new User(existingUserId, discordId),
-		);
-		unknownNfcCardRepository.findByCode.mockResolvedValue(
-			new UnknownNfcCard(4, code, idm),
-		);
-		nfcCardRepository.findByIdm.mockResolvedValue(
-			new NfcCard(99, "既存カード", idm, 999), // 既に別のユーザーで登録済み
-		);
+    // モックの設定
+    userRepository.findByDiscordId.mockResolvedValue(new User(existingUserId, discordId));
+    unknownNfcCardRepository.findByCode.mockResolvedValue(new UnknownNfcCard(4, code, idm));
+    nfcCardRepository.findByIdm.mockResolvedValue(
+      new NfcCard(99, "既存カード", idm, 999), // 既に別のユーザーで登録済み
+    );
 
-		// 実行
-		const result = await useCase.execute(discordId, code, name);
+    // 実行
+    const result = await useCase.execute(discordId, code, name);
 
-		// 検証
-		expect(result.isErr()).toBe(true);
-		if (result.isErr()) {
-			expect(result.error).toBeInstanceOf(AppError);
-			expect(result.error.meta.code).toBe("NFC_CARD_ALREADY_REGISTERED");
-		}
-	});
+    // 検証
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(AppError);
+      expect(result.error.meta.code).toBe("NFC_CARD_ALREADY_REGISTERED");
+    }
+  });
 
-	it("例外が発生した場合にエラーを返すこと", async () => {
-		// セットアップ
-		const { useCase, userRepository } = setup();
-		const discordId = "discord-user-5";
-		const code = "code-5";
-		const name = "エラーテストカード";
+  it("例外が発生した場合にエラーを返すこと", async () => {
+    // セットアップ
+    const { useCase, userRepository } = setup();
+    const discordId = "discord-user-5";
+    const code = "code-5";
+    const name = "エラーテストカード";
 
-		// モックの設定 - 例外をスロー
-		userRepository.findByDiscordId.mockRejectedValue(new Error("DB接続エラー"));
+    // モックの設定 - 例外をスロー
+    userRepository.findByDiscordId.mockRejectedValue(new Error("DB接続エラー"));
 
-		// 実行
-		const result = await useCase.execute(discordId, code, name);
+    // 実行
+    const result = await useCase.execute(discordId, code, name);
 
-		// 検証
-		expect(result.isErr()).toBe(true);
-		if (result.isErr()) {
-			expect(result.error).toBeInstanceOf(AppError);
-			expect(result.error.meta.code).toBe("UNKNOWN");
-		}
-	});
+    // 検証
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(AppError);
+      expect(result.error.meta.code).toBe("UNKNOWN");
+    }
+  });
 });

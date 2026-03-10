@@ -9,12 +9,8 @@ const guildId = process.env["DISCORD_GUILD_ID"]!;
 
 const rest = new REST({ version: "10" }).setToken(token);
 
-const commands = [
-	pingCommand.toJSON(),
-	roomCommand.toJSON(),
-	roomAdminCommand.toJSON(),
-];
+const commands = [pingCommand.toJSON(), roomCommand.toJSON(), roomAdminCommand.toJSON()];
 
 await rest.put(Routes.applicationGuildCommands(applicationId, guildId), {
-	body: commands,
+  body: commands,
 });

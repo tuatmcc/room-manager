@@ -1,38 +1,38 @@
 {
-	"name": "@room-manager/api",
-	"version": "0.2.5",
-	"type": "module",
-	"scripts": {
-		"build": "wrangler deploy --minify src/index.ts --dry-run --outdir dist",
-		"ci:deploy": "wrangler deploy --minify src/index.ts",
-		"ci:migrate": "wrangler d1 migrations apply room-manager --remote",
-		"dev": "wrangler dev --test-scheduled src/index.ts",
-		"dev:migrate": "wrangler d1 migrations apply room-manager --local",
-		"gen:migration": "drizzle-kit generate",
-		"register": "tsx scripts/register.ts",
-		"test": "vitest run",
-		"typecheck": "tsc --noEmit"
-	},
-	"dependencies": {
-		"@discordjs/builders": "1.13.1",
-		"@discordjs/rest": "2.6.0",
-		"@js-temporal/polyfill": "0.5.1",
-		"consola": "3.4.2",
-		"discord-interactions": "4.4.0",
-		"drizzle-orm": "0.45.1",
-		"hono": "4.12.5",
-		"neverthrow": "8.2.0",
-		"ts-pattern": "5.9.0",
-		"zod": "4.3.6"
-	},
-	"devDependencies": {
-		"@cloudflare/workers-types": "4.20260307.1",
-		"@types/node": "25.3.5",
-		"discord-api-types": "0.38.41",
-		"drizzle-kit": "0.31.9",
-		"tsx": "4.21.0",
-		"typescript": "5.9.3",
-		"vitest": "4.0.18",
-		"wrangler": "4.71.0"
-	}
+  "name": "@room-manager/api",
+  "version": "0.2.5",
+  "type": "module",
+  "scripts": {
+    "build": "wrangler deploy --minify src/index.ts --dry-run --outdir dist",
+    "ci:deploy": "wrangler deploy --minify src/index.ts",
+    "ci:migrate": "wrangler d1 migrations apply room-manager --remote",
+    "dev": "wrangler dev --test-scheduled src/index.ts",
+    "dev:migrate": "wrangler d1 migrations apply room-manager --local",
+    "gen:migration": "drizzle-kit generate",
+    "register": "tsx scripts/register.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@discordjs/builders": "1.13.1",
+    "@discordjs/rest": "2.6.0",
+    "@js-temporal/polyfill": "0.5.1",
+    "consola": "3.4.2",
+    "discord-interactions": "4.4.0",
+    "drizzle-orm": "0.45.1",
+    "hono": "4.12.5",
+    "neverthrow": "8.2.0",
+    "ts-pattern": "5.9.0",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260307.1",
+    "@types/node": "25.3.5",
+    "discord-api-types": "0.38.41",
+    "drizzle-kit": "0.31.9",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "vitest": "4.0.18",
+    "wrangler": "4.71.0"
+  }
 }
