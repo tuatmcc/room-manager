@@ -1,5 +1,12 @@
 # room-manager
 
+## [0.3.0](https://github.com/tuatmcc/room-manager/compare/v0.2.5...v0.3.0) (2026-03-10)
+
+
+### Features
+
+* ロガーを追加 ([#85](https://github.com/tuatmcc/room-manager/issues/85)) ([420b86a](https://github.com/tuatmcc/room-manager/commit/420b86ac204adbed4ceeed805755869ef4dcc0e7))
+
 ## [0.2.5](https://github.com/tuatmcc/room-manager/compare/v0.2.4...v0.2.5) (2026-03-09)
 
 
