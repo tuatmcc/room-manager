@@ -1,36 +1,47 @@
 {
 	"$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+	"bump-minor-pre-major": false,
+	"bump-patch-for-minor-pre-major": false,
+	"draft": false,
+	"prerelease": false,
+	"include-component-in-tag": false,
+	"separate-pull-requests": false,
+	"group-pull-request-title-pattern": "chore: release ${version}",
+	"plugins": [
+		{
+			"type": "cargo-workspace",
+			"merge": false
+		},
+		{
+			"type": "linked-versions",
+			"groupName": "room-manager",
+			"components": ["room-manager", "api", "app", "pasori"],
+			"merge": false
+		}
+	],
 	"packages": {
 		".": {
-			"bump-minor-pre-major": false,
-			"bump-patch-for-minor-pre-major": false,
-			"changelog-path": "CHANGELOG.md",
-			"draft": false,
-			"extra-files": [
-				{
-					"jsonpath": "$.version",
-					"path": "packages/api/package.json",
-					"type": "json"
-				},
-				{
-					"jsonpath": "$.package.version",
-					"path": "crates/app/Cargo.toml",
-					"type": "toml"
-				},
-				{
-					"jsonpath": "$.package.version",
-					"path": "crates/pasori/Cargo.toml",
-					"type": "toml"
-				},
-				{
-					"jsonpath": "$.package[?(@.name=='room-manager'||@.name=='pasori')].version",
-					"path": "Cargo.lock",
-					"type": "toml"
-				}
-			],
-			"include-component-in-tag": false,
-			"prerelease": false,
-			"release-type": "node"
+			"release-type": "node",
+			"component": "room-manager",
+			"changelog-path": "CHANGELOG.md"
+		},
+		"packages/api": {
+			"release-type": "node",
+			"component": "api",
+			"skip-github-release": true,
+			"skip-changelog": true
+		},
+		"crates/app": {
+			"release-type": "rust",
+			"component": "app",
+			"skip-github-release": true,
+			"skip-changelog": true
+		},
+		"crates/pasori": {
+			"release-type": "rust",
+			"component": "pasori",
+			"skip-github-release": true,
+			"skip-changelog": true
 		}
 	}
 }
