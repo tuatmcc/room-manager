@@ -1,12 +1,20 @@
+allowBuilds:
+  esbuild: true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true
+  workerd: true
+
+minimumReleaseAge: 1440
+
 packages:
   - .
   - packages/*
-autoInstallPeers: false
-publicHoistPattern:
-  - "*vitest*"
-onlyBuiltDependencies:
-  - esbuild
-  - protobufjs
-  - sharp
-  - unrs-resolver
-  - workerd
+
+saveExact: true
+
+strictDepBuilds: true
+
+trustPolicy: no-downgrade
+
+trustPolicyIgnoreAfter: 10080
