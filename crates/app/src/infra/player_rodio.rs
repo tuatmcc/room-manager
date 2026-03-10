@@ -11,7 +11,7 @@ pub struct RodioPlayer {
 
 impl RodioPlayer {
     pub fn new() -> anyhow::Result<Self> {
-        info!("Initializing RodioPlayer");
+        info!("initializing rodio player");
 
         let sink = DeviceSinkBuilder::open_default_sink()?;
         let player = Player::connect_new(sink.mixer());
@@ -27,13 +27,12 @@ impl RodioPlayer {
 
 impl SoundPlayer for RodioPlayer {
     fn play(&self, sound: SoundEvent) -> anyhow::Result<()> {
-        info!("Playing sound: {:?}", sound);
+        info!(?sound, "queueing sound");
 
         let reader = sound_to_reader(sound);
         let source = Decoder::new(reader)?;
 
         self.player.append(source);
-        info!("Sound queued for playback");
 
         Ok(())
     }

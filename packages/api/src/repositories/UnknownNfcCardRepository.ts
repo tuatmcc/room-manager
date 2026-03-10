@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 
 import type { Database } from "@/database";
+import type { AppLogger } from "@/logger";
+import { noopLogger, serializeError } from "@/logger";
 import { UnknownNfcCard } from "@/models/UnknownNfcCard";
 import * as schema from "@/schema";
 
@@ -14,11 +16,19 @@ export interface UnknownNfcCardRepository {
 }
 
 export class DBUnknownNfcCardRepository implements UnknownNfcCardRepository {
-	constructor(private readonly db: Database) {}
+	constructor(
+		private readonly db: Database,
+		private readonly logger: AppLogger = noopLogger,
+	) {}
 
 	async create(idm: string): Promise<UnknownNfcCard> {
 		const existing = await this.findByIdm(idm);
 		if (existing) {
+			this.logger.info("reused unknown nfc card", {
+				code: existing.code,
+				idm,
+				unknownNfcCardId: existing.id,
+			});
 			return existing;
 		}
 
@@ -39,27 +49,57 @@ export class DBUnknownNfcCardRepository implements UnknownNfcCardRepository {
 					.returning()
 					.get();
 
+				this.logger.info("created unknown nfc card", {
+					attempt: attempt + 1,
+					code,
+					idm,
+					unknownNfcCardId: result.id,
+				});
 				return new UnknownNfcCard(result.id, result.code, result.idm);
 			} catch (error) {
 				if (!isUniqueConstraintError(error)) {
+					this.logger.error("failed to create unknown nfc card", {
+						attempt: attempt + 1,
+						code,
+						idm,
+						...serializeError(error),
+					});
 					throw error;
 				}
 
 				if (hasUniqueConstraint(error, "unknown_nfc_cards.idm")) {
 					const existing = await this.findByIdm(idm);
 					if (existing) {
+						this.logger.info("reused unknown nfc card after idm conflict", {
+							attempt: attempt + 1,
+							code: existing.code,
+							idm,
+							unknownNfcCardId: existing.id,
+						});
 						return existing;
 					}
 				}
 
 				if (hasUniqueConstraint(error, "unknown_nfc_cards.code")) {
+					this.logger.warn("retrying unknown nfc code allocation", {
+						attempt: attempt + 1,
+						code,
+						idm,
+					});
 					continue;
 				}
 
+				this.logger.error("failed to create unknown nfc card", {
+					attempt: attempt + 1,
+					code,
+					idm,
+					...serializeError(error),
+				});
 				throw error;
 			}
 		}
 
+		this.logger.error("exhausted unknown nfc code allocation retries", { idm });
 		throw new Error(`Failed to allocate unknown NFC code for IDm ${idm}.`);
 	}
 
@@ -82,11 +122,20 @@ export class DBUnknownNfcCardRepository implements UnknownNfcCardRepository {
 	}
 
 	async deleteById(id: number): Promise<void> {
-		await this.db
-			.delete(schema.unknownNfcCards)
-			.where(eq(schema.unknownNfcCards.id, id))
-			.returning()
-			.get();
+		try {
+			await this.db
+				.delete(schema.unknownNfcCards)
+				.where(eq(schema.unknownNfcCards.id, id))
+				.returning()
+				.get();
+			this.logger.info("deleted unknown nfc card", { unknownNfcCardId: id });
+		} catch (error) {
+			this.logger.error("failed to delete unknown nfc card", {
+				unknownNfcCardId: id,
+				...serializeError(error),
+			});
+			throw error;
+		}
 	}
 }
 

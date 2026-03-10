@@ -2,6 +2,8 @@ import type { APIEmbed, APIInteractionResponse } from "discord-api-types/v10";
 import { InteractionResponseType, MessageFlags } from "discord-api-types/v10";
 
 import { colorToHex } from "@/discord";
+import type { AppLogger } from "@/logger";
+import { noopLogger } from "@/logger";
 import type { DiscordService } from "@/services/DiscordService";
 import type {
 	ListEntryUsersError,
@@ -14,15 +16,18 @@ export class ListUsersHandler {
 	constructor(
 		private readonly usecase: ListEntryUsersUseCase,
 		private readonly discordService: DiscordService,
+		private readonly logger: AppLogger = noopLogger,
 	) {}
 
 	async handle(): Promise<APIInteractionResponse> {
+		this.logger.info("Handling list users command");
 		const result = await this.usecase.execute();
 
 		const embed = await result.match<MaybePromise<APIEmbed>>(
 			async (result) => await this.handleSuccess(result),
 			(error) => this.handleError(error),
 		);
+		this.logger.info("Handled list users command");
 
 		return {
 			type: InteractionResponseType.ChannelMessageWithSource,
@@ -36,6 +41,9 @@ export class ListUsersHandler {
 	private async handleSuccess({
 		users,
 	}: ListEntryUsersResult): Promise<APIEmbed> {
+		this.logger.info("Rendering list users response", {
+			userCount: users.length,
+		});
 		const names = await Promise.all(
 			users.map(async (user) => {
 				const { name } = await this.discordService.fetchUserInfo(
@@ -66,6 +74,9 @@ export class ListUsersHandler {
 	}
 
 	private handleError(error: ListEntryUsersError): APIEmbed {
+		this.logger.error("List users command failed", {
+			errorCode: error.meta.code,
+		});
 		switch (error.meta.code) {
 			// eslint-disable-next-line typescript/no-unnecessary-condition
 			case "UNKNOWN":

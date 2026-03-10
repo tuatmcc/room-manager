@@ -3,7 +3,7 @@ use crate::domain::{
     TouchCardRequest, TouchCardResponse,
 };
 use chrono::Timelike;
-use tracing::{info, warn};
+use tracing::{error, info};
 
 pub struct TouchCardUseCase<A, P, C, D>
 where
@@ -42,22 +42,40 @@ where
     /// queued, or the door lock operation fails.
     pub async fn execute(&self, card: &Card) -> anyhow::Result<()> {
         let req: TouchCardRequest = card.clone().into();
-        info!("Sending touch card request: {:?}", req);
+        info!(
+            idm = %card.idm,
+            student_id = ?card.student_id,
+            balance = ?card.balance,
+            "starting touch-card workflow"
+        );
 
         self.player.reset();
         self.player.play(SoundEvent::Touch)?;
 
-        match self.api.touch(req).await? {
-            TouchCardResponse::Success { status, entries } => {
-                info!(
-                    "Touch card success: status={:?}, entries={}",
-                    status, entries
+        let response = self.api.touch(req).await;
+        let response = match response {
+            Ok(response) => response,
+            Err(error) => {
+                error!(
+                    idm = %card.idm,
+                    student_id = ?card.student_id,
+                    balance = ?card.balance,
+                    error = %error,
+                    "touch-card api call failed"
                 );
+                return Err(error);
+            }
+        };
+
+        match response {
+            TouchCardResponse::Success { status, entries } => {
+                info!(?status, entries, "touch-card workflow succeeded");
                 self.play_success(status, entries)?;
                 self.door_lock.unlock().await?;
+                info!(?status, entries, "completed touch-card success handling");
             }
             TouchCardResponse::Error { error_code, .. } => {
-                warn!("Touch card error: error_code={:?}", error_code);
+                info!(?error_code, "touch-card workflow returned business error");
                 self.play_error(error_code)?;
             }
         }
@@ -66,35 +84,29 @@ where
     }
 
     fn play_success(&self, status: RoomEntryStatus, entries: u32) -> anyhow::Result<()> {
-        info!(
-            "Playing success sound for status={:?}, entries={}",
-            status, entries
-        );
         match status {
             RoomEntryStatus::Entry => {
                 let now = self.clock.now();
                 let hour = now.hour();
-                info!("Current hour is {}, selecting appropriate greeting", hour);
                 match hour {
                     6..=11 => {
-                        info!("Playing morning greeting");
+                        info!(hour, "playing morning greeting");
                         self.player.play(SoundEvent::GoodMorning)?;
                     }
                     12..=17 => {
-                        info!("Playing daytime greeting");
+                        info!(hour, "playing daytime greeting");
                         self.player.play(SoundEvent::Hello)?;
                     }
                     _ => {
-                        info!("Playing evening greeting");
+                        info!(hour, "playing evening greeting");
                         self.player.play(SoundEvent::GoodEvening)?;
                     }
                 }
             }
             RoomEntryStatus::Exit => {
-                info!("Playing goodbye sound");
                 self.player.play(SoundEvent::GoodBye)?;
                 if entries == 0 {
-                    info!("Last person exiting, playing last person sound");
+                    info!("playing last-person exit sound");
                     self.player.play(SoundEvent::Last)?;
                 }
             }
@@ -103,18 +115,17 @@ where
     }
 
     fn play_error(&self, error_code: ErrorCode) -> anyhow::Result<()> {
-        info!("Playing error sound for error_code={:?}", error_code);
         match error_code {
             ErrorCode::StudentCardNotRegistered => {
-                info!("Student card not registered, playing registration guidance");
+                info!("playing student-card registration guidance");
                 self.player.play(SoundEvent::RegisterStudentCard)?;
             }
             ErrorCode::NfcCardNotRegistered => {
-                info!("NFC card not registered, playing registration guidance");
+                info!("playing nfc-card registration guidance");
                 self.player.play(SoundEvent::RegisterNfcCard)?;
             }
             _ => {
-                warn!("Unknown error occurred, playing generic error sound");
+                info!(?error_code, "playing generic error sound");
                 self.player.play(SoundEvent::Error)?;
             }
         }

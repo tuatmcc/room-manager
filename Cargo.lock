@@ -1121,6 +1121,8 @@ dependencies = [
  "if_chain",
  "rusb",
  "thiserror 2.0.18",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

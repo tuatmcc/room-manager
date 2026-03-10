@@ -8,28 +8,47 @@ import { verifyKey } from "discord-interactions";
 import { createMiddleware } from "hono/factory";
 
 import type { AppEnv } from "./env";
+import type { AppLogger } from "./logger";
+import { noopLogger, serializeError } from "./logger";
 
 export const interactionVerifier = createMiddleware<AppEnv>(async (c, next) => {
 	const env = c.get("env");
+	const requestLogger =
+		(c.get("logger") as AppLogger | undefined) ?? noopLogger;
+	const logger = requestLogger.child({
+		tag: "interaction-verifier",
+	});
 
 	const signature = c.req.header("X-Signature-Ed25519");
 	const timestamp = c.req.header("X-Signature-Timestamp");
 	if (!signature || !timestamp) {
+		logger.warn("Interaction signature headers were missing");
 		return c.text("Invalid request", 400);
 	}
 
 	const body = await c.req.text();
-	const isValid = await verifyKey(
-		body,
-		signature,
-		timestamp,
-		env.DISCORD_PUBLIC_KEY,
-	);
-
-	if (!isValid) {
+	let isValid: boolean;
+	try {
+		isValid = await verifyKey(
+			body,
+			signature,
+			timestamp,
+			env.DISCORD_PUBLIC_KEY,
+		);
+	} catch (error) {
+		logger.error(
+			"Interaction signature verification failed",
+			serializeError(error),
+		);
 		return c.text("Unauthorized", 401);
 	}
 
+	if (!isValid) {
+		logger.warn("Interaction signature was invalid");
+		return c.text("Unauthorized", 401);
+	}
+
+	logger.info("Interaction signature verified");
 	c.set("verifiedInteractionBody", body);
 	await next();
 });

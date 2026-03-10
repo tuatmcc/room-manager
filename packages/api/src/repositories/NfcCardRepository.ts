@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 
 import type { Database } from "@/database";
+import type { AppLogger } from "@/logger";
+import { noopLogger, serializeError } from "@/logger";
 import { NfcCard } from "@/models/NfcCard";
 import * as schema from "@/schema";
 
@@ -11,33 +13,70 @@ export interface NfcCardRepository {
 }
 
 export class DBNfcCardRepository implements NfcCardRepository {
-	constructor(private readonly db: Database) {}
+	constructor(
+		private readonly db: Database,
+		private readonly logger: AppLogger = noopLogger,
+	) {}
 
 	async create(name: string, idm: string, userId: number): Promise<NfcCard> {
-		const result = await this.db
-			.insert(schema.nfcCards)
-			.values({
-				name,
-				idm,
-				userId,
-			})
-			.returning()
-			.get();
+		try {
+			const result = await this.db
+				.insert(schema.nfcCards)
+				.values({
+					name,
+					idm,
+					userId,
+				})
+				.returning()
+				.get();
 
-		return new NfcCard(result.id, result.name, result.idm, result.userId);
+			this.logger.info("created nfc card", {
+				idm,
+				name,
+				userId,
+			});
+
+			return new NfcCard(result.id, result.name, result.idm, result.userId);
+		} catch (error) {
+			this.logger.error("failed to create nfc card", {
+				idm,
+				name,
+				userId,
+				...serializeError(error),
+			});
+			throw error;
+		}
 	}
 
 	async save(nfcCard: NfcCard): Promise<void> {
-		await this.db
-			.update(schema.nfcCards)
-			.set({
-				name: nfcCard.name,
+		try {
+			await this.db
+				.update(schema.nfcCards)
+				.set({
+					name: nfcCard.name,
+					idm: nfcCard.idm,
+					userId: nfcCard.userId,
+				})
+				.where(eq(schema.nfcCards.id, nfcCard.id))
+				.returning()
+				.get();
+
+			this.logger.info("saved nfc card", {
+				cardId: nfcCard.id,
 				idm: nfcCard.idm,
+				name: nfcCard.name,
 				userId: nfcCard.userId,
-			})
-			.where(eq(schema.nfcCards.id, nfcCard.id))
-			.returning()
-			.get();
+			});
+		} catch (error) {
+			this.logger.error("failed to save nfc card", {
+				cardId: nfcCard.id,
+				idm: nfcCard.idm,
+				name: nfcCard.name,
+				userId: nfcCard.userId,
+				...serializeError(error),
+			});
+			throw error;
+		}
 	}
 
 	async findByIdm(idm: string): Promise<NfcCard | null> {

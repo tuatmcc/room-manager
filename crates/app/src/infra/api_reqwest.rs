@@ -33,12 +33,13 @@ impl HttpCardApi {
 
 impl CardApi for HttpCardApi {
     async fn touch(&self, req: TouchCardRequest) -> anyhow::Result<TouchCardResponse> {
-        info!(
-            "Sending API request to {}/local-device/touch-card",
-            self.api_path
-        );
-
         let start = std::time::Instant::now();
+        info!(
+            api_path = %self.api_path,
+            idm = %req.idm,
+            student_id = ?req.student_id,
+            "sending touch-card api request"
+        );
 
         let response = self
             .client
@@ -48,23 +49,47 @@ impl CardApi for HttpCardApi {
             .send()
             .await
             .map_err(|e| {
-                error!("API request failed: {e}");
+                error!(
+                    api_path = %self.api_path,
+                    idm = %req.idm,
+                    student_id = ?req.student_id,
+                    error = %e,
+                    "touch-card api request failed"
+                );
                 anyhow::anyhow!("API request failed: {e}")
             })?;
-        info!("API request successful: status={}", response.status());
+
+        let status = response.status();
+        let elapsed = start.elapsed().as_millis();
+        info!(%status, elapsed_ms = elapsed, "received touch-card api response");
+
         if !response.status().is_success() {
+            error!(
+                %status,
+                elapsed_ms = elapsed,
+                "touch-card api request returned non-success status"
+            );
             return Err(anyhow::anyhow!(
                 "API request failed with status: {}",
                 response.status()
             ));
         }
+
         let response = response.json::<TouchCardResponse>().await.map_err(|e| {
-            error!("Failed to parse API response: {e}");
+            error!(
+                %status,
+                elapsed_ms = elapsed,
+                error = %e,
+                "failed to parse touch-card api response"
+            );
             anyhow::anyhow!("Failed to parse API response: {e}")
         })?;
 
-        let elapsed = start.elapsed();
-        info!("API request completed in {:?}", elapsed);
+        info!(
+            %status,
+            elapsed_ms = start.elapsed().as_millis(),
+            "completed touch-card api request"
+        );
 
         Ok(response)
     }

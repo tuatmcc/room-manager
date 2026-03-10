@@ -3,6 +3,8 @@ import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
 import { AppError } from "@/error";
+import type { AppLogger } from "@/logger";
+import { noopLogger, serializeError } from "@/logger";
 import type { UnknownNfcCard } from "@/models/UnknownNfcCard";
 import type { User } from "@/models/User";
 import type { RoomEntryLogRepository } from "@/repositories/RoomEntryLogRepository";
@@ -22,6 +24,7 @@ export class TouchCardUseCase {
 		private readonly userRepository: UserRepository,
 		private readonly unknownNfcCardRepository: UnknownNfcCardRepository,
 		private readonly roomEntryLogRepository: RoomEntryLogRepository,
+		private readonly logger: AppLogger = noopLogger,
 	) {}
 
 	async execute({
@@ -31,6 +34,10 @@ export class TouchCardUseCase {
 		idm: string;
 		studentId?: number;
 	}): Promise<Result<TouchCardResult, TouchCardError>> {
+		this.logger.info("touch card started", {
+			idm,
+			studentId,
+		});
 		try {
 			// ユーザーを特定
 			const userResult =
@@ -44,10 +51,21 @@ export class TouchCardUseCase {
 
 			// 入退室処理を実行
 			const result = await this.toggleUserRoomPresence(user);
+			this.logger.info("touch card completed", {
+				discordId: user.discordId,
+				entries: result.entries,
+				status: result.status,
+				userId: user.id,
+			});
 
 			return ok(result);
 		} catch (caughtError) {
 			const cause = caughtError instanceof Error ? caughtError : undefined;
+			this.logger.error("touch card failed", {
+				idm,
+				studentId,
+				...serializeError(caughtError),
+			});
 			const error = new TouchCardError("Failed to touch card.", {
 				cause,
 				meta: {
@@ -64,6 +82,7 @@ export class TouchCardUseCase {
 	): Promise<Result<User, TouchCardError>> {
 		const user = await this.userRepository.findByStudentId(studentId);
 		if (!user) {
+			this.logger.info("student card not registered", { studentId });
 			return err(
 				new TouchCardError("Student card not registered.", {
 					meta: {
@@ -73,6 +92,11 @@ export class TouchCardUseCase {
 			);
 		}
 
+		this.logger.info("resolved user by student card", {
+			discordId: user.discordId,
+			studentId,
+			userId: user.id,
+		});
 		return ok(user);
 	}
 
@@ -85,6 +109,11 @@ export class TouchCardUseCase {
 				(await this.unknownNfcCardRepository.findByIdm(idm)) ??
 				(await this.unknownNfcCardRepository.create(idm));
 
+			this.logger.info("nfc card not registered", {
+				code: unknownNfcCard.code,
+				idm,
+				unknownNfcCardId: unknownNfcCard.id,
+			});
 			return err(
 				new TouchCardError("NFC card not registered.", {
 					meta: {
@@ -95,6 +124,11 @@ export class TouchCardUseCase {
 			);
 		}
 
+		this.logger.info("resolved user by nfc card", {
+			discordId: user.discordId,
+			idm,
+			userId: user.id,
+		});
 		return ok(user);
 	}
 
@@ -104,6 +138,12 @@ export class TouchCardUseCase {
 
 		// 入室中のユーザーを取得
 		const entryUsers = await this.userRepository.findAllEntryUsers();
+		this.logger.info("toggled room presence", {
+			discordId: user.discordId,
+			entries: entryUsers.length,
+			status,
+			userId: user.id,
+		});
 
 		return {
 			status,

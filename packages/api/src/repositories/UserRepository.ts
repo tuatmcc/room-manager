@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 
 import type { Database } from "@/database";
+import type { AppLogger } from "@/logger";
+import { noopLogger, serializeError } from "@/logger";
 import { User } from "@/models/User";
 import * as schema from "@/schema";
 
@@ -15,29 +17,59 @@ export interface UserRepository {
 }
 
 export class DBUserRepository implements UserRepository {
-	constructor(private readonly db: Database) {}
+	constructor(
+		private readonly db: Database,
+		private readonly logger: AppLogger = noopLogger,
+	) {}
 
 	async create(discordId: string): Promise<User> {
-		const result = await this.db
-			.insert(schema.users)
-			.values({
-				discordId,
-			})
-			.returning()
-			.get();
+		try {
+			const result = await this.db
+				.insert(schema.users)
+				.values({
+					discordId,
+				})
+				.returning()
+				.get();
 
-		return new User(result.id, result.discordId);
+			this.logger.info("created user", {
+				discordId,
+				userId: result.id,
+			});
+
+			return new User(result.id, result.discordId);
+		} catch (error) {
+			this.logger.error("failed to create user", {
+				discordId,
+				...serializeError(error),
+			});
+			throw error;
+		}
 	}
 
 	async save(user: User): Promise<void> {
-		await this.db
-			.update(schema.users)
-			.set({
+		try {
+			await this.db
+				.update(schema.users)
+				.set({
+					discordId: user.discordId,
+				})
+				.where(eq(schema.users.id, user.id))
+				.returning()
+				.get();
+
+			this.logger.info("saved user", {
 				discordId: user.discordId,
-			})
-			.where(eq(schema.users.id, user.id))
-			.returning()
-			.get();
+				userId: user.id,
+			});
+		} catch (error) {
+			this.logger.error("failed to save user", {
+				discordId: user.discordId,
+				userId: user.id,
+				...serializeError(error),
+			});
+			throw error;
+		}
 	}
 
 	async findByIds(ids: number[]): Promise<User[]> {

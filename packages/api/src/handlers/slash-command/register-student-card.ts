@@ -2,6 +2,8 @@ import type { APIEmbed, APIInteractionResponse } from "discord-api-types/v10";
 import { InteractionResponseType, MessageFlags } from "discord-api-types/v10";
 
 import { colorToHex } from "@/discord";
+import type { AppLogger } from "@/logger";
+import { noopLogger } from "@/logger";
 import type {
 	RegisterStudentCardError,
 	RegisterStudentCardResult,
@@ -9,18 +11,29 @@ import type {
 } from "@/usecase/RegisterStudentCard";
 
 export class RegisterStudentCardHandler {
-	constructor(private readonly usecase: RegisterStudentCardUseCase) {}
+	constructor(
+		private readonly usecase: RegisterStudentCardUseCase,
+		private readonly logger: AppLogger = noopLogger,
+	) {}
 
 	async handle(
 		discordId: string,
 		studentId: number,
 	): Promise<APIInteractionResponse> {
+		this.logger.info("Handling register student card command", {
+			discordId,
+			studentId,
+		});
 		const result = await this.usecase.execute(discordId, studentId);
 
 		const embed = result.match<APIEmbed>(
 			(result) => this.handleSuccess(result),
 			(error) => this.handleError(error),
 		);
+		this.logger.info("Handled register student card command", {
+			discordId,
+			studentId,
+		});
 
 		return {
 			type: InteractionResponseType.ChannelMessageWithSource,
@@ -32,6 +45,9 @@ export class RegisterStudentCardHandler {
 	}
 
 	private handleSuccess({ status }: RegisterStudentCardResult): APIEmbed {
+		this.logger.info("Register student card command succeeded", {
+			status,
+		});
 		switch (status) {
 			case "created":
 				return {
@@ -50,6 +66,9 @@ export class RegisterStudentCardHandler {
 	}
 
 	private handleError(error: RegisterStudentCardError): APIEmbed {
+		this.logger.error("Register student card command failed", {
+			errorCode: error.meta.code,
+		});
 		switch (error.meta.code) {
 			case "STUDENT_CARD_ALREADY_REGISTERED":
 				return {
