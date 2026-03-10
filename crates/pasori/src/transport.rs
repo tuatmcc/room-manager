@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use anyhow::Context as _;
 use rusb::{Context, Device, DeviceHandle, Direction, TransferType, UsbContext};
+use tracing::{debug, error, info};
 
 // デフォルトではタイムアウトしない(ゼロだと無限)
 const DEFAULT_TIMEOUT: Duration = Duration::ZERO;
@@ -25,6 +26,11 @@ impl Usb {
         let Ok(dev_desc) = dev.device_descriptor() else {
             anyhow::bail!("no device descriptor");
         };
+        info!(
+            vendor_id = format_args!("{:04x}", dev_desc.vendor_id()),
+            product_id = format_args!("{:04x}", dev_desc.product_id()),
+            "opening usb device"
+        );
 
         let handle = dev.open()?;
 
@@ -70,6 +76,12 @@ impl Usb {
             interface_desc.interface_number(),
             interface_desc.setting_number(),
         )?;
+        info!(
+            bulk_in = addr_bulk_in,
+            bulk_out = addr_bulk_out,
+            interface = interface_desc.interface_number(),
+            "claimed pasori usb interface"
+        );
 
         Ok(Self {
             handle,
@@ -104,9 +116,21 @@ impl Transport for Usb {
         let mut buf = vec![0; DATA_SIZE];
         let len = self
             .handle
-            .read_bulk(self.addr_bulk_in, &mut buf, timeout)?;
+            .read_bulk(self.addr_bulk_in, &mut buf, timeout)
+            .inspect_err(|&error| {
+                error!(
+                    endpoint = self.addr_bulk_in,
+                    error = %error,
+                    "usb bulk read failed"
+                );
+            })?;
 
         buf.truncate(len);
+        debug!(
+            endpoint = self.addr_bulk_in,
+            bytes = len,
+            "usb bulk read completed"
+        );
 
         Ok(buf)
     }
@@ -114,7 +138,21 @@ impl Transport for Usb {
     fn write(&self, data: &[u8], timeout: Option<Duration>) -> anyhow::Result<()> {
         let timeout = timeout.unwrap_or(DEFAULT_TIMEOUT);
 
-        self.handle.write_bulk(self.addr_bulk_out, data, timeout)?;
+        self.handle
+            .write_bulk(self.addr_bulk_out, data, timeout)
+            .inspect_err(|&error| {
+                error!(
+                    endpoint = self.addr_bulk_out,
+                    bytes = data.len(),
+                    error = %error,
+                    "usb bulk write failed"
+                );
+            })?;
+        debug!(
+            endpoint = self.addr_bulk_out,
+            bytes = data.len(),
+            "usb bulk write completed"
+        );
 
         Ok(())
     }

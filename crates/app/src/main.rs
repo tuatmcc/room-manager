@@ -20,43 +20,50 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let config = Config::parse();
+    info!(
+        version = env!("CARGO_PKG_VERSION"),
+        api_path = %config.api_path,
+        "starting room-manager app"
+    );
 
-    info!("Starting application...");
-    info!("Application version: {}", env!("CARGO_PKG_VERSION"));
-
-    info!("Initializing API client with endpoint: {}", config.api_path);
     let api = HttpCardApi::new(config.api_path, config.api_token)?;
-    info!("API client initialized successfully");
+    info!("initialized api client");
 
-    info!("Initializing sound player");
     let player = new_sound_player()?;
-    info!("Sound player initialized successfully");
+    info!("initialized sound player");
 
-    info!("Initializing system clock");
     let clock = SystemClock::new();
+    info!("initialized system clock");
 
-    info!("Spawning Pasori card readers");
     let readers = spawn_readers()?;
     let mut readers = select_all(readers);
-    info!("Card readers spawned successfully");
+    info!("spawned card readers");
 
-    info!("Spawning door lock");
     let door_lock = spawn_door_lock().await?;
-    info!("Door lock spawned successfully");
+    info!("spawned door lock");
 
-    info!("Creating TouchCardUseCase");
     let touch_card_use_case = TouchCardUseCase::new(api, player, clock, door_lock);
 
-    info!("Starting card reader loop");
+    info!("starting card reader loop");
     while let Some(card) = readers.next().await {
         let card = card?;
-        info!("Card scanned: {:?}", card);
-        if let Err(e) = touch_card_use_case.execute(&card).await {
-            error!("Error processing card: {}", e);
+        info!(
+            idm = %card.idm,
+            student_id = ?card.student_id,
+            balance = ?card.balance,
+            "received card event"
+        );
+        if let Err(error) = touch_card_use_case.execute(&card).await {
+            error!(
+                idm = %card.idm,
+                student_id = ?card.student_id,
+                balance = ?card.balance,
+                error = %error,
+                "failed to process card event"
+            );
         }
-        info!("Card processing completed");
     }
 
-    info!("Card reader stopped, exiting application");
+    info!("card reader loop finished");
     Ok(())
 }

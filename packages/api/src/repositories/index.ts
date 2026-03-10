@@ -1,4 +1,5 @@
 import type { Database } from "@/database";
+import type { AppLogger } from "@/logger";
 
 import type { NfcCardRepository } from "./NfcCardRepository";
 import { DBNfcCardRepository } from "./NfcCardRepository";
@@ -19,12 +20,24 @@ export interface Repositories {
 	roomEntryLog: RoomEntryLogRepository;
 }
 
-export function createRepositories(db: Database): Repositories {
+export function createRepositories(
+	db: Database,
+	logger: AppLogger,
+): Repositories {
 	return {
-		user: new DBUserRepository(db),
-		studentCard: new DBStudentCardRepository(db),
-		nfcCard: new DBNfcCardRepository(db),
-		unknownNfcCard: new DBUnknownNfcCardRepository(db),
-		roomEntryLog: new DBRoomEntryLogRepository(db),
+		user: new DBUserRepository(db, logger.child({ tag: "user" })),
+		studentCard: new DBStudentCardRepository(
+			db,
+			logger.child({ tag: "student-card" }),
+		),
+		nfcCard: new DBNfcCardRepository(db, logger.child({ tag: "nfc-card" })),
+		unknownNfcCard: new DBUnknownNfcCardRepository(
+			db,
+			logger.child({ tag: "unknown-nfc-card" }),
+		),
+		roomEntryLog: new DBRoomEntryLogRepository(
+			db,
+			logger.child({ tag: "room-entry-log" }),
+		),
 	};
 }

@@ -7,6 +7,8 @@ import { HTTPException } from "hono/http-exception";
 import { match, P } from "ts-pattern";
 
 import { colorToHex, parseCommand } from "@/discord";
+import type { AppLogger } from "@/logger";
+import { noopLogger } from "@/logger";
 import type { Services } from "@/services";
 import type { UseCases } from "@/usecase";
 
@@ -24,14 +26,23 @@ export interface SlashCommandHandlers {
 export function createSlashCommandHandlers(
 	usecases: UseCases,
 	services: Services,
+	logger: AppLogger,
 ): SlashCommandHandlers {
 	return {
 		ping: new PingHandler(),
-		listUsers: new ListUsersHandler(usecases.listEntryUsers, services.discord),
+		listUsers: new ListUsersHandler(
+			usecases.listEntryUsers,
+			services.discord,
+			logger.child({ tag: "list-users" }),
+		),
 		registerStudentCard: new RegisterStudentCardHandler(
 			usecases.registerStudentCard,
+			logger.child({ tag: "register-student-card" }),
 		),
-		registerNfcCard: new RegisterNfcCardHandler(usecases.registerNfcCard),
+		registerNfcCard: new RegisterNfcCardHandler(
+			usecases.registerNfcCard,
+			logger.child({ tag: "register-nfc-card" }),
+		),
 	};
 }
 
@@ -68,14 +79,21 @@ function handleUnknownCommand(dataJSON: string): APIInteractionResponse {
 export async function handleSlashCommand(
 	handlers: SlashCommandHandlers,
 	interaction: APIChatInputApplicationCommandInteraction,
+	logger: AppLogger = noopLogger,
 ): Promise<APIInteractionResponse> {
 	const member = interaction.member;
 	if (!member) {
+		logger.warn("Slash command interaction did not include member");
 		throw new HTTPException(400, { message: "Invalid request" });
 	}
 
 	const discordId = member.user.id;
 	const result = parseCommand(interaction.data);
+	logger.info("Handling slash command", {
+		commands: result.commands,
+		discordId,
+		options: result.options,
+	});
 
 	const response = match(result)
 		.with(
@@ -107,12 +125,28 @@ export async function handleSlashCommand(
 				commands: ["room-admin", "setting", "register"],
 				options: P.select({ allow: P.boolean.optional() }),
 			},
-			() => NOT_IMPLEMENTED,
+			() => {
+				logger.info("Received not implemented slash command", {
+					commands: result.commands,
+					discordId,
+				});
+				return NOT_IMPLEMENTED;
+			},
 		)
-		.with(P._, () =>
-			handleUnknownCommand(JSON.stringify(interaction.data, null, 2)),
-		)
+		.with(P._, () => {
+			logger.warn("Received unknown slash command", {
+				commands: result.commands,
+				discordId,
+				options: result.options,
+			});
+			return handleUnknownCommand(JSON.stringify(interaction.data, null, 2));
+		})
 		.exhaustive();
 
-	return await response;
+	const resolved = await response;
+	logger.info("Handled slash command", {
+		commands: result.commands,
+		discordId,
+	});
+	return resolved;
 }

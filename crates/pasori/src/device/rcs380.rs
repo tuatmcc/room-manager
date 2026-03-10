@@ -3,6 +3,7 @@ use std::{borrow::Cow, time::Duration};
 
 use anyhow::{bail, ensure};
 use if_chain::if_chain;
+use tracing::info;
 
 use crate::{
     felica::{
@@ -21,6 +22,7 @@ pub struct RCS380<T: Transport> {
 impl<T: Transport> RCS380<T> {
     pub fn new(transport: T) -> anyhow::Result<Self> {
         let chipset = Chipset::new(transport)?;
+        info!("initialized rcs380 chipset");
 
         Ok(Self { chipset })
     }

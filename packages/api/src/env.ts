@@ -1,6 +1,7 @@
 import type { KVNamespace } from "@cloudflare/workers-types";
 import { z } from "zod";
 
+import type { AppLogger } from "./logger";
 import type { Services } from "./services";
 import type { UseCases } from "./usecase";
 
@@ -21,6 +22,7 @@ export type Env = z.infer<typeof EnvSchema>;
 export interface AppEnv {
 	Variables: {
 		env: Env;
+		logger: AppLogger;
 		usecases: UseCases;
 		services: Services;
 		verifiedInteractionBody?: string;

@@ -6,6 +6,9 @@ import type {
 } from "discord-api-types/v10";
 import { Routes } from "discord-api-types/v10";
 
+import type { AppLogger } from "@/logger";
+import { serializeError } from "@/logger";
+
 export class DiscordService {
 	private readonly restClient: REST;
 
@@ -14,6 +17,7 @@ export class DiscordService {
 		botToken: string,
 		private readonly guildId: string,
 		private readonly channelId: string,
+		private readonly logger: AppLogger,
 	) {
 		this.restClient = new REST({ version: "10" }).setToken(botToken);
 	}
@@ -21,33 +25,59 @@ export class DiscordService {
 	async fetchUserInfo(
 		userId: string,
 	): Promise<{ iconUrl: string; name: string }> {
+		const logger = this.logger.child({
+			tag: "fetch-user-info",
+			context: { userId },
+		});
 		const cacheKey = `discord:user:${userId}`;
 		// キャッシュを確認
 		const cached = await this.cache.get(cacheKey, { type: "json" });
 		if (cached) {
+			logger.debug("Discord user cache hit");
 			return cached as { iconUrl: string; name: string };
 		}
 
-		const member = (await this.restClient.get(
-			Routes.guildMember(this.guildId, userId),
-		)) as APIGuildMember;
+		logger.info("Fetching Discord user");
+		try {
+			const member = (await this.restClient.get(
+				Routes.guildMember(this.guildId, userId),
+			)) as APIGuildMember;
 
-		const iconUrl = this.getAvatarUrl(member);
-		const name = member.nick ?? member.user.global_name ?? member.user.username;
+			const iconUrl = this.getAvatarUrl(member);
+			const name =
+				member.nick ?? member.user.global_name ?? member.user.username;
 
-		const value = { iconUrl, name } as const;
-		// 12時間（43200秒）でキャッシュ
-		await this.cache.put(cacheKey, JSON.stringify(value), {
-			expirationTtl: 60 * 60 * 12,
-		});
+			const value = { iconUrl, name } as const;
+			await this.cache.put(cacheKey, JSON.stringify(value), {
+				expirationTtl: 60 * 60 * 12,
+			});
 
-		return value;
+			logger.info("Fetched Discord user");
+			return value;
+		} catch (error) {
+			logger.error("Failed to fetch Discord user", serializeError(error));
+			throw error;
+		}
 	}
 
 	async sendMessage(message: RESTPostAPIChannelMessageJSONBody): Promise<void> {
-		await this.restClient.post(Routes.channelMessages(this.channelId), {
-			body: message,
+		const logger = this.logger.child({
+			tag: "send-message",
+			context: {
+				embedCount: message.embeds?.length ?? 0,
+				hasContent: message.content != null,
+			},
 		});
+		logger.info("Sending Discord message");
+		try {
+			await this.restClient.post(Routes.channelMessages(this.channelId), {
+				body: message,
+			});
+			logger.info("Sent Discord message");
+		} catch (error) {
+			logger.error("Failed to send Discord message", serializeError(error));
+			throw error;
+		}
 	}
 
 	private getAvatarUrl(member: APIGuildMember): string {

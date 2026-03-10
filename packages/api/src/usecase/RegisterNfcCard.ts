@@ -2,6 +2,8 @@ import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
 import { AppError } from "@/error";
+import type { AppLogger } from "@/logger";
+import { noopLogger, serializeError } from "@/logger";
 import type { NfcCardRepository } from "@/repositories/NfcCardRepository";
 import type { UnknownNfcCardRepository } from "@/repositories/UnknownNfcCardRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
@@ -11,6 +13,7 @@ export class RegisterNfcCardUseCase {
 		private readonly userRepository: UserRepository,
 		private readonly nfcCardRepository: NfcCardRepository,
 		private readonly unknownNfcCardRepository: UnknownNfcCardRepository,
+		private readonly logger: AppLogger = noopLogger,
 	) {}
 
 	async execute(
@@ -18,6 +21,11 @@ export class RegisterNfcCardUseCase {
 		code: string,
 		name: string,
 	): Promise<Result<void, RegisterNfcCardError>> {
+		this.logger.info("register nfc card started", {
+			code,
+			discordId,
+			name,
+		});
 		try {
 			const user =
 				(await this.userRepository.findByDiscordId(discordId)) ??
@@ -26,6 +34,11 @@ export class RegisterNfcCardUseCase {
 			const unknownNfcCard =
 				await this.unknownNfcCardRepository.findByCode(code);
 			if (!unknownNfcCard) {
+				this.logger.info("unknown nfc card code not found", {
+					code,
+					discordId,
+					name,
+				});
 				return err(
 					new RegisterNfcCardError("Unknown NFC card.", {
 						meta: {
@@ -35,8 +48,14 @@ export class RegisterNfcCardUseCase {
 				);
 			}
 
-			// すでに登録されているNFCカードは登録できない
 			if (await this.nfcCardRepository.findByIdm(unknownNfcCard.idm)) {
+				this.logger.info("nfc card already registered", {
+					code,
+					discordId,
+					idm: unknownNfcCard.idm,
+					name,
+					userId: user.id,
+				});
 				return err(
 					new RegisterNfcCardError("NFC card already registered.", {
 						meta: {
@@ -46,14 +65,25 @@ export class RegisterNfcCardUseCase {
 				);
 			}
 
-			// 不明なNFCカードを削除
 			await this.unknownNfcCardRepository.deleteById(unknownNfcCard.id);
-			// NFCカードを登録
 			await this.nfcCardRepository.create(name, unknownNfcCard.idm, user.id);
+			this.logger.info("registered nfc card", {
+				code,
+				discordId,
+				idm: unknownNfcCard.idm,
+				name,
+				userId: user.id,
+			});
 
 			return ok();
 		} catch (caughtError) {
 			const cause = caughtError instanceof Error ? caughtError : undefined;
+			this.logger.error("register nfc card failed", {
+				code,
+				discordId,
+				name,
+				...serializeError(caughtError),
+			});
 			const error = new RegisterNfcCardError("Failed to register nfc card.", {
 				cause,
 				meta: {

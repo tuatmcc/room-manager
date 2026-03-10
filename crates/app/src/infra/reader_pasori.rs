@@ -15,7 +15,7 @@ use tokio::sync::{
     mpsc::{self, UnboundedReceiver},
     oneshot::{self, error::TryRecvError},
 };
-use tracing::{error, info};
+use tracing::{info, warn};
 
 type DeviceReader = Box<dyn Device + Send + Sync>;
 
@@ -32,6 +32,7 @@ impl InternalPasoriReader {
     pub fn new(dev: RusbDevice<RusbContext>) -> anyhow::Result<Self> {
         let transport = Usb::from_device(dev)?;
         let device = RCS380::new(transport)?;
+        info!("initialized pasori reader");
 
         Ok(Self {
             device: Box::new(device),
@@ -51,10 +52,10 @@ impl InternalPasoriReader {
 
         let felica_card = polling_res.card;
         let idm = idm_to_string(&felica_card.idm());
-        info!("felica card detected: IDm={:?}", idm);
+        info!(idm = %idm, "detected felica card");
 
         let Some(system_code) = felica_card.system_code() else {
-            info!("No system code found");
+            info!(idm = %idm, "detected card without system code");
             let card = Card {
                 idm,
                 student_id: None,
@@ -65,7 +66,7 @@ impl InternalPasoriReader {
 
         match system_code {
             STUDENT_CARD_SYSTEM_CODE => {
-                info!("Student card system code detected: {:04x}", system_code);
+                info!(idm = %idm, system_code = format_args!("{system_code:04x}"), "detected student card");
 
                 let read_res = match self.device.read_without_encryption(
                     &felica_card,
@@ -73,8 +74,8 @@ impl InternalPasoriReader {
                     &[pasori::felica::BlockCode::new(0, None, 0)],
                 ) {
                     Ok(res) => res,
-                    Err(e) => {
-                        error!("Failed to read student card data: {:?}", e);
+                    Err(error) => {
+                        warn!(idm = %idm, error = ?error, "failed to read student card data");
                         let card = Card {
                             idm,
                             student_id: None,
@@ -85,7 +86,7 @@ impl InternalPasoriReader {
                 };
 
                 let Some(read_data) = read_res.block_data.first() else {
-                    error!("Student card response did not contain any blocks");
+                    warn!(idm = %idm, "student card response did not contain any blocks");
                     let card = Card {
                         idm,
                         student_id: None,
@@ -95,8 +96,8 @@ impl InternalPasoriReader {
                 };
                 let student_id = match parse_student_card_block(read_data) {
                     Ok(student_id) => student_id,
-                    Err(e) => {
-                        error!("Failed to parse student card data: {:?}", e);
+                    Err(error) => {
+                        warn!(idm = %idm, error = ?error, "failed to parse student card data");
                         let card = Card {
                             idm,
                             student_id: None,
@@ -106,7 +107,7 @@ impl InternalPasoriReader {
                     }
                 };
 
-                info!("Student ID: {}", student_id);
+                info!(idm = %idm, student_id, "decoded student card");
                 let card = Card {
                     idm,
                     student_id: Some(student_id),
@@ -115,7 +116,7 @@ impl InternalPasoriReader {
                 Ok(Some((felica_card, card)))
             }
             SUICA_SYSTEM_CODE => {
-                info!("Suica card system code detected: {:04x}", system_code);
+                info!(idm = %idm, system_code = format_args!("{system_code:04x}"), "detected suica card");
 
                 let read_res = match self.device.read_without_encryption(
                     &felica_card,
@@ -123,25 +124,25 @@ impl InternalPasoriReader {
                     &[pasori::felica::BlockCode::new(0, None, 0)],
                 ) {
                     Ok(res) => res,
-                    Err(e) => {
-                        tracing::error!("Failed to read Suica card data: {:?}", e);
+                    Err(error) => {
+                        warn!(idm = %idm, error = ?error, "failed to read suica card data");
                         return Ok(None);
                     }
                 };
 
                 let Some(read_data) = read_res.block_data.first() else {
-                    error!("Suica response did not contain any blocks");
+                    warn!(idm = %idm, "suica response did not contain any blocks");
                     return Ok(None);
                 };
                 let balance = match parse_suica_balance_block(read_data) {
                     Ok(balance) => balance,
-                    Err(e) => {
-                        error!("Failed to parse Suica card data: {:?}", e);
+                    Err(error) => {
+                        warn!(idm = %idm, error = ?error, "failed to parse suica card data");
                         return Ok(None);
                     }
                 };
 
-                info!("Suica balance: {} yen", balance);
+                info!(idm = %idm, balance, "decoded suica card");
                 let card = Card {
                     idm,
                     student_id: None,
@@ -150,7 +151,7 @@ impl InternalPasoriReader {
                 Ok(Some((felica_card, card)))
             }
             _ => {
-                info!("Unknown system code detected: {:04x}", system_code);
+                info!(idm = %idm, system_code = format_args!("{system_code:04x}"), "detected card with unknown system code");
                 let card = Card {
                     idm,
                     student_id: None,
@@ -180,8 +181,7 @@ impl InternalPasoriReader {
             thread::sleep(Duration::from_millis(100));
         }
 
-        info!("Card released: IDm={:?}", idm_to_string(&felica_card.idm()));
-        // スキャン失敗後、すぐにまた反応する可能性があるので、少し待つ
+        info!(idm = %idm_to_string(&felica_card.idm()), "card released");
         thread::sleep(Duration::from_millis(500));
     }
 }
@@ -202,7 +202,7 @@ impl PasoriReader {
         let handle = thread::Builder::new()
             .name("pasori_reader".to_string())
             .spawn(move || -> anyhow::Result<()> {
-                info!("PasoriReader thread started successfully");
+                info!("pasori reader thread started");
                 loop {
                     match stop_rx.try_recv() {
                         Ok(()) | Err(TryRecvError::Closed) => {
@@ -213,6 +213,7 @@ impl PasoriReader {
 
                     if let Some((felica_card, card)) = reader.scan_card()? {
                         if tx.send(card).is_err() {
+                            warn!("stopping pasori reader thread because receiver was dropped");
                             break;
                         }
                         reader.wait_release(&felica_card);
@@ -221,7 +222,7 @@ impl PasoriReader {
                     thread::sleep(Duration::from_millis(100));
                 }
 
-                info!("PasoriReader thread stopped successfully");
+                info!("pasori reader thread stopped");
                 Ok(())
             })?;
 

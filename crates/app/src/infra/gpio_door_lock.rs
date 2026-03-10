@@ -6,6 +6,7 @@ use tokio::{
     sync::{Mutex, mpsc},
     time::{self, Sleep},
 };
+use tracing::{error, info};
 
 const SERVO_PIN: u8 = 18;
 const SERVO_PERIOD: Duration = Duration::from_millis(20);
@@ -39,17 +40,20 @@ impl DoorLockInternal {
             output_pin,
         };
         door_lock.lock().await?;
+        info!("initialized gpio door lock");
 
         Ok(door_lock)
     }
 
     async fn unlock(&mut self) -> anyhow::Result<()> {
+        info!("unlocking door");
         self.set_unlock_angle()?;
         time::sleep(SERVO_MOVE_WAIT_TIME).await;
         self.set_neutral_angle()?;
         time::sleep(SERVO_MOVE_WAIT_TIME).await;
         self.output_pin.clear_pwm()?;
         self.is_unlocked = true;
+        info!("door unlocked");
 
         Ok(())
     }
@@ -59,12 +63,14 @@ impl DoorLockInternal {
             return Ok(());
         }
 
+        info!("locking door");
         self.set_lock_angle()?;
         time::sleep(SERVO_MOVE_WAIT_TIME).await;
         self.set_neutral_angle()?;
         time::sleep(SERVO_MOVE_WAIT_TIME).await;
         self.output_pin.clear_pwm()?;
         self.is_unlocked = false;
+        info!("door locked");
 
         Ok(())
     }
@@ -127,6 +133,7 @@ impl GpioDoorLock {
                         msg = rx_unlock.recv() => {
                             match msg {
                                 Some(()) => {
+                                    info!("scheduled auto-lock");
                                     timer = Some(Box::pin(time::sleep(AUTO_LOCK_DELAY)));
                                 },
                                 None => break,
@@ -137,7 +144,12 @@ impl GpioDoorLock {
                                 timer.await;
                             }
                         }, if timer.is_some() => {
-                            let _ = internal.lock().await.lock().await;
+                            let mut door_lock = internal.lock().await;
+                            if let Err(error) = door_lock.lock().await {
+                                error!(error = %error, "failed to auto-lock door");
+                            } else {
+                                info!("auto-lock completed");
+                            }
                             timer = None;
                         }
                     }
@@ -151,6 +163,7 @@ impl GpioDoorLock {
 
 impl DoorLock for GpioDoorLock {
     async fn unlock(&self) -> anyhow::Result<()> {
+        info!("received unlock request");
         self.tx_unlock.send(()).await?;
         self.internal.lock().await.unlock().await
     }

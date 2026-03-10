@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 
 import type { AppEnv, Env } from "@/env";
+import type { AppLogger } from "@/logger";
 import type { Services } from "@/services";
 import type { UseCases } from "@/usecase";
 
@@ -19,6 +20,7 @@ export function createLocalDeviceHandlers(
 	usecases: UseCases,
 	services: Services,
 	env: Env,
+	logger: AppLogger,
 ): LocalDeviceHandlers {
 	const touchCardPresenter = new TouchCardPresenter(services.discord, env);
 
@@ -27,6 +29,7 @@ export function createLocalDeviceHandlers(
 			usecases.touchCard,
 			touchCardPresenter,
 			services.discord,
+			logger.child({ tag: "touch-card" }),
 		),
 	};
 }

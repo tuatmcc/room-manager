@@ -3,6 +3,8 @@ import type { Result } from "neverthrow";
 import { err, ok } from "neverthrow";
 
 import { AppError } from "@/error";
+import type { AppLogger } from "@/logger";
+import { noopLogger, serializeError } from "@/logger";
 import type { User } from "@/models/User";
 import type { RoomEntryLogRepository } from "@/repositories/RoomEntryLogRepository";
 import type { UserRepository } from "@/repositories/UserRepository";
@@ -15,6 +17,7 @@ export class ExitAllEntryUsersUseCase {
 	constructor(
 		private readonly userRepository: UserRepository,
 		private readonly roomEntryLogRepository: RoomEntryLogRepository,
+		private readonly logger: AppLogger = noopLogger,
 	) {}
 
 	async execute(): Promise<
@@ -23,6 +26,7 @@ export class ExitAllEntryUsersUseCase {
 		try {
 			const entryLogs = await this.roomEntryLogRepository.findAllEntry();
 			if (entryLogs.length === 0) {
+				this.logger.info("no entry users to exit");
 				return ok({ users: [] });
 			}
 
@@ -35,10 +39,18 @@ export class ExitAllEntryUsersUseCase {
 			const users = await this.userRepository.findByIds(
 				entryLogs.map((log) => log.userId),
 			);
+			this.logger.info("exited all entry users", {
+				entryLogCount: entryLogs.length,
+				userCount: users.length,
+			});
 
 			return ok({ users });
 		} catch (caughtError) {
 			const cause = caughtError instanceof Error ? caughtError : undefined;
+			this.logger.error(
+				"failed to exit all entry users",
+				serializeError(caughtError),
+			);
 			const error = new ExitAllEntryUsersError(
 				"Failed to exit all entry users.",
 				{

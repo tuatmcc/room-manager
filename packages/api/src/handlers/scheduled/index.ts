@@ -1,3 +1,4 @@
+import type { AppLogger } from "@/logger";
 import type { Services } from "@/services";
 import type { UseCases } from "@/usecase";
 
@@ -10,11 +11,13 @@ export interface ScheduledHandlers {
 export function createScheduledHandlers(
 	usecases: UseCases,
 	services: Services,
+	logger: AppLogger,
 ): ScheduledHandlers {
 	return {
 		exitAllEntryUsers: new ExitAllEntryUsersHandler(
 			usecases.exitAllEntryUsers,
 			services.discord,
+			logger.child({ tag: "exit-all-entry-users" }),
 		),
 	};
 }

@@ -2,6 +2,8 @@ import { Temporal } from "@js-temporal/polyfill";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 import type { Database } from "@/database";
+import type { AppLogger } from "@/logger";
+import { noopLogger, serializeError } from "@/logger";
 import { RoomEntryLog } from "@/models/RoomEntryLog";
 import * as schema from "@/schema";
 
@@ -16,7 +18,10 @@ export interface RoomEntryLogRepository {
 }
 
 export class DBRoomEntryLogRepository implements RoomEntryLogRepository {
-	constructor(private readonly db: Database) {}
+	constructor(
+		private readonly db: Database,
+		private readonly logger: AppLogger = noopLogger,
+	) {}
 
 	async toggle(
 		userId: number,
@@ -46,9 +51,19 @@ export class DBRoomEntryLogRepository implements RoomEntryLogRepository {
 					.all();
 
 				if (closedEntryLogs.length > 0) {
+					this.logger.info("closed entry log", {
+						attempt: attempt + 1,
+						entryLogId: openEntryLog.id,
+						userId,
+					});
 					return "exit";
 				}
 
+				this.logger.warn("retrying room entry close after concurrent update", {
+					attempt: attempt + 1,
+					entryLogId: openEntryLog.id,
+					userId,
+				});
 				continue;
 			}
 
@@ -62,16 +77,33 @@ export class DBRoomEntryLogRepository implements RoomEntryLogRepository {
 					.returning()
 					.get();
 
+				this.logger.info("created entry log", {
+					attempt: attempt + 1,
+					userId,
+				});
 				return "entry";
 			} catch (error) {
 				if (isUniqueConstraintError(error)) {
+					this.logger.warn(
+						"retrying room entry toggle after unique constraint",
+						{
+							attempt: attempt + 1,
+							userId,
+						},
+					);
 					continue;
 				}
 
+				this.logger.error("failed to toggle room entry state", {
+					attempt: attempt + 1,
+					userId,
+					...serializeError(error),
+				});
 				throw error;
 			}
 		}
 
+		this.logger.error("exhausted room entry toggle retries", { userId });
 		throw new Error(`Failed to toggle room entry state for user ${userId}.`);
 	}
 
@@ -95,13 +127,24 @@ export class DBRoomEntryLogRepository implements RoomEntryLogRepository {
 		entryLogIds: number[],
 		exitAt: Temporal.Instant,
 	): Promise<void> {
-		await this.db
-			.update(schema.roomEntryLogs)
-			.set({
-				exitAt: exitAt.epochMilliseconds,
-			})
-			.where(inArray(schema.roomEntryLogs.id, entryLogIds))
-			.execute();
+		try {
+			await this.db
+				.update(schema.roomEntryLogs)
+				.set({
+					exitAt: exitAt.epochMilliseconds,
+				})
+				.where(inArray(schema.roomEntryLogs.id, entryLogIds))
+				.execute();
+			this.logger.info("updated exit timestamps", {
+				entryLogCount: entryLogIds.length,
+			});
+		} catch (error) {
+			this.logger.error("failed to update exit timestamps", {
+				entryLogCount: entryLogIds.length,
+				...serializeError(error),
+			});
+			throw error;
+		}
 	}
 }
 
