@@ -1,89 +1,48 @@
 # room-manager
 
-[mcc_room_manager](https://github.com/tuatmcc/mcc_nfc_room_manager)の後継プロジェクトです。
-全体的にモダンかつ堅牢な動作・設計を目指して開発しています。
+Discord と NFC カードを使って部室の入退出を管理するアプリケーションです。Cloudflare Workers 上の API と、Raspberry Pi 上で動く Rust アプリで構成されています。
+元となった [mcc_nfc_room_manager](https://github.com/tuatmcc/mcc_nfc_room_manager) よりもモダンかつ堅牢な動作・設計を目指して開発しています。
 
-## プロジェクト構成
+## Repository Layout
 
-- `crates/app`: NFCカードのスキャンとスキャン結果をAPIサーバーに送信するアプリケーション(Raspberry Pi)
-- `crates/pasori`: Pasori NFCリーダーライブラリ
-- `packages/api`: Discordコマンドのハンドリング・API・データベースの管理を行うAPIサーバー(Cloudflare Workers)
+- `packages/api`: Discord Interaction、カードタッチ受付、D1/KV、定期実行を担当する Workers API
+- `crates/app`: Raspberry Pi 上でカード読取、音声、ドアロックを扱う Rust アプリ
+- `crates/pasori`: Pasori / FeliCa アクセス用の Rust ライブラリ
 
-## 環境構築
-
-### 前提条件
-
-以下のツールが必要です：
-
-- [mise](https://mise.jdx.dev/): Rust、Node.js、pnpmの管理用
-
-### セットアップ手順
-
-1. リポジトリのクローン
-
-```sh
-git clone https://github.com/tuatmcc/room-manager.git
-cd room-manager
-```
-
-2. miseを使用して環境を整える
+## Setup
 
 ```sh
 mise install
-```
-
-3. 依存関係のインストール
-
-```sh
-# Rustの依存関係
-cargo fetch
-
-# Node.jsの依存関係
 pnpm install
+cargo fetch
 ```
 
-4. 環境変数の設定
+以下を用意してください。
 
-`.env`ファイルをプロジェクトのルートディレクトリに作成し、必要な環境変数を設定してください。(`.env.example`を参考にしてください)
-同様に、`packages/api/.dev.vars`ファイルも作成し、必要な環境変数を設定してください。
+- ルート `.env`
+- `packages/api/.dev.vars`
 
-## ビルドと実行
+詳細な前提条件と運用ルールは [docs/RUNBOOK.md](docs/RUNBOOK.md) を参照してください。
 
-### 開発環境での実行
+## Common Commands
 
 ```sh
-# Rustアプリケーションのテスト
-cargo test -p room-manager
-
-# Rustアプリケーションのビルド
-cargo build -p room-manager
-
-# Rustアプリケーションの実行（開発モード）
-cargo run -p room-manager
-
-# APIサーバーの開発実行
-cd packages/api
-pnpm dev
+pnpm run build
+pnpm run lint
+pnpm run format:check
+pnpm run test
+pnpm run typecheck
 ```
-
-`room-manager` は通常の `cargo` ではホストターゲット向けにビルドされます。Arm Linux 以外では、カードリーダー・音声・ドアロックは noop runtime で起動し、カードイベントなしで待機します。ローカルでのビルド確認・起動確認用の挙動です。
-
-### リリースビルド
 
 ```sh
-# Rustアプリケーションのリリースビルド
-cargo build --release -p room-manager
-
-# 実行ファイルは target/release/room-manager に生成されます
+cargo fmt --all -- --check
+cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
+cargo test --locked --workspace --all-targets --all-features
 ```
-
-### Arm Linux でのビルド
-
-Raspberry Pi など Arm Linux 環境では、そのまま native にビルドします。
 
 ```sh
-# Arm Linux 環境上でリリースビルド
-cargo build --release -p room-manager
-
-# 実行ファイルは target/release/room-manager に生成されます
+pnpm --dir packages/api dev
+cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN>
 ```
+
+非 Raspberry Pi 環境では Rust アプリは Noop runtime で起動し、カードイベントは発生しません。
