@@ -8,7 +8,6 @@ default = ["raspi-runtime"]
 raspi-runtime = [
   "dep:async-stream",
   "dep:if_chain",
-  "dep:pasori",
   "dep:rodio",
   "dep:rppal",
 ]
@@ -34,12 +33,12 @@ chrono = "0.4.44"
 thiserror = "2.0.18"
 clap = { version = "4.5.60", features = ["derive", "env"] }
 futures-util = "0.3.32"
+pasori = { path = "../pasori" }
 
 [dev-dependencies]
 mockall = "0.14.0"
 
 [target.'cfg(all(target_os = "linux", any(target_arch = "arm", target_arch = "aarch64")))'.dependencies]
-pasori = { path = "../pasori", optional = true }
 rodio = { version = "0.22.2", default-features = false, features = [
   "playback",
   "wav",
