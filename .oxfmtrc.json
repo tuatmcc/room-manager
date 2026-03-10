@@ -1,0 +1,10 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "ignorePatterns": [".release-please-manifest.json", "CHANGELOG.md", "**/drizzle/meta/*.json"],
+  "experimentalSortImports": {
+    "groups": ["builtin", "external", "internal", "parent", "sibling", "index"]
+  },
+  "experimentalSortPackageJson": {
+    "sortScripts": true
+  }
+}

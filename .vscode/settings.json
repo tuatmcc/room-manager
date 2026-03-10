@@ -1,9 +1,9 @@
 {
-	"eslint.useFlatConfig": true,
-	"typescript.enablePromptUseWorkspaceTsdk": true,
-	"typescript.tsdk": "node_modules/typescript/lib",
-	"cSpell.words": ["clippy", "reqwest"],
-	"files.associations": {
-		".dev.vars*": "dotenv"
-	}
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "cSpell.words": ["clippy", "reqwest"],
+  "files.associations": {
+    ".dev.vars*": "dotenv"
+  }
 }

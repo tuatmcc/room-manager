@@ -20,7 +20,7 @@ jobs:
         uses: ./.github/actions/setup-node
 
       - name: Run | Typecheck
-        run: pnpm run -r typecheck
+        run: pnpm run typecheck
 
   lint-node:
     name: Lint (Node.js)
@@ -33,7 +33,7 @@ jobs:
         uses: ./.github/actions/setup-node
 
       - name: Run | Lint
-        run: pnpm run -r lint
+        run: pnpm run lint
 
   lint-rust-portable:
     name: Lint (Rust, portable)
@@ -74,7 +74,7 @@ jobs:
         uses: ./.github/actions/setup-node
 
       - name: Run | Format
-        run: pnpm run -r format:check
+        run: pnpm run format:check
 
   format-rust:
     name: Format (Rust)
@@ -100,7 +100,7 @@ jobs:
         uses: ./.github/actions/setup-node
 
       - name: Run | Test
-        run: pnpm run -r test
+        run: pnpm run test
 
   test-rust:
     name: Test (Rust, portable)
@@ -126,7 +126,7 @@ jobs:
         uses: ./.github/actions/setup-node
 
       - name: Run | Build
-        run: pnpm run -r build
+        run: pnpm run build
 
   build-rust:
     name: Build (Rust, arm)

@@ -1,26 +1,26 @@
 {
-	"compilerOptions": {
-		"target": "es2022",
-		"lib": ["es2022"],
-		"moduleDetection": "force",
-		"module": "esnext",
-		"moduleResolution": "bundler",
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["es2022"],
+    "moduleDetection": "force",
+    "module": "esnext",
+    "moduleResolution": "bundler",
 
-		"noEmit": true,
-		"isolatedModules": true,
-		"verbatimModuleSyntax": true,
-		"allowSyntheticDefaultImports": true,
-		"esModuleInterop": true,
-		"preserveSymlinks": true,
-		"forceConsistentCasingInFileNames": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "preserveSymlinks": true,
+    "forceConsistentCasingInFileNames": true,
 
-		"strict": true,
-		"exactOptionalPropertyTypes": true,
-		"noUncheckedIndexedAccess": true,
-		"noImplicitOverride": true,
-		"noPropertyAccessFromIndexSignature": true,
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
 
-		"skipLibCheck": true,
-		"skipDefaultLibCheck": true,
-	},
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true
+  }
 }

@@ -1,13 +1,13 @@
 {
-	"extends": "../../tsconfig.json",
-	"compilerOptions": {
-		"target": "esnext",
-		"exactOptionalPropertyTypes": false,
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "esnext",
+    "exactOptionalPropertyTypes": false,
 
-		"types": ["@cloudflare/workers-types", "vitest/globals"],
+    "types": ["@cloudflare/workers-types", "vitest/globals"],
 
-		"paths": {
-			"@/*": ["./src/*"],
-		},
-	},
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
 }

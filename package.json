@@ -1,16 +1,24 @@
 {
-	"name": "room-manager",
-	"version": "0.2.5",
-	"type": "module",
-	"license": "UNLICENSED",
-	"private": true,
-	"packageManager": "pnpm@10.31.0",
-	"scripts": {},
-	"devDependencies": {
-		"@changesets/cli": "2.30.0",
-		"@shun-shobon/style-guide": "5.1.1",
-		"eslint": "10.0.3",
-		"prettier": "3.8.1",
-		"typescript": "5.9.3"
-	}
+  "name": "room-manager",
+  "version": "0.2.5",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm run -r build",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "test": "pnpm run -r test",
+    "typecheck": "pnpm run -r typecheck"
+  },
+  "devDependencies": {
+    "@changesets/cli": "2.30.0",
+    "oxfmt": "0.36.0",
+    "oxlint": "1.51.0",
+    "oxlint-tsgolint": "0.16.0",
+    "typescript": "5.9.3"
+  },
+  "packageManager": "pnpm@10.31.0"
 }

@@ -1,5 +1,5 @@
 export class AppError extends Error {
-	static {
-		this.prototype.name = "AppError";
-	}
+  static {
+    this.prototype.name = "AppError";
+  }
 }

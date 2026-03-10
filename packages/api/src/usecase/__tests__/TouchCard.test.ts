@@ -9,180 +9,178 @@ import type { UserRepository } from "@/repositories/UserRepository";
 import { TouchCardError, TouchCardUseCase } from "@/usecase/TouchCard";
 
 const createMockUserRepository = () => {
-	return {
-		create: vi.fn(),
-		save: vi.fn(),
-		findByIds: vi.fn(),
-		findByDiscordId: vi.fn(),
-		findByStudentId: vi.fn(),
-		findByNfcIdm: vi.fn(),
-		findAllEntryUsers: vi.fn(),
-	} satisfies UserRepository;
+  return {
+    create: vi.fn(),
+    save: vi.fn(),
+    findByIds: vi.fn(),
+    findByDiscordId: vi.fn(),
+    findByStudentId: vi.fn(),
+    findByNfcIdm: vi.fn(),
+    findAllEntryUsers: vi.fn(),
+  } satisfies UserRepository;
 };
 
 const createMockRoomEntryLogRepository = () => {
-	return {
-		findAllEntry: vi.fn(),
-		setManyExitAt: vi.fn(),
-		toggle: vi.fn(),
-	} satisfies RoomEntryLogRepository;
+  return {
+    findAllEntry: vi.fn(),
+    setManyExitAt: vi.fn(),
+    toggle: vi.fn(),
+  } satisfies RoomEntryLogRepository;
 };
 
 const createMockUnknownNfcCardRepository = () => {
-	return {
-		create: vi.fn(),
-		findByCode: vi.fn(),
-		findByIdm: vi.fn(),
-		deleteById: vi.fn(),
-	} satisfies UnknownNfcCardRepository;
+  return {
+    create: vi.fn(),
+    findByCode: vi.fn(),
+    findByIdm: vi.fn(),
+    deleteById: vi.fn(),
+  } satisfies UnknownNfcCardRepository;
 };
 
 describe("TouchCardUseCase", () => {
-	// テスト前に各テストケースで使用するモックとユースケースインスタンスを設定
-	const setup = () => {
-		const userRepository = createMockUserRepository();
-		const roomEntryLogRepository = createMockRoomEntryLogRepository();
-		const unknownNfcCardRepository = createMockUnknownNfcCardRepository();
-		const useCase = new TouchCardUseCase(
-			userRepository,
-			unknownNfcCardRepository,
-			roomEntryLogRepository,
-		);
+  // テスト前に各テストケースで使用するモックとユースケースインスタンスを設定
+  const setup = () => {
+    const userRepository = createMockUserRepository();
+    const roomEntryLogRepository = createMockRoomEntryLogRepository();
+    const unknownNfcCardRepository = createMockUnknownNfcCardRepository();
+    const useCase = new TouchCardUseCase(
+      userRepository,
+      unknownNfcCardRepository,
+      roomEntryLogRepository,
+    );
 
-		return {
-			useCase,
-			userRepository,
-			roomEntryLogRepository,
-			unknownNfcCardRepository,
-		};
-	};
+    return {
+      useCase,
+      userRepository,
+      roomEntryLogRepository,
+      unknownNfcCardRepository,
+    };
+  };
 
-	it("NFC IDMが登録されていない場合はエラーを返すこと", async () => {
-		// セットアップ
-		const { useCase, userRepository, unknownNfcCardRepository } = setup();
+  it("NFC IDMが登録されていない場合はエラーを返すこと", async () => {
+    // セットアップ
+    const { useCase, userRepository, unknownNfcCardRepository } = setup();
 
-		// モックの設定
-		const idm = "unknown-idm";
-		const newCode = "new-code-1";
-		const newCardId = 1;
+    // モックの設定
+    const idm = "unknown-idm";
+    const newCode = "new-code-1";
+    const newCardId = 1;
 
-		userRepository.findByNfcIdm.mockResolvedValue(null);
-		unknownNfcCardRepository.findByIdm.mockResolvedValue(null);
-		unknownNfcCardRepository.create.mockResolvedValue(
-			new UnknownNfcCard(newCardId, newCode, idm),
-		);
+    userRepository.findByNfcIdm.mockResolvedValue(null);
+    unknownNfcCardRepository.findByIdm.mockResolvedValue(null);
+    unknownNfcCardRepository.create.mockResolvedValue(new UnknownNfcCard(newCardId, newCode, idm));
 
-		// 実行
-		const result = await useCase.execute({ idm });
+    // 実行
+    const result = await useCase.execute({ idm });
 
-		// 検証
-		expect(result.isErr()).toBe(true);
-		if (result.isErr()) {
-			expect(result.error).toBeInstanceOf(TouchCardError);
-			expect(result.error.meta.code).toBe("NFC_CARD_NOT_REGISTERED");
-		}
-		expect(userRepository.findByNfcIdm).toHaveBeenCalledWith(idm);
-		expect(unknownNfcCardRepository.findByIdm).toHaveBeenCalledWith(idm);
-		expect(unknownNfcCardRepository.create).toHaveBeenCalledWith(idm);
-	});
+    // 検証
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(TouchCardError);
+      expect(result.error.meta.code).toBe("NFC_CARD_NOT_REGISTERED");
+    }
+    expect(userRepository.findByNfcIdm).toHaveBeenCalledWith(idm);
+    expect(unknownNfcCardRepository.findByIdm).toHaveBeenCalledWith(idm);
+    expect(unknownNfcCardRepository.create).toHaveBeenCalledWith(idm);
+  });
 
-	it("学生証が登録されていない場合はエラーを返すこと", async () => {
-		// セットアップ
-		const { useCase, userRepository } = setup();
+  it("学生証が登録されていない場合はエラーを返すこと", async () => {
+    // セットアップ
+    const { useCase, userRepository } = setup();
 
-		// モックの設定
-		const idm = "student-idm";
-		const studentId = 12_345;
+    // モックの設定
+    const idm = "student-idm";
+    const studentId = 12_345;
 
-		userRepository.findByStudentId.mockResolvedValue(null);
+    userRepository.findByStudentId.mockResolvedValue(null);
 
-		// 実行
-		const result = await useCase.execute({ idm, studentId });
+    // 実行
+    const result = await useCase.execute({ idm, studentId });
 
-		// 検証
-		expect(result.isErr()).toBe(true);
-		if (result.isErr()) {
-			expect(result.error).toBeInstanceOf(TouchCardError);
-			expect(result.error.meta.code).toBe("STUDENT_CARD_NOT_REGISTERED");
-		}
-		expect(userRepository.findByStudentId).toHaveBeenCalledWith(studentId);
-	});
+    // 検証
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(TouchCardError);
+      expect(result.error.meta.code).toBe("STUDENT_CARD_NOT_REGISTERED");
+    }
+    expect(userRepository.findByStudentId).toHaveBeenCalledWith(studentId);
+  });
 
-	it("入室していないユーザーがカードをタッチすると入室処理されること", async () => {
-		// セットアップ
-		const { useCase, userRepository, roomEntryLogRepository } = setup();
+  it("入室していないユーザーがカードをタッチすると入室処理されること", async () => {
+    // セットアップ
+    const { useCase, userRepository, roomEntryLogRepository } = setup();
 
-		// モックの設定
-		const idm = "registered-idm";
-		const userId = 1;
-		const user = new User(userId, "discord-user-1");
-		userRepository.findByNfcIdm.mockResolvedValue(user);
-		roomEntryLogRepository.toggle.mockResolvedValue("entry");
-		userRepository.findAllEntryUsers.mockResolvedValue([user]);
+    // モックの設定
+    const idm = "registered-idm";
+    const userId = 1;
+    const user = new User(userId, "discord-user-1");
+    userRepository.findByNfcIdm.mockResolvedValue(user);
+    roomEntryLogRepository.toggle.mockResolvedValue("entry");
+    userRepository.findAllEntryUsers.mockResolvedValue([user]);
 
-		// 実行
-		const result = await useCase.execute({ idm });
+    // 実行
+    const result = await useCase.execute({ idm });
 
-		// 検証
-		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			expect(result.value.status).toBe("entry");
-			expect(result.value.entries).toBe(1);
-			expect(result.value.user).toEqual(user);
-		}
-		expect(userRepository.findByNfcIdm).toHaveBeenCalledWith(idm);
-		expect(roomEntryLogRepository.toggle).toHaveBeenCalledWith(
-			userId,
-			expect.any(Temporal.Instant),
-		);
-		expect(userRepository.findAllEntryUsers).toHaveBeenCalled();
-	});
+    // 検証
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.status).toBe("entry");
+      expect(result.value.entries).toBe(1);
+      expect(result.value.user).toEqual(user);
+    }
+    expect(userRepository.findByNfcIdm).toHaveBeenCalledWith(idm);
+    expect(roomEntryLogRepository.toggle).toHaveBeenCalledWith(
+      userId,
+      expect.any(Temporal.Instant),
+    );
+    expect(userRepository.findAllEntryUsers).toHaveBeenCalled();
+  });
 
-	it("入室中のユーザーがカードをタッチすると退室処理されること", async () => {
-		// セットアップ
-		const { useCase, userRepository, roomEntryLogRepository } = setup();
+  it("入室中のユーザーがカードをタッチすると退室処理されること", async () => {
+    // セットアップ
+    const { useCase, userRepository, roomEntryLogRepository } = setup();
 
-		// モックの設定
-		const idm = "registered-idm";
-		const userId = 1;
-		const user = new User(userId, "discord-user-1");
-		userRepository.findByNfcIdm.mockResolvedValue(user);
-		roomEntryLogRepository.toggle.mockResolvedValue("exit");
-		userRepository.findAllEntryUsers.mockResolvedValue([]);
+    // モックの設定
+    const idm = "registered-idm";
+    const userId = 1;
+    const user = new User(userId, "discord-user-1");
+    userRepository.findByNfcIdm.mockResolvedValue(user);
+    roomEntryLogRepository.toggle.mockResolvedValue("exit");
+    userRepository.findAllEntryUsers.mockResolvedValue([]);
 
-		// 実行
-		const result = await useCase.execute({ idm });
+    // 実行
+    const result = await useCase.execute({ idm });
 
-		// 検証
-		expect(result.isOk()).toBe(true);
-		if (result.isOk()) {
-			expect(result.value.status).toBe("exit");
-			expect(result.value.entries).toBe(0);
-			expect(result.value.user).toEqual(user);
-		}
-		expect(userRepository.findByNfcIdm).toHaveBeenCalledWith(idm);
-		expect(roomEntryLogRepository.toggle).toHaveBeenCalledWith(
-			userId,
-			expect.any(Temporal.Instant),
-		);
-		expect(userRepository.findAllEntryUsers).toHaveBeenCalled();
-	});
+    // 検証
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.status).toBe("exit");
+      expect(result.value.entries).toBe(0);
+      expect(result.value.user).toEqual(user);
+    }
+    expect(userRepository.findByNfcIdm).toHaveBeenCalledWith(idm);
+    expect(roomEntryLogRepository.toggle).toHaveBeenCalledWith(
+      userId,
+      expect.any(Temporal.Instant),
+    );
+    expect(userRepository.findAllEntryUsers).toHaveBeenCalled();
+  });
 
-	it("例外が発生した場合にエラーを返すこと", async () => {
-		// セットアップ
-		const { useCase, userRepository } = setup();
+  it("例外が発生した場合にエラーを返すこと", async () => {
+    // セットアップ
+    const { useCase, userRepository } = setup();
 
-		// モックの設定 - 例外をスロー
-		userRepository.findByNfcIdm.mockRejectedValue(new Error("DB接続エラー"));
+    // モックの設定 - 例外をスロー
+    userRepository.findByNfcIdm.mockRejectedValue(new Error("DB接続エラー"));
 
-		// 実行
-		const result = await useCase.execute({ idm: "any-idm" });
+    // 実行
+    const result = await useCase.execute({ idm: "any-idm" });
 
-		// 検証
-		expect(result.isErr()).toBe(true);
-		if (result.isErr()) {
-			expect(result.error).toBeInstanceOf(TouchCardError);
-			expect(result.error.meta.code).toBe("UNKNOWN");
-		}
-	});
+    // 検証
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error).toBeInstanceOf(TouchCardError);
+      expect(result.error.meta.code).toBe("UNKNOWN");
+    }
+  });
 });

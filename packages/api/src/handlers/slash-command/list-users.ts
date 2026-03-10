@@ -6,86 +6,79 @@ import type { AppLogger } from "@/logger";
 import { noopLogger } from "@/logger";
 import type { DiscordService } from "@/services/DiscordService";
 import type {
-	ListEntryUsersError,
-	ListEntryUsersResult,
-	ListEntryUsersUseCase,
+  ListEntryUsersError,
+  ListEntryUsersResult,
+  ListEntryUsersUseCase,
 } from "@/usecase/ListEntryUsers";
 import type { MaybePromise } from "@/utils";
 
 export class ListUsersHandler {
-	constructor(
-		private readonly usecase: ListEntryUsersUseCase,
-		private readonly discordService: DiscordService,
-		private readonly logger: AppLogger = noopLogger,
-	) {}
+  constructor(
+    private readonly usecase: ListEntryUsersUseCase,
+    private readonly discordService: DiscordService,
+    private readonly logger: AppLogger = noopLogger,
+  ) {}
 
-	async handle(): Promise<APIInteractionResponse> {
-		this.logger.info("Handling list users command");
-		const result = await this.usecase.execute();
+  async handle(): Promise<APIInteractionResponse> {
+    this.logger.info("Handling list users command");
+    const result = await this.usecase.execute();
 
-		const embed = await result.match<MaybePromise<APIEmbed>>(
-			async (result) => await this.handleSuccess(result),
-			(error) => this.handleError(error),
-		);
-		this.logger.info("Handled list users command");
+    const embed = await result.match<MaybePromise<APIEmbed>>(
+      async (result) => await this.handleSuccess(result),
+      (error) => this.handleError(error),
+    );
+    this.logger.info("Handled list users command");
 
-		return {
-			type: InteractionResponseType.ChannelMessageWithSource,
-			data: {
-				embeds: [embed],
-				flags: MessageFlags.Ephemeral,
-			},
-		};
-	}
+    return {
+      type: InteractionResponseType.ChannelMessageWithSource,
+      data: {
+        embeds: [embed],
+        flags: MessageFlags.Ephemeral,
+      },
+    };
+  }
 
-	private async handleSuccess({
-		users,
-	}: ListEntryUsersResult): Promise<APIEmbed> {
-		this.logger.info("Rendering list users response", {
-			userCount: users.length,
-		});
-		const names = await Promise.all(
-			users.map(async (user) => {
-				const { name } = await this.discordService.fetchUserInfo(
-					user.discordId,
-				);
-				return name;
-			}),
-		);
+  private async handleSuccess({ users }: ListEntryUsersResult): Promise<APIEmbed> {
+    this.logger.info("Rendering list users response", {
+      userCount: users.length,
+    });
+    const names = await Promise.all(
+      users.map(async (user) => {
+        const { name } = await this.discordService.fetchUserInfo(user.discordId);
+        return name;
+      }),
+    );
 
-		if (users.length === 0) {
-			return {
-				color: colorToHex("green"),
-				title: "入室中のメンバー",
-				description: "部室には誰も居ません",
-			};
-		}
+    if (users.length === 0) {
+      return {
+        color: colorToHex("green"),
+        title: "入室中のメンバー",
+        description: "部室には誰も居ません",
+      };
+    }
 
-		const description = [
-			`${users.length}人が入室中です`,
-			...names.map((n) => `* ${n}`),
-		].join("\n");
+    const description = [`${users.length}人が入室中です`, ...names.map((n) => `* ${n}`)].join("\n");
 
-		return {
-			color: colorToHex("green"),
-			title: "入室中のメンバー",
-			description,
-		};
-	}
+    return {
+      color: colorToHex("green"),
+      title: "入室中のメンバー",
+      description,
+    };
+  }
 
-	private handleError(error: ListEntryUsersError): APIEmbed {
-		this.logger.error("List users command failed", {
-			errorCode: error.meta.code,
-		});
-		switch (error.meta.code) {
-			// eslint-disable-next-line typescript/no-unnecessary-condition
-			case "UNKNOWN":
-				return {
-					color: colorToHex("red"),
-					title: "入室中のユーザー一覧の取得に失敗しました",
-					description:
-						"不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
-				};
-		}
-	}
+  private handleError(error: ListEntryUsersError): APIEmbed {
+    this.logger.error("List users command failed", {
+      errorCode: error.meta.code,
+    });
+    switch (error.meta.code) {
+      // eslint-disable-next-line typescript/no-unnecessary-condition
+      case "UNKNOWN":
+        return {
+          color: colorToHex("red"),
+          title: "入室中のユーザー一覧の取得に失敗しました",
+          description:
+            "不明なエラーです。時間をおいて再度お試しください。エラーが続く場合は開発者にお問い合わせください。",
+        };
+    }
+  }
 }
