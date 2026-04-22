@@ -214,6 +214,7 @@ describe("interactionVerifier", () => {
       DISCORD_CHANNEL_ID: "channel-id",
       DISCORD_ROOM_COMMAND_ID: "123456",
       DISCORD_ROOM_ADMIN_COMMAND_ID: "654321",
+      DISCORD_ADMIN_ROLE_ID: "admin-role-id",
       DB: {} as D1Database,
       KV: {} as KVNamespace,
     }) satisfies Env;

@@ -24,6 +24,7 @@
   - `/room register student-card`
   - `/room register nfc-card`
   - `/room list`
+  - `/room force-exit`（Admin 限定、Autocomplete + 確認ボタンつき）
 - 未実装:
   - `/room-admin setting register`
 
@@ -42,6 +43,7 @@
 
 - 非 Raspberry Pi 環境では Noop runtime になるため、カード読取・音声・ドアロックは実動作しない
 - `room-admin` はコマンド定義だけ存在し、実装されていない
+- `room force-exit` の Admin 判定は `DISCORD_ADMIN_ROLE_ID` が設定されていればロールID一致を優先し、未設定時は Discord の `Administrator` 権限ビットで判定する
 - 端末側は API 失敗時の永続再送を持たない
 - API は Discord 通知送信失敗をリクエスト失敗として扱い得る
 - 未登録 NFC コードは 4 桁で、衝突時は最大 16 回までリトライする
