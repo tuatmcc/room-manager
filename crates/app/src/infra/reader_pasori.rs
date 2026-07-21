@@ -319,8 +319,6 @@ fn parse_suica_balance_block(block: &[u8]) -> anyhow::Result<u32> {
 
 #[cfg(test)]
 mod tests {
-    use anyhow::Context as _;
-
     use super::{is_usb_disconnected, parse_student_card_block, parse_suica_balance_block};
 
     #[test]
