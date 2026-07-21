@@ -51,6 +51,9 @@
 ### Hardware-Specific Rules
 
 - Pasori 検出は Sony VID `0x054c`, PID `0x06c3`
+- 端末アプリは USB デバイスを 1 秒間隔で再列挙し、検出した全 Pasori を bus number / device address の組で管理する
+- 各 Pasori は同じ役割の独立した reader worker として動作し、USB 切断時は該当 worker だけを終了して、再検出後に新しい worker を起動する
+- 起動時に Pasori が 0 台でも端末アプリは終了せず、接続されるまで待機する
 - 学生証読取は system code `0x809c`, service code `0x200b`
 - Suica 残高読取は system code `0x0003`, service code `0x090f`
 - ドアロックは GPIO18 のサーボを使い、解錠後 30 秒で自動施錠する

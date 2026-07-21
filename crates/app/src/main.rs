@@ -6,7 +6,6 @@ mod runtime;
 use clap::Parser;
 use config::Config;
 use futures_util::StreamExt as _;
-use futures_util::stream::select_all;
 use infra::{HttpCardApi, SystemClock};
 use room_manager::app::TouchCardUseCase;
 use runtime::{new_sound_player, spawn_door_lock, spawn_readers};
@@ -35,8 +34,7 @@ async fn main() -> anyhow::Result<()> {
     let clock = SystemClock::new();
     info!("initialized system clock");
 
-    let readers = spawn_readers()?;
-    let mut readers = select_all(readers);
+    let mut readers = spawn_readers()?;
     info!("spawned card readers");
 
     let door_lock = spawn_door_lock().await?;

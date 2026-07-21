@@ -41,13 +41,16 @@ impl InternalPasoriReader {
 
     #[allow(clippy::unnecessary_wraps, clippy::too_many_lines)]
     fn scan_card(&mut self) -> anyhow::Result<Option<(felica::Card, Card)>> {
-        let Ok(polling_res) = self.device.polling(
+        let polling_res = self.device.polling(
             pasori::device::Bitrate::Bitrate212kbs,
             None,
             pasori::felica::PollingRequestCode::SystemCode,
             pasori::felica::PollingTimeSlot::Slot0,
-        ) else {
-            return Ok(None);
+        );
+        let polling_res = match polling_res {
+            Ok(response) => response,
+            Err(error) if is_usb_disconnected(&error) => return Err(error),
+            Err(_) => return Ok(None),
         };
 
         let felica_card = polling_res.card;
@@ -194,15 +197,17 @@ pub struct PasoriReader {
 
 impl PasoriReader {
     pub fn spawn(dev: RusbDevice<RusbContext>) -> anyhow::Result<Self> {
+        let bus_number = dev.bus_number();
+        let address = dev.address();
         let (tx, rx) = mpsc::unbounded_channel();
         let (stop_tx, mut stop_rx) = oneshot::channel();
 
         let mut reader = InternalPasoriReader::new(dev)?;
 
         let handle = thread::Builder::new()
-            .name("pasori_reader".to_string())
+            .name(format!("pasori_reader_{bus_number}_{address}"))
             .spawn(move || -> anyhow::Result<()> {
-                info!("pasori reader thread started");
+                info!(bus_number, address, "pasori reader thread started");
                 loop {
                     match stop_rx.try_recv() {
                         Ok(()) | Err(TryRecvError::Closed) => {
@@ -222,7 +227,7 @@ impl PasoriReader {
                     thread::sleep(Duration::from_millis(100));
                 }
 
-                info!("pasori reader thread stopped");
+                info!(bus_number, address, "pasori reader thread stopped");
                 Ok(())
             })?;
 
@@ -250,7 +255,16 @@ impl PasoriReader {
             return Ok(None);
         }
 
-        Ok(self.rx.recv().await)
+        let card = self.rx.recv().await;
+        if card.is_none()
+            && let Some(handle) = self.handle.take()
+        {
+            handle
+                .join()
+                .map_err(|payload| anyhow!("PasoriReader thread panicked: {payload:?}"))??;
+        }
+
+        Ok(card)
     }
 
     pub fn into_stream(mut self) -> impl Stream<Item = anyhow::Result<Card>> {
@@ -260,6 +274,14 @@ impl PasoriReader {
             }
         }
     }
+}
+
+fn is_usb_disconnected(error: &anyhow::Error) -> bool {
+    error.chain().any(|cause| {
+        cause
+            .downcast_ref::<pasori::rusb::Error>()
+            .is_some_and(|error| *error == pasori::rusb::Error::NoDevice)
+    })
 }
 
 impl Drop for PasoriReader {
@@ -297,7 +319,21 @@ fn parse_suica_balance_block(block: &[u8]) -> anyhow::Result<u32> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_student_card_block, parse_suica_balance_block};
+    use super::{is_usb_disconnected, parse_student_card_block, parse_suica_balance_block};
+
+    #[test]
+    fn usb_no_device_error_is_detected_through_context() {
+        let error = anyhow::Error::new(pasori::rusb::Error::NoDevice).context("polling failed");
+
+        assert!(is_usb_disconnected(&error));
+    }
+
+    #[test]
+    fn other_usb_error_is_not_treated_as_disconnect() {
+        let error = anyhow::Error::new(pasori::rusb::Error::Timeout);
+
+        assert!(!is_usb_disconnected(&error));
+    }
 
     #[test]
     fn parse_student_card_block_parses_student_id() {

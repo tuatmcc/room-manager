@@ -51,7 +51,7 @@ pub async fn spawn_door_lock() -> anyhow::Result<NoopDoorLock> {
 }
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn spawn_readers() -> anyhow::Result<Vec<CardStream>> {
+pub fn spawn_readers() -> anyhow::Result<CardStream> {
     warn!("Running without Pasori readers on this platform; no card events will be produced");
-    Ok(vec![Box::pin(stream::pending::<anyhow::Result<Card>>())])
+    Ok(Box::pin(stream::pending::<anyhow::Result<Card>>()))
 }

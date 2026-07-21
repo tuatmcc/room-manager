@@ -76,7 +76,7 @@
 ### Preconditions
 
 - Linux on arm/aarch64
-- Pasori 接続済み
+- Pasori は起動前または起動後に接続（未接続の場合もアプリは接続を待機する）
 - GPIO18 にサーボ接続済み
 - 必要な USB / GPIO 権限がある
 - `API_PATH` と `API_TOKEN` を環境変数として渡す
@@ -90,6 +90,8 @@
 - 起動時に API, sound, clock, readers, door lock の初期化ログが出る
 - カードタッチで音声再生、API 呼び出し、必要に応じて解錠が行われる
 - 解錠後 30 秒で自動施錠される
+- Pasori の抜去時は `disconnected pasori reader`、再接続時は `connected pasori reader` が bus number / device address とともに記録される
+- 複数台の Pasori は区別せず同じ用途で並行稼働し、1 台の抜き差しはほかの reader worker に影響しない
 
 ## Incident Handling
 
@@ -105,6 +107,8 @@
 - Pasori が VID/PID `054c:06c3` で見えているか確認
 - 非 Raspberry Pi 環境で Noop runtime になっていないか確認
 - USB 権限と reader 接続状態を確認
+- Pasori を抜き差しし、1 秒程度で切断・再接続ログが出ることを確認
+- 複数台運用では片方だけを抜き、残った Pasori でカードを読めることを確認
 
 ### Door Does Not Lock or Unlock
 
