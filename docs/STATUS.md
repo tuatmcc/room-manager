@@ -2,12 +2,12 @@
 
 ## Snapshot
 
-- Date: 2026-03-10
+- Date: 2026-07-21
 - Version markers:
-  - root `package.json`: `0.2.5`
-  - `packages/api/package.json`: `0.2.5`
-  - `crates/app/Cargo.toml`: `0.2.5`
-  - `crates/pasori/Cargo.toml`: `0.2.5`
+  - root `package.json`: `0.3.0`
+  - `packages/api/package.json`: `0.3.0`
+  - `crates/app/Cargo.toml`: `0.3.0`
+  - `crates/pasori/Cargo.toml`: `0.3.0`
 
 ## What Exists Today
 
@@ -16,6 +16,7 @@
 - Raspberry Pi 側アプリから Workers API へのカードタッチ送信が実装済み
 - API はユーザー特定、入退出トグル、Discord 通知、レスポンス返却を実装済み
 - 端末は API 応答に応じて音声再生し、成功時のみ解錠する
+- 端末は接続中の全 Pasori を同じ役割で扱い、USB 切断後もデバイスの再検出と reader worker の再生成を継続する
 
 ### Discord Commands
 
@@ -46,6 +47,7 @@
 - API は Discord 通知送信失敗をリクエスト失敗として扱い得る
 - 未登録 NFC コードは 4 桁で、衝突時は最大 16 回までリトライする
 - 学生証 / Suica 読取は固定オフセットのバイト解析に依存する
+- Pasori の自動再接続は CI で論理部分を検証できるが、USB 抜き差しと複数台同時利用は Raspberry Pi 実機確認が必要
 
 ## Known Risks
 

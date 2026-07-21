@@ -3,7 +3,7 @@ use std::{borrow::Cow, time::Duration};
 
 use anyhow::{bail, ensure};
 use if_chain::if_chain;
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::{
     felica::{
@@ -332,7 +332,9 @@ impl<T: Transport> Chipset<T> {
 
 impl<T: Transport> Drop for Chipset<T> {
     fn drop(&mut self) {
-        self.close().expect("close failed");
+        if let Err(error) = self.close() {
+            warn!(error = ?error, "failed to close rcs380 chipset");
+        }
     }
 }
 
