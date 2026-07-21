@@ -87,7 +87,8 @@ pub fn spawn_readers() -> anyhow::Result<CardStream> {
 
                         let worker_tx = event_tx.clone();
                         let worker = tokio::spawn(async move {
-                            let mut cards = reader.into_stream();
+                            let cards = reader.into_stream();
+                            futures_util::pin_mut!(cards);
                             while let Some(result) = cards.next().await {
                                 match result {
                                     Ok(card) => {
