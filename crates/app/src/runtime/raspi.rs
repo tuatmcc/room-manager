@@ -116,10 +116,10 @@ pub fn spawn_readers() -> anyhow::Result<CardStream> {
                     match event {
                         Some(ReaderEvent::Card(card)) => yield Ok(card),
                         Some(ReaderEvent::Stopped(id)) => {
-                            if let Some(worker) = workers.remove(&id) {
-                                if let Err(error) = worker.await {
-                                    error!(?id, error = ?error, "pasori reader task failed");
-                                }
+                            if let Some(worker) = workers.remove(&id)
+                                && let Err(error) = worker.await
+                            {
+                                error!(?id, error = ?error, "pasori reader task failed");
                             }
                             info!(?id, "disconnected pasori reader");
                         }
