@@ -1,6 +1,6 @@
 {
-	".": "0.3.0",
-	"packages/api": "0.3.0",
-	"crates/app": "0.3.0",
-	"crates/pasori": "0.3.0"
+	".": "0.3.1",
+	"packages/api": "0.3.1",
+	"crates/app": "0.3.1",
+	"crates/pasori": "0.3.1"
 }

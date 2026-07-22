@@ -1,5 +1,12 @@
 # room-manager
 
+## [0.3.1](https://github.com/tuatmcc/room-manager/compare/v0.3.0...v0.3.1) (2026-07-21)
+
+
+### Bug Fixes
+
+* Pasoriの自動再接続に対応 ([#97](https://github.com/tuatmcc/room-manager/issues/97)) ([d081619](https://github.com/tuatmcc/room-manager/commit/d08161903a40772e739494bf7624807266a59f0e))
+
 ## [0.3.0](https://github.com/tuatmcc/room-manager/compare/v0.2.5...v0.3.0) (2026-03-10)
 
 
