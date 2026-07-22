@@ -1,6 +1,8 @@
 import type {
+  APIApplicationCommandAutocompleteInteraction,
   APIChatInputApplicationCommandInteraction,
   APIInteraction,
+  APIMessageComponentInteraction,
   APIInteractionResponse,
 } from "discord-api-types/v10";
 import {
@@ -16,7 +18,12 @@ import type { AppEnv, Env } from "./env";
 import { EnvSchema } from "./env";
 import { createLocalDeviceHandlers } from "./handlers/local-device";
 import { createScheduledHandlers } from "./handlers/scheduled";
-import { createSlashCommandHandlers, handleSlashCommand } from "./handlers/slash-command";
+import {
+  createSlashCommandHandlers,
+  handleMessageComponentInteraction,
+  handleSlashCommand,
+  handleSlashCommandAutocomplete,
+} from "./handlers/slash-command";
 import type { AppLogger } from "./logger";
 import { createLogger, serializeError } from "./logger";
 import { createRepositories } from "./repositories";
@@ -122,6 +129,7 @@ const app = new Hono<AppEnv>()
       services,
       logger.child({ tag: "handlers" }),
     );
+    const adminRoleId = c.get("env").DISCORD_ADMIN_ROLE_ID;
     const rawBody = c.get("verifiedInteractionBody");
     if (!rawBody) {
       logger.warn("Verified interaction body was missing");
@@ -148,11 +156,30 @@ const app = new Hono<AppEnv>()
             const res = await handleSlashCommand(
               slashCommandHandlers,
               interaction as APIChatInputApplicationCommandInteraction,
+              adminRoleId,
               logger,
             );
             return c.json(res);
           }
         }
+      case InteractionType.ApplicationCommandAutocomplete: {
+        const res = await handleSlashCommandAutocomplete(
+          slashCommandHandlers,
+          interaction as APIApplicationCommandAutocompleteInteraction,
+          adminRoleId,
+          logger,
+        );
+        return c.json(res);
+      }
+      case InteractionType.MessageComponent: {
+        const res = await handleMessageComponentInteraction(
+          slashCommandHandlers,
+          interaction as APIMessageComponentInteraction,
+          adminRoleId,
+          logger,
+        );
+        return c.json(res);
+      }
     }
 
     logger.warn("Received unsupported interaction", {
