@@ -94,6 +94,7 @@
 
 - API は Cloudflare Workers / D1 / KV で動作する
 - 端末アプリは Raspberry Pi 上で動作し、Pasori、GPIO サーボ、音声再生を利用する
+- サーボの回転方向は `SERVO_DIRECTION` で `normal` または `reverse` に設定でき、既定値は `normal` とする
 - 非 Raspberry Pi 環境では Noop runtime で起動できるが、カードイベントは発生しない
 - 入退出の重複更新に対しては DB 制約とリトライで整合性を保つ
 

@@ -28,15 +28,17 @@ const AUTO_LOCK_DELAY: Duration = Duration::from_secs(30);
 #[derive(Debug)]
 struct DoorLockInternal {
     is_unlocked: bool,
+    reverse_direction: bool,
     output_pin: OutputPin,
 }
 
 impl DoorLockInternal {
-    async fn new() -> anyhow::Result<Self> {
+    async fn new(reverse_direction: bool) -> anyhow::Result<Self> {
         let output_pin = Gpio::new()?.get(SERVO_PIN)?.into_output();
 
         let mut door_lock = Self {
             is_unlocked: true,
+            reverse_direction,
             output_pin,
         };
         door_lock.lock().await?;
@@ -81,6 +83,11 @@ impl DoorLockInternal {
             "servo angle must be between {SERVO_MIN_ANGLE} and {SERVO_MAX_ANGLE}: {angle}"
         );
 
+        let angle = if self.reverse_direction {
+            SERVO_MAX_ANGLE - angle
+        } else {
+            angle
+        };
         let duty_cycle_us = SERVO_MIN_DUTY_CYCLE_US
             + (SERVO_MAX_DUTY_CYCLE_US - SERVO_MIN_DUTY_CYCLE_US) * u64::from(angle)
                 / u64::from(SERVO_MAX_ANGLE);
@@ -111,8 +118,9 @@ pub struct GpioDoorLock {
 }
 
 impl GpioDoorLock {
-    pub async fn spawn() -> anyhow::Result<Self> {
-        let internal = DoorLockInternal::new().await?;
+    pub async fn spawn(reverse_direction: bool) -> anyhow::Result<Self> {
+        info!(reverse_direction, "configuring gpio door lock");
+        let internal = DoorLockInternal::new(reverse_direction).await?;
         let internal = Arc::new(Mutex::new(internal));
 
         let (tx_unlock, mut rx_unlock) = mpsc::channel(1);

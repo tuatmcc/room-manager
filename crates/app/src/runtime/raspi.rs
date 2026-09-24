@@ -7,6 +7,7 @@ use room_manager::domain::Card;
 use tokio::{sync::mpsc, task::JoinHandle, time};
 use tracing::{error, info, warn};
 
+use crate::config::ServoDirection;
 use crate::{
     infra::{GpioDoorLock, PasoriReader, RodioPlayer},
     runtime::CardStream,
@@ -19,8 +20,8 @@ pub fn new_sound_player() -> anyhow::Result<RodioPlayer> {
     RodioPlayer::new()
 }
 
-pub async fn spawn_door_lock() -> anyhow::Result<GpioDoorLock> {
-    GpioDoorLock::spawn().await
+pub async fn spawn_door_lock(servo_direction: ServoDirection) -> anyhow::Result<GpioDoorLock> {
+    GpioDoorLock::spawn(servo_direction == ServoDirection::Reverse).await
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

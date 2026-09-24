@@ -2,6 +2,7 @@ use futures_util::stream;
 use room_manager::domain::{Card, DoorLock, SoundEvent, SoundPlayer};
 use tracing::warn;
 
+use crate::config::ServoDirection;
 use crate::runtime::CardStream;
 
 pub struct NoopSoundPlayer;
@@ -46,7 +47,7 @@ pub fn new_sound_player() -> anyhow::Result<NoopSoundPlayer> {
     NoopSoundPlayer::new()
 }
 
-pub async fn spawn_door_lock() -> anyhow::Result<NoopDoorLock> {
+pub async fn spawn_door_lock(_servo_direction: ServoDirection) -> anyhow::Result<NoopDoorLock> {
     NoopDoorLock::spawn().await
 }
 

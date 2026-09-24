@@ -80,10 +80,12 @@
 - GPIO18 にサーボ接続済み
 - 必要な USB / GPIO 権限がある
 - `API_PATH` と `API_TOKEN` を環境変数として渡す
+- `SERVO_DIRECTION` は省略可能。既定値は `normal`、ドアの取り付け方向を反転する場合は `reverse` を指定する
 
 ### Run
 
 - `cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN>`
+- 逆方向のサーボを使う場合: `cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN> --servo-direction reverse`
 
 ### Expected Behavior
 
