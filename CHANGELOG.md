@@ -1,5 +1,12 @@
 # room-manager
 
+## [0.4.0](https://github.com/tuatmcc/room-manager/compare/v0.3.1...v0.4.0) (2026-09-24)
+
+
+### Features
+
+* ドアロックのサーボ回転方向を設定可能にする ([#99](https://github.com/tuatmcc/room-manager/issues/99)) ([7dc63be](https://github.com/tuatmcc/room-manager/commit/7dc63be5c42705a00ae1f6fecdc433d0512429da))
+
 ## [0.3.1](https://github.com/tuatmcc/room-manager/compare/v0.3.0...v0.3.1) (2026-07-21)
 
 
