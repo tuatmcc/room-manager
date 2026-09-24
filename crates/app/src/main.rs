@@ -22,6 +22,7 @@ async fn main() -> anyhow::Result<()> {
     info!(
         version = env!("CARGO_PKG_VERSION"),
         api_path = %config.api_path,
+        servo_direction = ?config.servo_direction,
         "starting room-manager app"
     );
 
@@ -37,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
     let mut readers = spawn_readers()?;
     info!("spawned card readers");
 
-    let door_lock = spawn_door_lock().await?;
+    let door_lock = spawn_door_lock(config.servo_direction).await?;
     info!("spawned door lock");
 
     let touch_card_use_case = TouchCardUseCase::new(api, player, clock, door_lock);

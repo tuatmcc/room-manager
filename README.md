@@ -45,4 +45,6 @@ pnpm --dir packages/api dev
 cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN>
 ```
 
+ドアの取り付け方向が逆の場合は、`--servo-direction reverse` を追加します（環境変数 `SERVO_DIRECTION=reverse` でも指定できます）。
+
 非 Raspberry Pi 環境では Rust アプリは Noop runtime で起動し、カードイベントは発生しません。

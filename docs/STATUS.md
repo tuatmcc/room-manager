@@ -2,7 +2,7 @@
 
 ## Snapshot
 
-- Date: 2026-07-21
+- Date: 2026-09-24
 - Version markers:
   - root `package.json`: `0.3.0`
   - `packages/api/package.json`: `0.3.0`
@@ -17,6 +17,7 @@
 - API はユーザー特定、入退出トグル、Discord 通知、レスポンス返却を実装済み
 - 端末は API 応答に応じて音声再生し、成功時のみ解錠する
 - 端末は接続中の全 Pasori を同じ役割で扱い、USB 切断後もデバイスの再検出と reader worker の再生成を継続する
+- GPIO サーボの回転方向を `SERVO_DIRECTION=normal|reverse` または `--servo-direction` で切り替えられる
 
 ### Discord Commands
 

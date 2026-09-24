@@ -21,7 +21,7 @@
 ### Entry Point
 
 - `crates/app/src/main.rs`
-- `Config` から `API_PATH` と `API_TOKEN` を読み込む
+- `Config` から `API_PATH`, `API_TOKEN`, `SERVO_DIRECTION` を読み込む
 - API クライアント、サウンドプレイヤー、時計、カードリーダー、ドアロックを初期化する
 - すべてのカードリーダーストリームを `select_all` で束ね、カードごとに `TouchCardUseCase` を実行する
 
@@ -57,6 +57,7 @@
 - 学生証読取は system code `0x809c`, service code `0x200b`
 - Suica 残高読取は system code `0x0003`, service code `0x090f`
 - ドアロックは GPIO18 のサーボを使い、解錠後 30 秒で自動施錠する
+- `SERVO_DIRECTION=normal` は論理角度をそのまま PWM に変換し、`reverse` は `180 - angle` に変換する。既定値は `normal` で、中央位置 90° はどちらの向きでも変わらない
 
 ## Pasori Library Design
 
