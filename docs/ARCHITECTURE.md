@@ -196,6 +196,7 @@
 - 共有 active-color と hardware lock により、2 container が存在しても物理デバイスを駆動するプロセスは 1 個に限定する
 - active app は API、音声、GPIO lockと少なくとも1台のPasori readerの初期化完了後に readiness marker を atomic に書き、controller はこの marker と process 生存を切替成功条件にする
 - controller は起動時にactive slotを再検証し、不健全ならstandbyへ復旧する。失敗したimage digestは隔離し、同一digestの反復切替を防ぐ
+- 旧バイナリからの初回移行は `migrate-legacy.sh` が同じdeploy lockを取得して行う。永続markerとsystemd drop-inで旧系と新系の起動を制御し、初期イメージ準備中は旧系、切替後は新系だけを起動可能にする。復旧時は新系の停止を確認するまで旧系を再開しない
 - 詳細と障害対応は `docs/DEPLOYMENT.md` を正本とする
 
 ### D1 as Source of Truth
