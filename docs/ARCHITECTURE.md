@@ -15,6 +15,8 @@
 - `crates/pasori`: Pasori / FeliCa ライブラリ
 - `packages/api`: Cloudflare Workers API
 - `.github/workflows`: CI / release
+- `deploy/container`: Raspberry Pi OCI image 内の active/standby supervisor と health check
+- `deploy/podman`: Quadlet、Blue/Green controller、端末 installer
 
 ## Rust App Design
 
@@ -85,6 +87,7 @@
 ### Routes
 
 - `GET /`: health check
+- `GET /health`: CD candidate 用の D1/KV dependency health check
 - `GET /local-device`: health check
 - `POST /local-device/touch-card`: 端末用カードタッチ受付
 - `POST /interaction`: Discord Interaction
@@ -182,6 +185,18 @@
 - 端末側は API 成功時のみ解錠する
 
 ## Important Decisions
+
+### Continuous Delivery and Blue/Green
+
+- `main` の CI 成功を起点に、検証済み SHA から Workers version と ARM64 OCI image を生成する
+- 各production昇格境界で現在の `main` HEADとその最新CI runを再検証し、superseded deliveryは昇格しない
+- Workers は D1/KV binding のためコンテナ化せず、candidate version URL でD1/KVを検証後に 100% promote する
+- Raspberry Pi は `blue` / `green` のローカル image tag を分離し、controller が非稼働 tag だけを更新する
+- 各 Quadlet は `AutoUpdate=local` を持つ。controller は非稼働 slot のローカル tag だけを変更して `podman auto-update` を実行し、候補だけを再生成する。filter対応Podmanではslot labelでも対象を限定する
+- 共有 active-color と hardware lock により、2 container が存在しても物理デバイスを駆動するプロセスは 1 個に限定する
+- active app は API、音声、GPIO lockと少なくとも1台のPasori readerの初期化完了後に readiness marker を atomic に書き、controller はこの marker と process 生存を切替成功条件にする
+- controller は起動時にactive slotを再検証し、不健全ならstandbyへ復旧する。失敗したimage digestは隔離し、同一digestの反復切替を防ぐ
+- 詳細と障害対応は `docs/DEPLOYMENT.md` を正本とする
 
 ### D1 as Source of Truth
 

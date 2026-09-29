@@ -8,6 +8,7 @@
 - [docs/PLAN.md](docs/PLAN.md): 実装計画、マイルストーン、リスク
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): 技術設計、モジュール、データモデル
 - [docs/RUNBOOK.md](docs/RUNBOOK.md): 開発・運用時に守るルール
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): CD と Raspberry Pi の本番デプロイ
 - [docs/STATUS.md](docs/STATUS.md): 現在の実装状況、未完事項、再開コンテキスト
 
 ## Repository Layout
@@ -51,7 +52,7 @@
 - Dry-run build: `pnpm --dir packages/api build`
 - Local migration: `pnpm --dir packages/api dev:migrate`
 - Remote migration: `pnpm --dir packages/api ci:migrate`
-- Deploy: `pnpm --dir packages/api ci:deploy`
+- Deploy: `main` の CI 成功後に `.github/workflows/cd.yml` が実行する（運用手順は `docs/DEPLOYMENT.md`）
 - Register slash commands: `pnpm --dir packages/api register`
 
 ## Working Agreement

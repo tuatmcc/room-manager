@@ -149,6 +149,28 @@ jobs:
           name: room-manager
           path: target/release/room-manager
 
+  test-deployment:
+    name: Test deployment scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run | Validate shell syntax
+        run: |
+          for script in deploy/ci/*.sh deploy/container/*.sh deploy/podman/*.sh deploy/tests/*.sh; do
+            sh -n "$script"
+          done
+
+      - name: Run | Lint shell scripts
+        run: shellcheck deploy/ci/*.sh deploy/container/*.sh deploy/podman/*.sh deploy/tests/*.sh
+
+      - name: Run | Test deployment scripts
+        run: |
+          for test_script in deploy/tests/*.sh; do
+            "$test_script"
+          done
+
   ci-status:
     name: CI Status
     # 依存ジョブの結果が failure または cancelled の場合に実行
@@ -165,5 +187,6 @@ jobs:
       - test-rust
       - build-node
       - build-rust
+      - test-deployment
     steps:
       - run: exit 1

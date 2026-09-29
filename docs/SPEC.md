@@ -97,6 +97,10 @@
 - サーボの回転方向は `SERVO_DIRECTION` で `normal` または `reverse` に設定でき、既定値は `normal` とする
 - 非 Raspberry Pi 環境では Noop runtime で起動できるが、カードイベントは発生しない
 - 入退出の重複更新に対しては DB 制約とリトライで整合性を保つ
+- `main` の CI 成功後、Workers API と Raspberry Pi 用 ARM64 image を自動配布する
+- Workers API は未配布 version の health check 後に production traffic を切り替える
+- Raspberry Pi は Podman Quadlet の blue/green 2 系統を持ち、非稼働系の更新と検証後に切り替える
+- Raspberry Pi 上で Pasori、GPIO、音声を操作するアプリプロセスは常に 1 個だけとする
 
 ## Acceptance Criteria
 
@@ -104,3 +108,4 @@
 - 未登録学生証 / 未登録 NFC は、正しいエラーコードと登録導線を返す
 - `/room list` が現在の未退出ログに一致する
 - 夜間バッチ実行後、開いた入室ログが残らない
+- デプロイ中も旧系は候補系の検証完了まで稼働し、候補系の起動失敗時は旧系へ自動復帰する

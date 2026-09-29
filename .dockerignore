@@ -1,0 +1,7 @@
+.git
+.github
+.env
+packages
+target
+node_modules
+docs
