@@ -49,6 +49,7 @@
 - Raspberry Pi 用 ARM64 OCI image は GHCR の `main` と commit SHA tag へ publish される
 - Raspberry Pi 側は Podman Quadlet の blue/green 2 slot、`podman auto-update`、共有 hardware lock、自動 rollback、不健全activeの次回起動時復旧、不良digest隔離で更新される
 - 初期構築、秘密情報、監視、手動 rollback は `docs/DEPLOYMENT.md` に記載済み
+- `deploy/podman/migrate-legacy.sh` は明示した旧 systemd システムサービスからの初回移行に対応し、旧系停止前の候補準備、再起動を跨ぐ起動抑止、readiness失敗時の旧系復旧、実機確認後のtimer有効化を行う。旧バイナリ・設定は変更しない
 
 ## Current Constraints
 
@@ -66,6 +67,7 @@
 
 - 実機依存部は CI だけでは十分に担保できない
 - Raspberry Pi の container device mapping と Blue/Green 切替は実機での初回確認が必要
+- 旧方式の systemd unit はリポジトリに含まれないため、移行時に実機の正規 service 名を指定する。user service、cron、手動起動、timer/socket起動の移行は自動化対象外
 - Cron による一括退出は運用ルール変更に弱い
 - 秘密情報の配置ルールが曖昧だとローカル開発と本番の差異を生みやすい
 

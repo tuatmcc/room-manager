@@ -140,6 +140,55 @@ sudo systemctl enable --now room-manager-deploy.timer
 sudo systemctl status room-manager-deploy.timer
 ```
 
+## Migrating an existing native service
+
+CD 導入前のコミットは `7dc63be`。現在の `main` の親を機械的に選ばず、実際に稼働している旧バイナリを復旧対象にする。リポジトリには旧 systemd unit の定義がないため、`migrate-legacy.sh` に実機の正規 service 名を明示する。
+
+このスクリプトは Raspberry Pi 上で実行する。対象は **systemd のシステムサービスとして稼働する旧アプリ1個**に限定する。user service、cron、手動起動、timer/socket起動には使用しない。起動元が複数ある場合は先に整理する。旧unitは `KillMode=control-group`、`RemainAfterExit=no` が必要で、alias名は受け付けない。
+
+1. 上の前提条件、registry login、`app.env` / `deploy.env` の準備を済ませる。移行前には通常の `install.sh` を実行しない（旧系と同時起動するため）。雛形は直接配置して編集する。既存ファイルは上書きしない。
+
+   ```sh
+   sudo install -d -m 0755 /etc/room-manager
+   sudo test -e /etc/room-manager/app.env || sudo install -m 0600 deploy/podman/app.env.example /etc/room-manager/app.env
+   sudo test -e /etc/room-manager/deploy.env || sudo install -m 0644 deploy/podman/deploy.env.example /etc/room-manager/deploy.env
+   sudoedit /etc/room-manager/app.env /etc/room-manager/deploy.env
+   ```
+
+2. 実機で旧service名と起動設定を確認し、旧バイナリ、unit、参照する環境ファイルを保全する。スクリプトはそれらを削除・置換せず、unitの表示結果だけをroot専用の移行記録に保存する。旧ソースから起動している場合も、そのcheckoutやビルド結果を移行中に書き換えない。新スクリプトは別checkoutへ配置する。
+
+3. CDが最後まで成功したコミットのSHA tagまたはdigestを指定する（可変の `:main` は拒否する）。以下の `旧service名.service` と `<CD成功コミットの40桁SHA>` を実際の値に置換して事前確認する。
+
+   ```sh
+   sudo ./deploy/podman/migrate-legacy.sh check 旧service名.service ghcr.io/tuatmcc/room-manager:sha-<CD成功コミットの40桁SHA>
+   ```
+
+   `check` はserviceを変更せず、旧起動設定、既存の新構成との衝突、本番APIの `/health` を確認する。Podman/deviceの詳細確認とimage pullは次の `apply` で、旧系が動いている間に実行する。API_PATHは引用符なしのHTTPS URLとし、tokenは端末の `app.env` に設定する。
+
+4. 現地でドアを操作できる保守時間に移行する。
+
+   ```sh
+   sudo ./deploy/podman/migrate-legacy.sh apply 旧service名.service ghcr.io/tuatmcc/room-manager:sha-<CD成功コミットの40桁SHA>
+   ```
+
+   新unitを起動抑止した状態で installer の `--prepare-only --image` を使い、pull・配置を済ませてから旧系の自動起動を無効化し、旧プロセスを停止する。旧系を再度起動できないよう永続drop-inを追加し、新コンテナのreadinessを最大90秒待つ。両slotは同じ指定imageで初期化する。新構成が既に存在するときは自動上書きせず停止する。
+
+   エラーや通常の終了シグナルでは新系を停止して旧serviceを復旧する。新系の停止を確認できない場合は旧系も起動せず `recovery-required` として停止する。電源断・SIGKILLをその場で復旧することはできないが、起動抑止markerは再起動後も残る。状態は `/var/lib/room-manager-migration/phase` で確認でき、復旧コマンドは中断後にも実行できる。
+
+5. `awaiting-verification` になったらカード、Discord通知、音声、解錠、30秒後の施錠、USB再接続を確認する。readiness成功だけではこれらの実機試験は完了しない。`deploy.env` の更新先が意図する `:main` であることも確認し、次を実行する。以降は新しいmain imageへ更新され得る。
+
+   ```sh
+   sudo ./deploy/podman/migrate-legacy.sh finalize --hardware-verified
+   ```
+
+初回に旧バイナリへ戻す場合（blue/green間のrollbackとは別）は次を実行する。新系を停止・起動抑止し、旧serviceの元のenabled状態を復元して起動する。API・D1は変更しない。
+
+```sh
+sudo ./deploy/podman/migrate-legacy.sh rollback
+```
+
+`rolled-back` 後も新系の起動抑止と移行記録を残す。再移行は状態と失敗原因を確認してから行い、移行記録やdrop-inを稼働中に削除しない。既存状態に対する `apply` の再実行は拒否する。`ConditionPathExists` のmarkerによる抑止は、このsystemd unit経由の起動に適用され、バイナリの直接起動や別の起動元には適用されない。
+
 ## Routine operations
 
 更新確認を即時実行する:
