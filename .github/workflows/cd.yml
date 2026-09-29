@@ -153,7 +153,7 @@ jobs:
       - name: Verify | Candidate health
         if: steps.prepare.outputs.is_latest == 'true'
         env:
-          CANDIDATE_URL: https://candidate-room-manager.${{ secrets.CLOUDFLARE_WORKERS_SUBDOMAIN }}.workers.dev/health
+          CANDIDATE_URL: https://candidate-${{ secrets.CLOUDFLARE_WORKERS_SUBDOMAIN }}.workers.dev/health
         run: curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 "$CANDIDATE_URL"
 
       - name: Verify | Delivery is still current before API promotion
