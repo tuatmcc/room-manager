@@ -15,8 +15,9 @@
 - `crates/pasori`: Pasori / FeliCa ライブラリ
 - `packages/api`: Cloudflare Workers API
 - `.github/workflows`: CI / release
-- `deploy/container`: Raspberry Pi OCI image 内の active/standby supervisor と health check
-- `deploy/podman`: Quadlet、Blue/Green controller、端末 installer
+- `deploy/ci`: Debian Bookworm ARM64 build and artifact verification script
+- `deploy/native`: ARM64 artifact、native deploy controller、installer、systemd unit
+- `deploy/tests`: CD と native migration の shell test
 
 ## Rust App Design
 
@@ -25,6 +26,7 @@
 - `crates/app/src/main.rs`
 - `Config` から `API_PATH`, `API_TOKEN`, `SERVO_DIRECTION` を読み込む
 - API クライアント、サウンドプレイヤー、時計、カードリーダー、ドアロックを初期化する
+- API、音声、reader、GPIO の初期化と少なくとも1台の reader の Ready 後に systemd へ `READY=1` を通知する
 - すべてのカードリーダーストリームを `select_all` で束ね、カードごとに `TouchCardUseCase` を実行する
 
 ### Layers
@@ -186,17 +188,21 @@
 
 ## Important Decisions
 
-### Continuous Delivery and Blue/Green
+### Continuous Delivery and native rollback
 
-- `main` の CI 成功を起点に、検証済み SHA から Workers version と ARM64 OCI image を生成する
-- 各production昇格境界で現在の `main` HEADとその最新CI runを再検証し、superseded deliveryは昇格しない
-- Workers は D1/KV binding のためコンテナ化せず、candidate version URL でD1/KVを検証後に 100% promote する
-- Raspberry Pi は `blue` / `green` のローカル image tag を分離し、controller が非稼働 tag だけを更新する
-- 各 Quadlet は `AutoUpdate=local` を持つ。controller は非稼働 slot のローカル tag だけを変更して `podman auto-update` を実行し、候補だけを再生成する。filter対応Podmanではslot labelでも対象を限定する
-- 共有 active-color と hardware lock により、2 container が存在しても物理デバイスを駆動するプロセスは 1 個に限定する
-- active app は API、音声、GPIO lockと少なくとも1台のPasori readerの初期化完了後に readiness marker を atomic に書き、controller はこの marker と process 生存を切替成功条件にする
-- controller は起動時にactive slotを再検証し、不健全ならstandbyへ復旧する。失敗したimage digestは隔離し、同一digestの反復切替を防ぐ
-- 旧バイナリからの初回移行は `migrate-legacy.sh` が同じdeploy lockを取得して行う。永続markerとsystemd drop-inで旧系と新系の起動を制御し、初期イメージ準備中は旧系、切替後は新系だけを起動可能にする。復旧時は新系の停止を確認するまで旧系を再開しない
+- `main` の CI 成功を起点に、検証済み SHA から Workers version と ARM64 native archive を生成する
+- ARM64 artifact は `ubuntu-24.04-arm` runner 上の `rust:<version>-bookworm` build container で生成し、`file`、`readelf`、`ldd`、glibc symbol、`room-manager --help` を確認する。CD、CI artifact build、release は同じ `deploy/ci/build-native-arm64.sh` を使う
+- candidate artifact、API preparation、API promotion、production manifest 更新の各境界で現在の `main` HEAD と最新 CI run を再検証する
+- Workers は candidate URL の D1/KV health check 後に 100% promote する
+- API promote 成功後だけ、GitHub Release の production manifest を新 SHA に更新する
+- 端末は manifest の SHA 固有 artifact を取得し、`/opt/room-manager/releases/<sha>` に完全配置する
+- `current` と `previous` は atomic な symlink 切替で管理し、実行中 binary は上書きしない
+- activation 開始時は `/var/lib/room-manager-deploy/pending-sha` を atomic に記録し、成功後に `last-successful-sha` を更新してから削除する
+- `room-manager-recover.service` は boot 時に `room-manager.service` より先に pending activation を検査し、未確認 candidate を起動する前に `last-successful-sha` へ current を戻す
+- `room-manager.service` は `Type=notify` の単一 systemd service であり、READY 通知は API、音声、GPIO、少なくとも1台の Pasori reader の初期化後に送る。`TimeoutStartSec=120s` が readiness timeout の正本である
+- readiness 失敗時は current を previous へ戻して service を再起動し、失敗 SHA を隔離する。同じ SHA の timer 再試行は行わない。rollback target も失敗した場合は pending と failed state を残す
+- deploy controller、timer、manual rollback、legacy migration は同じ flock を使い、物理デバイスを扱うプロセスの同時起動を防ぐ
+- 旧 native service からの移行は永続 marker と systemd drop-in を使い、旧 service を停止してから新 service の readiness を確認する。旧 binary と設定は削除しない
 - 詳細と障害対応は `docs/DEPLOYMENT.md` を正本とする
 
 ### D1 as Source of Truth

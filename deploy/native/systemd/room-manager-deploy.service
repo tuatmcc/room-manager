@@ -1,0 +1,12 @@
+[Unit]
+Description=Check for a new room-manager native release
+After=network-online.target room-manager-recover.service
+Wants=network-online.target
+Requires=room-manager-recover.service
+ConditionPathExists=/etc/room-manager/deploy.env
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/room-manager/deploy.env
+ExecStart=/usr/local/libexec/room-manager-deploy deploy
+TimeoutStartSec=15min

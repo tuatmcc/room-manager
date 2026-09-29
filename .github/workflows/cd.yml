@@ -17,8 +17,7 @@ concurrency:
 
 permissions:
   actions: read
-  contents: read
-  packages: write
+  contents: write
 
 jobs:
   verify-current-delivery:
@@ -43,20 +42,22 @@ jobs:
         run: deploy/ci/check-latest-delivery.sh
 
   publish-device-candidate:
-    name: Publish Raspberry Pi candidate image
+    name: Publish ARM64 native candidate
     if: needs.verify-current-delivery.outputs.is_latest == 'true'
     needs:
       - verify-current-delivery
     runs-on: ubuntu-24.04-arm
     outputs:
       published: ${{ steps.publish.outcome == 'success' }}
+      artifact_name: ${{ steps.artifact.outputs.artifact_name }}
+      artifact_sha256: ${{ steps.artifact.outputs.artifact_sha256 }}
     steps:
       - name: Setup | Checkout tested revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Verify | Delivery is still current before image publish
+      - name: Verify | Delivery is still current before artifact build
         id: latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -65,36 +66,61 @@ jobs:
           TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         run: deploy/ci/check-latest-delivery.sh
 
-      - name: Setup | Log in to GHCR
+      - name: Setup | Rust development environment
         if: steps.latest.outputs.is_latest == 'true'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/setup-rust
 
-      - name: Setup | Buildx
+      - name: Run | Build ARM64 native binary
         if: steps.latest.outputs.is_latest == 'true'
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+        run: deploy/ci/build-native-arm64.sh
 
-      - name: Run | Build and publish ARM64 candidate image
+      - name: Run | Create immutable native artifact
+        id: artifact
+        if: steps.latest.outputs.is_latest == 'true'
+        env:
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          artifact_dir="$RUNNER_TEMP/room-manager-artifact"
+          artifact_path=$(deploy/native/create-artifact.sh "$DEPLOY_SHA" target/release/room-manager "$artifact_dir")
+          artifact_name=$(basename "$artifact_path")
+          artifact_sha256=$(cut -d ' ' -f1 "$artifact_path.sha256")
+          echo "artifact_name=$artifact_name" >>"$GITHUB_OUTPUT"
+          echo "artifact_sha256=$artifact_sha256" >>"$GITHUB_OUTPUT"
+          echo "artifact_path=$artifact_path" >>"$GITHUB_OUTPUT"
+
+      - name: Run | Publish candidate release without replacing an existing asset
         id: publish
         if: steps.latest.outputs.is_latest == 'true'
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
-        with:
-          context: .
-          file: Containerfile
-          platforms: linux/arm64
-          push: true
-          tags: ghcr.io/${{ github.repository }}:sha-${{ github.event.workflow_run.head_sha }}
-          labels: |
-            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          ARTIFACT_NAME: ${{ steps.artifact.outputs.artifact_name }}
+          ARTIFACT_SHA256: ${{ steps.artifact.outputs.artifact_sha256 }}
+          ARTIFACT_PATH: ${{ steps.artifact.outputs.artifact_path }}
+        run: |
+          set -eu
+          release_tag="cd-${DEPLOY_SHA}"
+          if ! gh release view "$release_tag" >/dev/null 2>&1; then
+            gh release create "$release_tag" --target "$DEPLOY_SHA" --title "CD candidate ${DEPLOY_SHA}" --notes "Immutable ARM64 native artifact for ${DEPLOY_SHA}." --prerelease
+          fi
+
+          verify_dir="$RUNNER_TEMP/room-manager-release-verify"
+          mkdir -p "$verify_dir"
+          assets_file="$verify_dir/assets"
+          gh release view "$release_tag" --json assets --jq '.assets[].name' >"$assets_file"
+          for asset_path in "$ARTIFACT_PATH" "$ARTIFACT_PATH.sha256"; do
+            asset_name=$(basename "$asset_path")
+            if grep -Fxq "$asset_name" "$assets_file"; then
+              gh release download "$release_tag" --pattern "$asset_name" --dir "$verify_dir" --clobber
+              cmp "$asset_path" "$verify_dir/$asset_name"
+            else
+              gh release upload "$release_tag" "$asset_path"
+            fi
+          done
 
   deploy-api:
-    name: Deploy Workers API (Blue/Green)
+    name: Deploy Workers API (candidate)
     if: needs.publish-device-candidate.outputs.published == 'true'
     needs:
       - publish-device-candidate
@@ -128,7 +154,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-      - name: Run | Upload green Worker version
+      - name: Run | Upload candidate Worker version
         id: upload
         if: steps.prepare.outputs.is_latest == 'true'
         shell: bash
@@ -140,14 +166,8 @@ jobs:
         run: |
           version_tag="main-${DEPLOY_SHA:0:12}"
           echo "version_tag=$version_tag" >> "$GITHUB_OUTPUT"
-          pnpm exec wrangler versions upload src/index.ts \
-            --preview-alias candidate \
-            --tag "$version_tag" \
-            --message "main ${DEPLOY_SHA}" \
-            --minify
-          version_id=$(pnpm exec wrangler versions list --json | jq -er \
-            --arg tag "$version_tag" \
-            'map(select(.annotations["workers/tag"] == $tag)) | sort_by(.metadata.created_on) | last | .id')
+          pnpm exec wrangler versions upload src/index.ts --preview-alias candidate --tag "$version_tag" --message "main ${DEPLOY_SHA}" --minify
+          version_id=$(pnpm exec wrangler versions list --json | jq -er --arg tag "$version_tag" 'map(select(.annotations["workers/tag"] == $tag)) | sort_by(.metadata.created_on) | last | .id')
           echo "version_id=$version_id" >> "$GITHUB_OUTPUT"
 
       - name: Verify | Candidate health
@@ -166,7 +186,7 @@ jobs:
           TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         run: deploy/ci/check-latest-delivery.sh
 
-      - name: Run | Promote green Worker to 100 percent
+      - name: Run | Promote candidate Worker to 100 percent
         id: promote
         if: steps.promote_check.outputs.is_latest == 'true'
         working-directory: packages/api
@@ -201,10 +221,11 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: pnpm exec wrangler triggers deploy
 
-  promote-device-image:
-    name: Promote Raspberry Pi image
+  promote-device-version:
+    name: Promote desired native version
     if: needs.deploy-api.outputs.deployed == 'true'
     needs:
+      - publish-device-candidate
       - deploy-api
     runs-on: ubuntu-latest
     steps:
@@ -213,17 +234,7 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Setup | Log in to GHCR
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup | Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-
-      - name: Verify | Delivery is still current before image promotion
+      - name: Verify | Delivery is still current before desired-version update
         id: latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -232,9 +243,27 @@ jobs:
           TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         run: deploy/ci/check-latest-delivery.sh
 
-      - name: Run | Point main at the tested image
+      - name: Run | Update immutable production manifest
         if: steps.latest.outputs.is_latest == 'true'
         env:
-          IMAGE: ghcr.io/${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: docker buildx imagetools create --tag "$IMAGE:main" "$IMAGE:sha-$DEPLOY_SHA"
+          ARTIFACT_NAME: ${{ needs.publish-device-candidate.outputs.artifact_name }}
+          ARTIFACT_SHA256: ${{ needs.publish-device-candidate.outputs.artifact_sha256 }}
+        run: |
+          set -eu
+          production_tag=production
+          manifest="$RUNNER_TEMP/production-manifest.json"
+          artifact_url="https://github.com/${REPOSITORY}/releases/download/cd-${DEPLOY_SHA}/${ARTIFACT_NAME}"
+          printf '{"commit":"%s","architecture":"aarch64","artifact":"%s","sha256":"%s"}\n' "$DEPLOY_SHA" "$artifact_url" "$ARTIFACT_SHA256" >"$manifest"
+
+          if ! gh release view "$production_tag" >/dev/null 2>&1; then
+            gh release create "$production_tag" --target "$DEPLOY_SHA" --title "room-manager production desired version" --notes "The production manifest is updated only after API promotion."
+          fi
+          gh release upload "$production_tag" "$manifest" --clobber
+
+          verify_dir="$RUNNER_TEMP/production-manifest-verify"
+          mkdir -p "$verify_dir"
+          gh release download "$production_tag" --pattern production-manifest.json --dir "$verify_dir" --clobber
+          cmp "$manifest" "$verify_dir/production-manifest.json"

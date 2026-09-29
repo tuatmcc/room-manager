@@ -2,8 +2,6 @@ name: CI
 on:
   pull_request:
   push:
-    branches:
-      - main
 
 permissions:
   contents: read
@@ -137,11 +135,9 @@ jobs:
 
       - name: Setup | Rust development environment
         uses: ./.github/actions/setup-rust
-        with:
-          apt-packages: libasound2-dev libusb-1.0-0-dev
 
       - name: Run | Build
-        run: cargo build -p room-manager --release --locked
+        run: deploy/ci/build-native-arm64.sh
 
       - name: Upload | Artifacts
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -158,12 +154,12 @@ jobs:
 
       - name: Run | Validate shell syntax
         run: |
-          for script in deploy/ci/*.sh deploy/container/*.sh deploy/podman/*.sh deploy/tests/*.sh; do
+          for script in deploy/ci/*.sh deploy/native/*.sh deploy/tests/*.sh; do
             sh -n "$script"
           done
 
       - name: Run | Lint shell scripts
-        run: shellcheck deploy/ci/*.sh deploy/container/*.sh deploy/podman/*.sh deploy/tests/*.sh
+        run: shellcheck deploy/ci/*.sh deploy/native/*.sh deploy/tests/*.sh
 
       - name: Run | Test deployment scripts
         run: |
