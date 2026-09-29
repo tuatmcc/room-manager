@@ -42,11 +42,11 @@ D1 は Worker version に含まれず rollback されない。このため migra
 
 Repository の Actions secrets に次を登録する。
 
-| Secret                         | Purpose                                                    |
-| ------------------------------ | ---------------------------------------------------------- |
-| `CLOUDFLARE_ACCOUNT_ID`        | Wrangler の account 選択                                   |
-| `CLOUDFLARE_API_TOKEN`         | D1 migration、version upload、deployment、trigger 更新     |
-| `CLOUDFLARE_WORKERS_SUBDOMAIN` | candidate URL の subdomain 部分。`.workers.dev` は含めない |
+| Secret                         | Purpose                                                                                             |
+| ------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `CLOUDFLARE_ACCOUNT_ID`        | Wrangler の account 選択                                                                            |
+| `CLOUDFLARE_API_TOKEN`         | D1 migration、version upload、deployment、trigger 更新                                              |
+| `CLOUDFLARE_WORKERS_SUBDOMAIN` | Worker 名を含む `workers.dev` ホスト名。`.workers.dev` は含めない（例: `room-manager.tuatmcc-com`） |
 
 Workflow の `GITHUB_TOKEN` には `packages: write` だけを追加し、GHCR publish に利用する。GHCR package が private の場合は、Raspberry Pi 用に `read:packages` のみを持つ token を別途発行する。
 
