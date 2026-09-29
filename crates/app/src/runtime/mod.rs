@@ -5,6 +5,9 @@ use room_manager::domain::Card;
 
 pub enum ReaderEvent {
     Ready,
+    // The portable runtime never produces card events, but the Raspberry Pi
+    // runtime uses this variant to forward cards from Pasori reader workers.
+    #[allow(dead_code)]
     Card(Card),
 }
 

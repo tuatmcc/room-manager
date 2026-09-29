@@ -1,3 +1,6 @@
+#![allow(unknown_lints)]
+#![allow(clippy::unused_async_trait_impl)]
+
 use mockall::predicate::*;
 use mockall::*;
 

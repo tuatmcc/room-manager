@@ -38,6 +38,8 @@
 
 - API 側にユースケース、ハンドラ、ユーティリティのテストがある
 - Rust 側に `TouchCardUseCase` 周辺のテストがある
+- `ReaderEvent::Card` は Raspberry Pi runtime でのみ生成され、portable runtime では platform-specific な dead-code lint を抑制している
+- Raspberry Pi の初回 installer は Quadlet サービスを起動するが、実機確認が済むまで更新 timer を有効化しない
 - GitHub Actions で Node / Rust の typecheck, lint, format, test, build が構成済み
 
 ### Continuous Deployment

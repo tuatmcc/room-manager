@@ -122,17 +122,23 @@ ROOM_MANAGER_CUTOVER_TIMEOUT=60
 
 ### 4. Install and verify
 
-設定後に installer を再実行する。これは image を pull して blue/green の両ローカル tag を初期化し、Quadlet 2 系統と更新 timer を有効化する。
+設定後に installer を再実行する。これは image を pull して blue/green の両ローカル tag を初期化し、Quadlet 2 系統を起動する。初回は物理デバイスの確認前に更新されないよう、更新 timer は有効化しない。
 
 ```sh
 sudo ./deploy/podman/install.sh
 sudo systemctl status room-manager-blue.service room-manager-green.service
-sudo systemctl status room-manager-deploy.timer
 sudo /usr/local/libexec/room-manager-blue-green status
 sudo podman ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
 ```
 
 初期状態は `blue` が active、`green` が standby である。カードを 1 回タッチし、API、Discord 通知、音声、解錠、自動施錠までを実機確認する。
+
+実機確認が完了してから更新 timer を有効化する。
+
+```sh
+sudo systemctl enable --now room-manager-deploy.timer
+sudo systemctl status room-manager-deploy.timer
+```
 
 ## Routine operations
 
