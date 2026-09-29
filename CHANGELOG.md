@@ -1,5 +1,19 @@
 # room-manager
 
+## [0.4.0](https://github.com/tuatmcc/room-manager/compare/v0.3.1...v0.4.0) (2026-09-29)
+
+
+### Features
+
+* CDを導入 ([a3c47f6](https://github.com/tuatmcc/room-manager/commit/a3c47f67a6e7c1ceda9d2bda505743e2be2af359))
+* ドアロックのサーボ回転方向を設定可能にする ([#99](https://github.com/tuatmcc/room-manager/issues/99)) ([7dc63be](https://github.com/tuatmcc/room-manager/commit/7dc63be5c42705a00ae1f6fecdc433d0512429da))
+* 旧端末からPodmanへの安全な移行手順を追加 ([#104](https://github.com/tuatmcc/room-manager/issues/104)) ([66907d8](https://github.com/tuatmcc/room-manager/commit/66907d8fac7984fdd3eea2bacf5649900dc45cd5))
+
+
+### Bug Fixes
+
+* Worker候補URLの生成を修正 ([07c2c25](https://github.com/tuatmcc/room-manager/commit/07c2c25a01cdd4b92db87f4adc3d6293ff5a0b6e))
+
 ## [0.3.1](https://github.com/tuatmcc/room-manager/compare/v0.3.0...v0.3.1) (2026-07-21)
 
 
