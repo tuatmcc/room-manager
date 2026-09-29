@@ -30,7 +30,15 @@ jobs:
       - name: Run | Build
         run: cargo build -p room-manager --release --locked
 
+      - name: Run | Create ARM64 native artifact
+        id: artifact
+        run: |
+          commit_sha=$(git rev-parse HEAD)
+          artifact_dir="$RUNNER_TEMP/room-manager-release-artifact"
+          artifact_path=$(deploy/native/create-artifact.sh "$commit_sha" target/release/room-manager "$artifact_dir")
+          echo "artifact_path=$artifact_path" >>"$GITHUB_OUTPUT"
+
       - name: Run | Upload
-        run: gh release upload ${{ inputs.tag_name }} target/release/room-manager
+        run: gh release upload ${{ inputs.tag_name }} target/release/room-manager "${{ steps.artifact.outputs.artifact_path }}" "${{ steps.artifact.outputs.artifact_path }}.sha256"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

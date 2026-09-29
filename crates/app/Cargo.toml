@@ -25,6 +25,7 @@ chrono = "0.4.44"
 thiserror = "2.0.18"
 clap = { version = "4.5.60", features = ["derive", "env"] }
 futures-util = "0.3.32"
+libc = "0.2.172"
 pasori = { path = "../pasori" }
 
 [dev-dependencies]

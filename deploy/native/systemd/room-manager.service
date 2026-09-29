@@ -1,0 +1,25 @@
+[Unit]
+Description=room-manager native Raspberry Pi application
+After=network-online.target sound.target
+Wants=network-online.target
+ConditionPathExists=/opt/room-manager/current/room-manager
+
+[Service]
+Type=notify
+NotifyAccess=main
+EnvironmentFile=/etc/room-manager/app.env
+Environment=TZ=Asia/Tokyo
+WorkingDirectory=/opt/room-manager/current
+ExecStart=/opt/room-manager/current/room-manager
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=180s
+TimeoutStopSec=20s
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

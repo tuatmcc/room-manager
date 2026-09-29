@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for a new room-manager native release
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/room-manager/deploy.env
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/room-manager/deploy.env
+ExecStart=/usr/local/libexec/room-manager-deploy deploy
+TimeoutStartSec=15min

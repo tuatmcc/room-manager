@@ -1,5 +1,5 @@
 [Unit]
-Description=Check room-manager container updates
+Description=Periodically check for room-manager native releases
 
 [Timer]
 OnBootSec=2min
@@ -10,4 +10,3 @@ Unit=room-manager-deploy.service
 
 [Install]
 WantedBy=timers.target
-
