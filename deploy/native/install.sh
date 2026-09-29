@@ -94,6 +94,7 @@ chmod 0644 "$config_dir/deploy.env"
 install -m 0755 "$script_dir/room-manager-deploy.sh" "$libexec_dir/room-manager-deploy"
 install -m 0755 "$script_dir/migrate-legacy.sh" "$libexec_dir/room-manager-migrate-legacy"
 install -m 0644 "$script_dir/systemd/room-manager.service" "$systemd_dir/room-manager.service"
+install -m 0644 "$script_dir/systemd/room-manager-recover.service" "$systemd_dir/room-manager-recover.service"
 install -m 0644 "$script_dir/systemd/room-manager-deploy.service" "$systemd_dir/room-manager-deploy.service"
 install -m 0644 "$script_dir/systemd/room-manager-deploy.timer" "$systemd_dir/room-manager-deploy.timer"
 
@@ -112,6 +113,8 @@ fi
 
 # The first install activates the app once so the operator can verify the
 # physical reader, audio, GPIO, and lock before enabling periodic pulls.
+systemctl enable room-manager-recover.service
+systemctl start room-manager-recover.service
 systemctl start room-manager-deploy.service
 systemctl enable room-manager.service
 echo "native room-manager is installed and ready; enable room-manager-deploy.timer after hardware verification"

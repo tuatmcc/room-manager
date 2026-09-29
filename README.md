@@ -50,4 +50,4 @@ cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN>
 
 非 Raspberry Pi 環境では Rust アプリは Noop runtime で起動し、カードイベントは発生しません。
 
-本番 Raspberry Pi では ARM64 native binary を versioned release directory へ配置し、`room-manager.service` から直接起動します。端末は systemd timer で desired-version manifest を pull し、readiness 失敗時は直前の正常 release へ戻します。API は Cloudflare Workers のまま、version upload と candidate health check を経由して配布します。
+本番 Raspberry Pi では ARM64 native binary を versioned release directory へ配置し、`room-manager.service` から直接起動します。ARM64 artifact は GitHub Actions 上の Debian Bookworm build environment で生成し、端末は systemd timer で desired-version manifest を pull します。activation は pending state を持ち、boot 時に未確認 release を起動する前に直前の正常 release へ戻します。API は Cloudflare Workers のまま、version upload と candidate health check を経由して配布します。

@@ -76,6 +76,11 @@
 理由:
 スキーマが先、Worker コードが後でないと、本番トラフィックと DB の整合が崩れる。D1 は rollback されないため migration は expand/contract 方式にする。
 
+ARM64 artifact は `ubuntu-24.04-arm` 上の Debian Bookworm build container で
+`deploy/ci/build-native-arm64.sh` を通して生成する。CI の ARM64 build、CD candidate、
+通常の release はこの同じ経路を使用し、Bookworm 内で architecture、dynamic link、
+glibc symbol、`room-manager --help` を検証する。container は本番端末には導入しない。
+
 GitHub secrets、candidate URL、rollback は `docs/DEPLOYMENT.md` を参照する。
 
 ## Raspberry Pi Operations
@@ -130,4 +135,7 @@ GitHub secrets、candidate URL、rollback は `docs/DEPLOYMENT.md` を参照す�
 - CI では Node と Rust の lint / format / test / build が走る
 - CD workflow は CI 成功後、ARM64 native artifact、Workers API candidate、production desired-version manifest の順に処理する
 - Raspberry Pi は 5 分周期で manifest と SHA 固有 archive を pull し、release directory と atomic symlink を更新する
+- activation は `pending-sha` を先に永続化し、`room-manager-recover.service` が boot 時に未確認 candidate を起動する前に last-successful release へ戻す。READY 後に pending を解消する
+- `room-manager.service` の `TimeoutStartSec=120s` が readiness timeout の正本であり、controller の `systemctl restart` はその結果を使って rollback/quarantine を判断する
+- CI は pull request と全 branch push で検証できるが、CD は main の CI success のみを契機とする
 - release workflow は通常の GitHub Release に ARM64 binary と archive を載せるが、本番 desired version の更新は行わない

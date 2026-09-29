@@ -33,7 +33,7 @@ case "$tool" in
         mkdir -p "$ROOM_MANAGER_MIGRATION_ROOT/var/lib/room-manager-deploy"
         printf '%s\n' bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb >"$ROOM_MANAGER_MIGRATION_ROOT/var/lib/room-manager-deploy/prepared-sha"
         mkdir -p "$ROOM_MANAGER_SYSTEMD_DIR"
-        for unit in room-manager.service room-manager-deploy.service room-manager-deploy.timer; do
+        for unit in room-manager.service room-manager-recover.service room-manager-deploy.service room-manager-deploy.timer; do
             touch "$ROOM_MANAGER_SYSTEMD_DIR/$unit"
         done
         touch "$data/installed"
@@ -73,7 +73,7 @@ case "$tool" in
                             room-manager.service)
                                 if [ -f "$data/same-legacy" ] || [ -f "$data/installed" ]; then echo loaded; else echo not-found; fi
                                 ;;
-                            room-manager-deploy.service|room-manager-deploy.timer)
+                            room-manager-recover.service|room-manager-deploy.service|room-manager-deploy.timer)
                                 if [ -f "$data/installed" ]; then echo loaded; else echo not-found; fi
                                 ;;
                             *) echo not-found ;;
@@ -113,7 +113,7 @@ case "$tool" in
                                 [ ! -f "$ROOM_MANAGER_MIGRATION_ROOT/etc/systemd/system/room-manager.service.d/90-room-manager-migration.conf" ]
                             printf '%s\n' active >"$data/room-manager.service"
                             ;;
-                        room-manager-deploy.service|room-manager-deploy.timer)
+                        room-manager-recover.service|room-manager-deploy.service|room-manager-deploy.timer)
                             [ ! -f "$state/block-new" ]
                             printf '%s\n' active >"$data/$unit"
                             ;;
@@ -124,7 +124,7 @@ case "$tool" in
                 shift
                 for unit do
                     case "$unit" in
-                        legacy.service|room-manager.service|room-manager-deploy.service|room-manager-deploy.timer)
+                        legacy.service|room-manager.service|room-manager-recover.service|room-manager-deploy.service|room-manager-deploy.timer)
                             printf '%s\n' inactive >"$data/$unit"
                             ;;
                     esac
@@ -147,7 +147,6 @@ done
 export PATH="$mock_bin:$PATH"
 export ROOM_MANAGER_MIGRATION_INSTALLER="$mock_bin/installer"
 export ROOM_MANAGER_MIGRATION_CONTROLLER="$mock_bin/controller"
-export ROOM_MANAGER_MIGRATION_TIMEOUT=1
 
 setup() {
     name=$1

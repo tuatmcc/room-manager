@@ -35,6 +35,18 @@ manifest.json には少なくとも commit と architecture=aarch64 を含める
 
 端末は manifest の commit、architecture、archive SHA-256 を検証し、archive 内の SHA256SUMS と binary の checksum も検証する。artifact URL は SHA 固有の Release を指すため、可変な main tag の binary を直接実行しない。
 
+ARM64 artifact の build は、`ubuntu-24.04-arm` runner 上で
+`deploy/ci/build-native-arm64.sh` を実行し、`rust-toolchain.toml` と同じ Rust
+version の `rust:<version>-bookworm` ARM64 container 内で行う。CD、CI の ARM64
+build、通常の release はこの経路を共通利用する。container は GitHub Actions の
+build environment に限り、本番端末へは導入しない。
+
+build script は Bookworm 内で `file`、`readelf`、`ldd` により AArch64、動的
+library 解決、`libasound.so.2`、`libusb-1.0.so.0`、glibc symbol（Debian 12 の
+glibc 2.36 以下）を確認し、hardware initialization を行わない `room-manager
+--help` も実行する。build dependency は container 内の `*-dev` package、端末の
+runtime dependency は `libasound2` / `libusb-1.0-0` として分離する。
+
 production-manifest.json は tag production の GitHub Release asset として公開する。端末の既定 URL は次である。
 
     https://github.com/tuatmcc/room-manager/releases/download/production/production-manifest.json
@@ -60,6 +72,7 @@ current と previous は release directory を指す symlink である。release
 
     /var/lib/room-manager-deploy/desired-manifest.json
     /var/lib/room-manager-deploy/last-successful-sha
+    /var/lib/room-manager-deploy/pending-sha
     /var/lib/room-manager-deploy/failed-sha
     /var/lib/room-manager-deploy/prepared-sha
 
@@ -75,7 +88,22 @@ room-manager.service は Type=notify である。アプリは次の初期化を�
 - Pasori reader
 - GPIO door lock
 
-Pasori が未接続の場合はアプリが reader の再接続を待つが、READY にはならない。deploy controller は systemctl is-active が readiness を反映するまで待ち、プロセスが存在するだけでは成功と判定しない。
+Pasori が未接続の場合はアプリが reader の再接続を待つが、READY にはならない。
+`room-manager.service` の `TimeoutStartSec=120s` が readiness timeout の正本であり、
+`systemctl restart room-manager.service` は Type=notify の READY または systemd の
+timeout を同期的に待つ。`room-manager-deploy.service` の `15min` は controller
+全体のハングを防ぐ上限であり、app readiness の判定には使わない。controller に
+別の readiness timeout は持たせない。
+
+activation 開始時には `pending-sha` を atomic に記録する。systemd の
+`room-manager-recover.service` は `room-manager.service` より前に実行され、boot 前に
+未確認の `current` を起動しない。`current` が pending の場合は、検証済みの
+`last-successful-sha` へ symlink を戻し、candidate SHA を failed-sha に残す。
+通常の activation は controller が同期 `systemctl restart` の成功後に
+`last-successful-sha` を更新して pending を解消する。boot recovery 後の rollback
+では app service が READY になった時だけ `ExecStartPost` が pending を解消する。
+rollback target 自体が確認できない場合は pending と failed の両方を残し、service
+起動を失敗させて operator に引き継ぐ。
 
 ## 初回セットアップ
 
@@ -109,7 +137,6 @@ app.env の必須値:
 deploy.env の主な値:
 
     ROOM_MANAGER_MANIFEST_URL=https://github.com/tuatmcc/room-manager/releases/download/production/production-manifest.json
-    ROOM_MANAGER_CUTOVER_TIMEOUT=120
     ROOM_MANAGER_RELEASE_KEEP=5
 
 installer は次を作成する。
@@ -119,10 +146,11 @@ installer は次を作成する。
 - /var/lib/room-manager-deploy
 - /usr/local/libexec/room-manager-deploy
 - room-manager.service
+- room-manager-recover.service
 - room-manager-deploy.service
 - room-manager-deploy.timer
 
-通常の installer は production manifest を取得して room-manager.service を一度起動する。timer は自動では有効にしない。カード、API、Discord 通知、音声、解錠、施錠を実機確認してから有効化する。
+通常の installer は recovery service を先に有効化してから production manifest を取得し、room-manager.service を一度起動する。timer は自動では有効にしない。カード、API、Discord 通知、音声、解錠、施錠を実機確認してから有効化する。
 
     sudo systemctl status room-manager.service
     sudo systemctl enable --now room-manager-deploy.timer
@@ -175,11 +203,19 @@ rollback が recovery-required になった場合は /var/lib/room-manager-migra
     sudo readlink /opt/room-manager/previous
     sudo journalctl -u room-manager.service -n 100 --no-pager
 
-手動 rollback は current と previous を交換し、service restart と readiness 確認まで行う。
+手動 rollback も current と previous を交換する前に pending-sha を記録し、service
+restart と readiness 確認に成功してから last-successful-sha を更新し、pending-sha を
+削除する。失敗時は failed-sha と pending-sha を確認して operator が判断する。
 
     sudo /usr/local/libexec/room-manager-deploy rollback
 
-新 release が readiness に失敗すると、failed-sha に SHA を記録し、current を直前の正常 release へ戻して service を再起動する。rollback も失敗した場合は current は旧 release を指した状態で停止し、明確なエラーを journal に残す。
+新 release が readiness に失敗すると、failed-sha に SHA を記録し、current を直前の正常 release へ戻して service を再起動する。rollback も失敗した場合は current は旧 release を指した状態で停止し、pending-sha と failed-sha を残して明確なエラーを journal に残す。
+
+activation 中に電源断した場合は、次回 boot の `room-manager-recover.service` が
+`pending-sha` と `last-successful-sha` を確認する。`current` が candidate を指して
+いても、candidate を起動せずに last-successful release へ戻してから
+`room-manager.service` を起動する。candidate が READY になる前の pending は failed-sha
+として保持し、同じ SHA を timer が再試行しない。
 
 failed-sha と desired commit が同じ間は timer が再試行しない。次の commit が production manifest に指定されると通常更新に戻る。調査後に同じ SHA を意図的に再試行する場合だけ、管理者が failed-sha を削除して service を再実行する。
 
@@ -187,7 +223,7 @@ failed-sha と desired commit が同じ間は timer が再試行しない。次�
     sudo rm -f /var/lib/room-manager-deploy/failed-sha
     sudo systemctl start room-manager-deploy.timer
 
-release cleanup は最新5件を基本にする。ただし current、previous、failed-sha、last-successful-sha が指す release は削除しない。cleanup の失敗は deployment の成否に影響させない。
+release cleanup は最新5件を基本にする。ただし current、previous、pending-sha、failed-sha、last-successful-sha が指す release は削除しない。cleanup の失敗は deployment の成否に影響させない。
 
 ## API deployment と rollback
 
@@ -208,6 +244,10 @@ API candidate health または promotion が失敗した場合、production mani
 ## GitHub Actions の設定
 
 Repository の Branch protection で main の CI を必須にする。CD は CI の workflow_run が success の場合だけ開始し、次の境界で対象 SHA と最新 CI run を再検証する。
+
+CI workflow 自体は `pull_request` と全 branch の `push` で実行できる。feature branch の
+push は検証だけを行い、CD workflow は従来通り main の CI success を契機にするため、
+feature branch から production manifest が更新されることはない。
 
 - candidate artifact の作成・公開前
 - API preparation 前
@@ -231,6 +271,7 @@ GITHUB_TOKEN は workflow の contents: write と actions: read を使う。pack
 - archive checksum 失敗: release asset を実行せず、staging を破棄する
 - artifact 内 checksum/manifest 失敗: SHA 固有 artifact を隔離し、failed-sha にはまだ記録しない
 - service readiness 失敗: journalctl -u room-manager.service を確認し、controller の自動 rollback を確認する
+- boot recovery failure: `systemctl status room-manager-recover.service` と `pending-sha`、`failed-sha`、`last-successful-sha` を保存して operator 判断に回す
 - rollback 失敗: timer を止め、current、previous、failed-sha と service の状態を保全して実機管理者へ引き継ぐ
 - API health 失敗: Workers の traffic は変更されず、端末 desired version も進まない
 - API promote 後の latest check 失敗: API はその時点で昇格済みになり得るが、古い CD は端末 desired version を更新しない。新しい CI delivery を待つ
@@ -245,6 +286,8 @@ CI と shell test が確認するもの:
 - readiness failure の自動 rollback
 - failed SHA の反復適用防止
 - 次 SHA による復旧
+- pending marker の atomic 記録と boot 前 rollback
+- service restart 前、restart 中、rollback target failure 後の電源断状態
 - 手動 rollback と rollback failure
 - timer/manual 操作の lock 排他
 - 旧 native service migration の block marker と復旧
@@ -256,4 +299,5 @@ Raspberry Pi 実機で確認するもの:
 - ALSA 音声出力
 - API と Discord の実際の通知
 - 電源断後の systemd 起動、release cleanup、物理デバイス権限
+- Debian Bookworm build と `room-manager --help` は CI で確認するが、実機での systemd boot ordering と電源断復旧は別途確認する
 - 新 version failure 時に二重の room-manager プロセスや二重の物理操作がないこと

@@ -1,0 +1,12 @@
+[Unit]
+Description=Recover interrupted room-manager activation before startup
+After=local-fs.target
+Before=room-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/room-manager-deploy recover
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

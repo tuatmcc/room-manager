@@ -18,13 +18,13 @@ staging_root=$install_root/.staging
 service_name=${ROOM_MANAGER_SERVICE:-room-manager.service}
 manifest_url=${ROOM_MANAGER_MANIFEST_URL:-}
 deployment_lock=${ROOM_MANAGER_DEPLOY_LOCK:-/run/room-manager-deploy.lock}
-cutover_timeout=${ROOM_MANAGER_CUTOVER_TIMEOUT:-120}
 release_keep=${ROOM_MANAGER_RELEASE_KEEP:-5}
 lock_held=${ROOM_MANAGER_DEPLOY_LOCK_HELD:-false}
 action=${1:-deploy}
 
 failed_sha_file=$state_dir/failed-sha
 last_successful_sha_file=$state_dir/last-successful-sha
+pending_sha_file=$state_dir/pending-sha
 prepared_sha_file=$state_dir/prepared-sha
 manifest_file=$state_dir/desired-manifest.json
 current_link=$install_root/current
@@ -69,13 +69,6 @@ is_sha256() {
     case "$value" in
         *[!0123456789abcdef]*|'') return 1 ;;
     esac
-}
-
-validate_positive_integer() {
-    case "$1" in
-        ''|*[!0-9]*) return 1 ;;
-    esac
-    [ "$1" -gt 0 ]
 }
 
 require_command() {
@@ -192,12 +185,24 @@ record_successful_sha() {
     atomic_state "$last_successful_sha_file" "$1"
 }
 
+record_pending_sha() {
+    atomic_state "$pending_sha_file" "$1"
+}
+
+remove_pending_sha() {
+    rm -f -- "$pending_sha_file"
+}
+
 failed_sha_is() {
     [ -r "$failed_sha_file" ] && [ "$(sed -n '1p' "$failed_sha_file")" = "$1" ]
 }
 
 last_successful_sha() {
     sed -n '1p' "$last_successful_sha_file" 2>/dev/null || true
+}
+
+pending_sha() {
+    sed -n '1p' "$pending_sha_file" 2>/dev/null || true
 }
 
 download_file() {
@@ -266,25 +271,11 @@ service_ready() {
     systemctl is-active --quiet "$service_name"
 }
 
-wait_ready() {
-    deadline=$(( $(date +%s) + cutover_timeout ))
-    while :; do
-        if service_ready; then
-            return 0
-        fi
-        if systemctl is-failed --quiet "$service_name"; then
-            return 1
-        fi
-        [ "$(date +%s)" -lt "$deadline" ] || return 1
-        sleep 1
-    done
-}
-
 restart_and_wait() {
     if ! systemctl restart "$service_name"; then
         return 1
     fi
-    wait_ready
+    service_ready
 }
 
 restore_previous_layout() {
@@ -306,6 +297,7 @@ activate_release() {
     old_current=$1
     old_previous=$2
 
+    record_pending_sha "$desired_sha"
     if [ -n "$old_current" ]; then
         atomic_link "$previous_link" "$old_current"
     fi
@@ -314,6 +306,7 @@ activate_release() {
     if restart_and_wait; then
         record_successful_sha "$desired_sha"
         remove_failed_sha
+        remove_pending_sha
         rm -f -- "$prepared_sha_file"
         log "deployment succeeded: current=$desired_sha"
         return 0
@@ -323,6 +316,7 @@ activate_release() {
     log "new release failed readiness: $desired_sha"
     restore_previous_layout "$old_current" "$old_previous"
     if [ -n "$old_current" ] && restart_and_wait; then
+        remove_pending_sha
         record_successful_sha "$old_current"
         log "rollback succeeded: current=$old_current"
     else
@@ -375,6 +369,7 @@ cleanup_releases() {
     previous=$(read_previous_sha 2>/dev/null || true)
     failed=$(sed -n '1p' "$failed_sha_file" 2>/dev/null || true)
     successful=$(sed -n '1p' "$last_successful_sha_file" 2>/dev/null || true)
+    pending=$(pending_sha)
     count=0
     find "$releases_dir" -mindepth 1 -maxdepth 1 -type d -name '????????????????????????????????????????' \
         -printf '%T@ %f\n' 2>/dev/null |
@@ -386,6 +381,7 @@ cleanup_releases() {
             [ "$sha" = "$previous" ] && protected=true
             [ "$sha" = "$failed" ] && protected=true
             [ "$sha" = "$successful" ] && protected=true
+            [ "$sha" = "$pending" ] && protected=true
             if [ "$protected" = true ] || [ "$count" -lt "$release_keep" ]; then
                 count=$((count + 1))
             else
@@ -410,10 +406,83 @@ status() {
     previous=$(read_previous_sha 2>/dev/null || true)
     failed=$(sed -n '1p' "$failed_sha_file" 2>/dev/null || true)
     successful=$(sed -n '1p' "$last_successful_sha_file" 2>/dev/null || true)
+    pending=$(pending_sha)
     printf 'current=%s\n' "${current:-none}"
     printf 'previous=%s\n' "${previous:-none}"
     printf 'last-successful=%s\n' "${successful:-none}"
     printf 'failed=%s\n' "${failed:-none}"
+    printf 'pending=%s\n' "${pending:-none}"
+}
+
+confirm_activation() {
+    pending=$(pending_sha)
+    [ -n "$pending" ] || return 0
+    is_sha "$pending" || die "pending activation SHA is invalid: $pending"
+
+    current=$(read_current_sha 2>/dev/null || true)
+    successful=$(last_successful_sha)
+    if [ "$current" = "$pending" ]; then
+        [ "$successful" = "$pending" ] ||
+            die "pending release is active before last-successful confirmation: $pending"
+        remove_failed_sha
+        remove_pending_sha
+        log "confirmed successful activation from systemd: current=$current"
+        return 0
+    fi
+
+    if [ -n "$current" ] && [ "$current" = "$successful" ]; then
+        remove_pending_sha
+        log "confirmed rollback release from systemd: current=$current"
+        return 0
+    fi
+
+    die "pending activation is not in a confirmable state: pending=$pending current=${current:-none} last-successful=${successful:-none}"
+}
+
+recover_boot() {
+    pending=$(pending_sha)
+    if [ -z "$pending" ]; then
+        log 'no pending activation; boot recovery is complete'
+        return 0
+    fi
+    is_sha "$pending" || die "pending activation SHA is invalid: $pending"
+
+    current=$(read_current_sha 2>/dev/null || true)
+    successful=$(last_successful_sha)
+
+    if [ "$current" = "$pending" ] && [ "$successful" = "$pending" ]; then
+        remove_failed_sha
+        remove_pending_sha
+        log "completed interrupted pending cleanup: current=$current"
+        return 0
+    fi
+
+    if [ "$current" = "$pending" ] || [ -z "$current" ]; then
+        is_sha "$successful" ||
+            die 'pending activation has no valid last-successful release'
+        verify_release_identity "$releases_dir/$successful" "$successful" ||
+            die "last-successful release is invalid: $successful"
+
+        if [ -n "$current" ]; then
+            atomic_link "$previous_link" "$current"
+        fi
+        atomic_link "$current_link" "$successful"
+        record_failed_sha "$pending"
+        log "boot recovery selected last-successful release: current=$successful pending=$pending"
+        return 0
+    fi
+
+    if [ "$current" = "$successful" ]; then
+        if failed_sha_is "$pending"; then
+            log "ERROR: rollback readiness was not confirmed; pending=$pending current=$current"
+            return 1
+        fi
+        remove_pending_sha
+        log "cleared pending marker before cutover: current=$current"
+        return 0
+    fi
+
+    die "cannot recover pending activation: pending=$pending current=${current:-none} last-successful=${successful:-none}"
 }
 
 deploy() {
@@ -506,17 +575,22 @@ rollback() {
     [ -n "$previous" ] || die "previous release is not available"
     failed_sha_is "$previous" && die "previous release is quarantined: $previous"
 
+    record_pending_sha "$previous"
     atomic_link "$previous_link" "$current"
     atomic_link "$current_link" "$previous"
     if restart_and_wait; then
         record_successful_sha "$previous"
+        remove_pending_sha
         log "manual rollback succeeded: current=$previous"
         cleanup_releases
         return 0
     fi
 
+    record_failed_sha "$previous"
     restore_previous_layout "$current" "$previous"
     if restart_and_wait; then
+        record_successful_sha "$current"
+        remove_pending_sha
         log "manual rollback failed; restored current=$current"
     else
         log "ERROR: manual rollback and restoration both failed"
@@ -535,7 +609,6 @@ require_command sort
 require_command awk
 require_command sed
 require_command grep
-validate_positive_integer "$cutover_timeout" || die "ROOM_MANAGER_CUTOVER_TIMEOUT must be positive"
 
 acquire_lock
 case "$action" in
@@ -551,8 +624,14 @@ case "$action" in
     rollback)
         rollback
         ;;
+    recover)
+        recover_boot
+        ;;
+    confirm)
+        confirm_activation
+        ;;
     *)
-        echo "usage: $0 [prepare|deploy|status|rollback]" >&2
+        echo "usage: $0 [prepare|deploy|status|rollback|recover|confirm]" >&2
         exit 64
         ;;
 esac

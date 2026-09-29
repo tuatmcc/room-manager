@@ -24,11 +24,9 @@ jobs:
 
       - name: Setup | Rust development environment
         uses: ./.github/actions/setup-rust
-        with:
-          apt-packages: libasound2-dev libusb-1.0-0-dev
 
       - name: Run | Build
-        run: cargo build -p room-manager --release --locked
+        run: deploy/ci/build-native-arm64.sh
 
       - name: Run | Create ARM64 native artifact
         id: artifact

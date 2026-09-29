@@ -113,7 +113,6 @@ run_controller() {
         ROOM_MANAGER_STATE_DIR="$test_dir/var/lib/room-manager-deploy" \
         ROOM_MANAGER_INSTALL_ROOT="$test_dir/opt/room-manager" \
         ROOM_MANAGER_DEPLOY_LOCK="$test_dir/run/room-manager-deploy.lock" \
-        ROOM_MANAGER_CUTOVER_TIMEOUT=2 \
         "$controller" "$@"
 }
 
@@ -127,6 +126,7 @@ run_controller deploy
 [ "$(readlink "$test_dir/opt/room-manager/current")" = "releases/$sha_b" ]
 [ "$(readlink "$test_dir/opt/room-manager/previous")" = "releases/$sha_a" ]
 [ "$(cat "$mock_state/service")" = active ]
+[ ! -e "$test_dir/var/lib/room-manager-deploy/pending-sha" ]
 
 printf '%s\n' "$sha_a" >"$test_dir/var/lib/room-manager-deploy/last-successful-sha"
 restart_count=$(wc -l <"$mock_state/log")
@@ -145,6 +145,7 @@ if run_controller deploy; then
 fi
 [ "$(readlink "$test_dir/opt/room-manager/current")" = "releases/$sha_b" ]
 [ "$(cat "$test_dir/var/lib/room-manager-deploy/failed-sha")" = "$sha_c" ]
+[ ! -e "$test_dir/var/lib/room-manager-deploy/pending-sha" ]
 
 restart_count=$(wc -l <"$mock_state/log")
 if run_controller deploy; then
@@ -158,9 +159,11 @@ run_controller deploy
 [ "$(readlink "$test_dir/opt/room-manager/current")" = "releases/$sha_d" ]
 [ ! -e "$test_dir/var/lib/room-manager-deploy/failed-sha" ]
 
+printf '%s\n' "$sha_d" >"$test_dir/var/lib/room-manager-deploy/pending-sha"
 run_controller rollback
 [ "$(readlink "$test_dir/opt/room-manager/current")" = "releases/$sha_b" ]
 [ "$(readlink "$test_dir/opt/room-manager/previous")" = "releases/$sha_d" ]
+[ ! -e "$test_dir/var/lib/room-manager-deploy/pending-sha" ]
 
 touch "$mock_state/fail-next"
 if run_controller rollback; then
@@ -168,6 +171,8 @@ if run_controller rollback; then
     exit 1
 fi
 [ "$(readlink "$test_dir/opt/room-manager/current")" = "releases/$sha_b" ]
+[ "$(cat "$test_dir/var/lib/room-manager-deploy/failed-sha")" = "$sha_d" ]
+[ ! -e "$test_dir/var/lib/room-manager-deploy/pending-sha" ]
 
 # Simulate a power loss after a failed cutover recorded the quarantine marker
 # but before the controller restored the previous symlinks.
@@ -193,6 +198,46 @@ if run_controller deploy; then
     exit 1
 fi
 [ "$(wc -l <"$mock_state/log")" -eq "$restart_count" ]
+
+# Power loss before the service restart: current is still the last-successful
+# release, so boot recovery clears the intent without starting the candidate.
+rm -f "$test_dir/var/lib/room-manager-deploy/failed-sha"
+printf '%s\n' "$sha_d" >"$test_dir/var/lib/room-manager-deploy/pending-sha"
+printf '%s\n' "$sha_b" >"$test_dir/var/lib/room-manager-deploy/last-successful-sha"
+restart_count=$(wc -l <"$mock_state/log")
+run_controller recover
+[ "$(readlink "$test_dir/opt/room-manager/current")" = "releases/$sha_b" ]
+[ ! -e "$test_dir/var/lib/room-manager-deploy/pending-sha" ]
+[ "$(wc -l <"$mock_state/log")" -eq "$restart_count" ]
+
+# Power loss while the candidate was current: recovery must switch the
+# application back before room-manager.service can be started.
+rm -f "$test_dir/opt/room-manager/current" "$test_dir/opt/room-manager/previous"
+ln -s "releases/$sha_d" "$test_dir/opt/room-manager/current"
+ln -s "releases/$sha_b" "$test_dir/opt/room-manager/previous"
+printf '%s\n' "$sha_d" >"$test_dir/var/lib/room-manager-deploy/pending-sha"
+printf '%s\n' "$sha_b" >"$test_dir/var/lib/room-manager-deploy/last-successful-sha"
+restart_count=$(wc -l <"$mock_state/log")
+run_controller recover
+[ "$(readlink "$test_dir/opt/room-manager/current")" = "releases/$sha_b" ]
+[ "$(readlink "$test_dir/opt/room-manager/previous")" = "releases/$sha_d" ]
+[ "$(cat "$test_dir/var/lib/room-manager-deploy/failed-sha")" = "$sha_d" ]
+[ "$(cat "$test_dir/var/lib/room-manager-deploy/pending-sha")" = "$sha_d" ]
+[ "$(wc -l <"$mock_state/log")" -eq "$restart_count" ]
+run_controller confirm
+[ ! -e "$test_dir/var/lib/room-manager-deploy/pending-sha" ]
+[ "$(cat "$test_dir/var/lib/room-manager-deploy/failed-sha")" = "$sha_d" ]
+
+# If the rollback target itself was not confirmed, recovery must leave the
+# pending and failed state visible for an operator.
+printf '%s\n' "$sha_d" >"$test_dir/var/lib/room-manager-deploy/pending-sha"
+printf '%s\n' failed >"$mock_state/service"
+if run_controller recover; then
+    echo 'expected unresolved rollback recovery to fail' >&2
+    exit 1
+fi
+[ "$(cat "$test_dir/var/lib/room-manager-deploy/pending-sha")" = "$sha_d" ]
+[ "$(cat "$test_dir/var/lib/room-manager-deploy/failed-sha")" = "$sha_d" ]
 
 (
     exec 9>"$test_dir/run/room-manager-deploy.lock"

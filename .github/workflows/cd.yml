@@ -69,12 +69,10 @@ jobs:
       - name: Setup | Rust development environment
         if: steps.latest.outputs.is_latest == 'true'
         uses: ./.github/actions/setup-rust
-        with:
-          apt-packages: libasound2-dev libusb-1.0-0-dev
 
       - name: Run | Build ARM64 native binary
         if: steps.latest.outputs.is_latest == 'true'
-        run: cargo build -p room-manager --release --locked
+        run: deploy/ci/build-native-arm64.sh
 
       - name: Run | Create immutable native artifact
         id: artifact

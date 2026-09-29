@@ -41,6 +41,7 @@
 - `ReaderEvent::Card` は Raspberry Pi runtime でのみ生成され、portable runtime では platform-specific な dead-code lint を抑制している
 - Raspberry Pi の初回 installer は native systemd service を起動するが、実機確認が済むまで更新 timer を有効化しない
 - GitHub Actions で Node / Rust の typecheck, lint, format, test, build が構成済み
+- ARM64 artifact は `ubuntu-24.04-arm` 上の Debian Bookworm build container で生成し、CI、CD、release の build 経路を統一している。AArch64、dynamic link、glibc symbol、`room-manager --help` の検証を build script に含める
 
 ### Continuous Deployment
 
@@ -49,6 +50,8 @@
 - Raspberry Pi 用 ARM64 native archive は commit SHA 固有の GitHub Release へ publish される
 - API promote 成功後だけ GitHub Release の production manifest が更新され、端末はそれを pull して versioned release directory と atomic symlink を更新する
 - Raspberry Pi 側は単一の `room-manager.service`、systemd readiness、automatic rollback、failed SHA quarantine、共有 deploy lock で更新される
+- activation は `pending-sha` を先に永続化し、`room-manager-recover.service` が boot 時に未確認 candidate を起動する前に last-successful release へ戻す。READY 後に pending を解消し、rollback target failure 時は pending/failed state を残す
+- readiness timeout は `room-manager.service` の `TimeoutStartSec=120s` に一本化している
 - 初期構築、秘密情報、監視、手動 rollback は `docs/DEPLOYMENT.md` に記載済み
 - `deploy/native/migrate-legacy.sh` は明示した旧 native systemd サービスからの初回移行に対応し、旧系停止前の artifact 準備、再起動を跨ぐ起動抑止、readiness失敗時の旧系復旧、実機確認後の timer 有効化を行う。旧バイナリ・設定は変更しない
 
@@ -62,6 +65,7 @@
 - 学生証 / Suica 読取は固定オフセットのバイト解析に依存する
 - Pasori の自動再接続は CI で論理部分を検証できるが、USB 抜き差しと複数台同時利用は Raspberry Pi 実機確認が必要
 - native service は systemd の stop/start と readiness 通知で切り替え中の同時実行を防ぎ、少なくとも1台のPasori初期化後に READY になる
+- feature branch push でも CI を実行するが、CD workflow は main の CI success のみを受け付ける
 - D1 migration は Worker version と一緒に rollback できないため、expand/contract 方式が必要
 
 ## Known Risks

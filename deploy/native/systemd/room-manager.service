@@ -1,7 +1,8 @@
 [Unit]
 Description=room-manager native Raspberry Pi application
-After=network-online.target sound.target
+After=network-online.target sound.target room-manager-recover.service
 Wants=network-online.target
+Requires=room-manager-recover.service
 ConditionPathExists=/opt/room-manager/current/room-manager
 
 [Service]
@@ -11,9 +12,10 @@ EnvironmentFile=/etc/room-manager/app.env
 Environment=TZ=Asia/Tokyo
 WorkingDirectory=/opt/room-manager/current
 ExecStart=/opt/room-manager/current/room-manager
+ExecStartPost=/usr/local/libexec/room-manager-deploy confirm
 Restart=on-failure
 RestartSec=5s
-TimeoutStartSec=180s
+TimeoutStartSec=120s
 TimeoutStopSec=20s
 KillMode=control-group
 NoNewPrivileges=true

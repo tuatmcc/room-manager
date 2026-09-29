@@ -15,6 +15,7 @@
 - `crates/pasori`: Pasori / FeliCa ライブラリ
 - `packages/api`: Cloudflare Workers API
 - `.github/workflows`: CI / release
+- `deploy/ci`: Debian Bookworm ARM64 build and artifact verification script
 - `deploy/native`: ARM64 artifact、native deploy controller、installer、systemd unit
 - `deploy/tests`: CD と native migration の shell test
 
@@ -190,13 +191,16 @@
 ### Continuous Delivery and native rollback
 
 - `main` の CI 成功を起点に、検証済み SHA から Workers version と ARM64 native archive を生成する
+- ARM64 artifact は `ubuntu-24.04-arm` runner 上の `rust:<version>-bookworm` build container で生成し、`file`、`readelf`、`ldd`、glibc symbol、`room-manager --help` を確認する。CD、CI artifact build、release は同じ `deploy/ci/build-native-arm64.sh` を使う
 - candidate artifact、API preparation、API promotion、production manifest 更新の各境界で現在の `main` HEAD と最新 CI run を再検証する
 - Workers は candidate URL の D1/KV health check 後に 100% promote する
 - API promote 成功後だけ、GitHub Release の production manifest を新 SHA に更新する
 - 端末は manifest の SHA 固有 artifact を取得し、`/opt/room-manager/releases/<sha>` に完全配置する
 - `current` と `previous` は atomic な symlink 切替で管理し、実行中 binary は上書きしない
-- `room-manager.service` は `Type=notify` の単一 systemd service であり、READY 通知は API、音声、GPIO、少なくとも1台の Pasori reader の初期化後に送る
-- readiness 失敗時は current を previous へ戻して service を再起動し、失敗 SHA を隔離する。同じ SHA の timer 再試行は行わない
+- activation 開始時は `/var/lib/room-manager-deploy/pending-sha` を atomic に記録し、成功後に `last-successful-sha` を更新してから削除する
+- `room-manager-recover.service` は boot 時に `room-manager.service` より先に pending activation を検査し、未確認 candidate を起動する前に `last-successful-sha` へ current を戻す
+- `room-manager.service` は `Type=notify` の単一 systemd service であり、READY 通知は API、音声、GPIO、少なくとも1台の Pasori reader の初期化後に送る。`TimeoutStartSec=120s` が readiness timeout の正本である
+- readiness 失敗時は current を previous へ戻して service を再起動し、失敗 SHA を隔離する。同じ SHA の timer 再試行は行わない。rollback target も失敗した場合は pending と failed state を残す
 - deploy controller、timer、manual rollback、legacy migration は同じ flock を使い、物理デバイスを扱うプロセスの同時起動を防ぐ
 - 旧 native service からの移行は永続 marker と systemd drop-in を使い、旧 service を停止してから新 service の readiness を確認する。旧 binary と設定は削除しない
 - 詳細と障害対応は `docs/DEPLOYMENT.md` を正本とする

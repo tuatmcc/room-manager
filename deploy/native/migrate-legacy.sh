@@ -23,7 +23,7 @@ lock_path=$root/run/room-manager-deploy.lock
 script_dir=$(unset CDPATH; cd -- "$(dirname -- "$0")" && pwd)
 installer=${ROOM_MANAGER_MIGRATION_INSTALLER:-$script_dir/install.sh}
 controller=${ROOM_MANAGER_MIGRATION_CONTROLLER:-$script_dir/room-manager-deploy.sh}
-units='room-manager.service room-manager-deploy.service room-manager-deploy.timer'
+units='room-manager.service room-manager-recover.service room-manager-deploy.service room-manager-deploy.timer'
 action=${1:-}
 same_service_name=false
 
@@ -106,7 +106,7 @@ unit_is_stopped() {
 
 stop_new_units() {
     safe=true
-    for unit in room-manager-deploy.timer room-manager-deploy.service room-manager.service; do
+    for unit in room-manager-deploy.timer room-manager-deploy.service room-manager.service room-manager-recover.service; do
         if [ "$same_service_name" = true ] && [ "$unit" = room-manager.service ] &&
             [ ! -f "$state/legacy-replaced" ]; then
             continue
@@ -122,14 +122,8 @@ stop_new_units() {
     [ "$safe" = true ]
 }
 
-wait_ready() {
-    timeout=${ROOM_MANAGER_MIGRATION_TIMEOUT:-180}
-    case "$timeout" in ''|*[!0-9]*) die 'invalid ROOM_MANAGER_MIGRATION_TIMEOUT' ;; esac
-    deadline=$(( $(date +%s) + timeout ))
-    until systemctl is-active --quiet room-manager.service; do
-        [ "$(date +%s)" -lt "$deadline" ] || return 1
-        sleep 1
-    done
+service_active() {
+    systemctl is-active --quiet room-manager.service
 }
 
 restore_legacy() {
@@ -160,7 +154,7 @@ restore_legacy() {
         fi
         rm -f -- "$root/etc/systemd/system/room-manager.service.d/90-room-manager-migration.conf"
     fi
-    for unit in room-manager.service room-manager-deploy.timer; do
+    for unit in room-manager.service room-manager-recover.service room-manager-deploy.timer; do
         load=$(property "$unit" LoadState 2>/dev/null || true)
         if [ "$load" = loaded ]; then
             systemctl disable "$unit" || safe=false
@@ -223,7 +217,7 @@ if [ "$action" = finalize ]; then
     if [ "$same_service_name" != true ]; then
         unit_is_stopped "$old" || die 'legacy service is still active'
     fi
-    wait_ready || die 'native room-manager is not ready'
+    service_active || die 'native room-manager is not active'
     systemctl enable --now room-manager-deploy.timer
     [ "$(property room-manager-deploy.timer ActiveState)" = active ] ||
         die 'deployment timer did not start'
@@ -267,6 +261,7 @@ trap 'exit 130' INT HUP TERM
 # power loss and prevent systemd from starting both implementations at boot.
 : >"$state/block-new"
 guard room-manager.service block-new
+guard room-manager-recover.service block-new
 guard room-manager-deploy.service block-new
 guard room-manager-deploy.timer block-new
 if [ "$same_service_name" != true ]; then
@@ -325,6 +320,8 @@ if [ "$same_service_name" = true ]; then
     for unit in room-manager.service room-manager-deploy.service room-manager-deploy.timer; do
         install -m 0644 "$native_systemd_dir/$unit" "$root/etc/systemd/system/$unit"
     done
+    install -m 0644 "$native_systemd_dir/room-manager-recover.service" \
+        "$root/etc/systemd/system/room-manager-recover.service"
     : >"$state/legacy-replaced"
     rm -f -- "$root/etc/systemd/system/room-manager.service.d/90-room-manager-migration.conf"
 fi
@@ -332,13 +329,16 @@ systemctl daemon-reload
 phase starting-native
 rm -f -- "$state/block-new"
 systemctl daemon-reload
+systemctl enable room-manager-recover.service
+systemctl start room-manager-recover.service
 ROOM_MANAGER_DEPLOY_ENV="$config/deploy.env" \
 ROOM_MANAGER_INSTALL_ROOT="$root/opt/room-manager" \
 ROOM_MANAGER_STATE_DIR="$deploy_state" \
 ROOM_MANAGER_DEPLOY_LOCK="$lock_path" \
 ROOM_MANAGER_DEPLOY_LOCK_HELD=true \
     "$controller" deploy
-wait_ready || die 'native room-manager readiness timed out'
+service_active || die 'native room-manager is not active after systemd activation'
+systemctl enable room-manager-recover.service
 systemctl enable room-manager.service
 phase awaiting-verification
 trap - EXIT HUP INT TERM

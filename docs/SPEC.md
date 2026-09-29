@@ -98,10 +98,13 @@
 - 非 Raspberry Pi 環境では Noop runtime で起動できるが、カードイベントは発生しない
 - 入退出の重複更新に対しては DB 制約とリトライで整合性を保つ
 - `main` の CI 成功後、Workers API と Raspberry Pi 用 ARM64 native artifact を自動配布する
+- ARM64 native artifact は Debian 12 Bookworm 互換の ARM64 build environment で生成する
 - Workers API は未配布 version の health check 後に production traffic を切り替える
 - Raspberry Pi は desired-version manifest を pull し、SHA 固有 release directory、atomic な `current` symlink、systemd service で更新する
+- activation 中は `pending-sha` を永続化し、boot 時に未確認 candidate を起動する前に `last-successful-sha` へ戻す
 - API promote が成功するまで device desired version manifest を更新しない
 - readiness 失敗時は直前の正常 release へ自動 rollback し、failed SHA は再試行しない
+- readiness timeout の正本は `room-manager.service` の `TimeoutStartSec=120s` とする
 - Raspberry Pi 上で Pasori、GPIO、音声を操作するアプリプロセスは常に 1 個だけとする
 
 ## Acceptance Criteria
