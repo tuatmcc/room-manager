@@ -24,9 +24,11 @@
 
 - Raspberry Pi の実行前提、USB 権限、GPIO 配線、秘密情報管理を明確化する
 - Discord / D1 / KV の依存先と障害時の挙動を整理する
+- `main` の CI 成功から Workers と Raspberry Pi までの Blue/Green CD を維持する
 - 完了条件:
   - 端末起動条件と API デプロイ条件が再現可能
   - 失敗時の一次切り分け手順がある
+  - 候補系の失敗時に稼働系を維持または自動復帰できる
 
 ### M3. Product Completion
 

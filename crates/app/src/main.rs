@@ -9,7 +9,22 @@ use futures_util::StreamExt as _;
 use infra::{HttpCardApi, SystemClock};
 use room_manager::app::TouchCardUseCase;
 use runtime::{new_sound_player, spawn_door_lock, spawn_readers};
+use std::{env, fs, path::PathBuf};
 use tracing::{error, info};
+
+fn signal_container_ready() -> anyhow::Result<()> {
+    let Some(ready_file) = env::var_os("ROOM_MANAGER_READY_FILE") else {
+        return Ok(());
+    };
+
+    let ready_file = PathBuf::from(ready_file);
+    let temporary_file = ready_file.with_extension(format!("{}.tmp", std::process::id()));
+    fs::write(&temporary_file, format!("{}\n", std::process::id()))?;
+    fs::rename(temporary_file, ready_file)?;
+    info!("signaled container readiness");
+
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -43,6 +58,7 @@ async fn main() -> anyhow::Result<()> {
 
     let touch_card_use_case = TouchCardUseCase::new(api, player, clock, door_lock);
 
+    signal_container_ready()?;
     info!("starting card reader loop");
     while let Some(card) = readers.next().await {
         let card = card?;

@@ -8,6 +8,7 @@
 2. `docs/ARCHITECTURE.md`
 3. `docs/STATUS.md`
 4. `AGENTS.md`
+5. `docs/DEPLOYMENT.md`（デプロイ作業時）
 
 ## Always-Follow Rules
 
@@ -63,13 +64,17 @@
 
 ### Deployment
 
-順序を変えない。
+通常は手動実行しない。`main` の CI 成功後に CD workflow が次の順で実行する。
 
 1. `pnpm --dir packages/api ci:migrate`
-2. `pnpm --dir packages/api ci:deploy`
+2. `wrangler versions upload` と candidate URL の health check
+3. `wrangler versions deploy` で検証済み version を 100% promote
+4. Worker trigger の反映
 
 理由:
-スキーマが先、Worker コードが後でないと、本番トラフィックと DB の整合が崩れる。
+スキーマが先、Worker コードが後でないと、本番トラフィックと DB の整合が崩れる。D1 は rollback されないため migration は expand/contract 方式にする。
+
+GitHub secrets、candidate URL、rollback は `docs/DEPLOYMENT.md` を参照する。
 
 ## Raspberry Pi Operations
 
@@ -84,8 +89,9 @@
 
 ### Run
 
-- `cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN>`
-- 逆方向のサーボを使う場合: `cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN> --servo-direction reverse`
+- 開発時: `cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN>`
+- 開発時に逆方向のサーボを使う場合: `cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN> --servo-direction reverse`
+- 本番: `docs/DEPLOYMENT.md` に従い rootful Podman Quadlet の blue/green 2 系統で動かす
 
 ### Expected Behavior
 
@@ -120,4 +126,6 @@
 ## Release Expectations
 
 - CI では Node と Rust の lint / format / test / build が走る
-- release workflow では arm 上で `room-manager` バイナリをビルドし、API は migrate 後に deploy される
+- CD workflow は CI 成功後、Workers API を Blue/Green deploy し、ARM64 image を GHCR へ publish する
+- Raspberry Pi は 5 分周期で image を pull し、非稼働 slot の更新後に active slot を切り替える
+- release workflow は GitHub Release 用の ARM64 バイナリだけを生成し、本番 deploy は行わない

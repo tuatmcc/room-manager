@@ -1,0 +1,173 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+    branches:
+      - main
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+  packages: write
+
+jobs:
+  verify-current-delivery:
+    name: Reject superseded CI run
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      is_latest: ${{ steps.latest.outputs.is_latest }}
+    steps:
+      - name: Verify | This is the newest successful main CI
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+        shell: bash
+        run: |
+          latest_run_id=$(gh api \
+            "repos/$REPOSITORY/actions/workflows/ci.yml/runs?branch=main&status=completed&per_page=20" \
+            --jq '[.workflow_runs[] | select(.conclusion == "success")][0].id')
+          if [[ "$latest_run_id" == "$TRIGGER_RUN_ID" ]]; then
+            echo 'is_latest=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'is_latest=false' >> "$GITHUB_OUTPUT"
+            echo "Skipping superseded CI run $TRIGGER_RUN_ID; latest is $latest_run_id"
+          fi
+
+  publish-device-candidate:
+    name: Publish Raspberry Pi candidate image
+    if: needs.verify-current-delivery.outputs.is_latest == 'true'
+    needs:
+      - verify-current-delivery
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Setup | Checkout tested revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Setup | Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup | Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Run | Build and publish ARM64 candidate image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Containerfile
+          platforms: linux/arm64
+          push: true
+          tags: ghcr.io/${{ github.repository }}:sha-${{ github.event.workflow_run.head_sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-api:
+    name: Deploy Workers API (Blue/Green)
+    if: needs.publish-device-candidate.result == 'success'
+    needs:
+      - publish-device-candidate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout tested revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Setup | Node.js development environment
+        uses: ./.github/actions/setup-node
+
+      - name: Run | Apply backward-compatible migrations
+        run: pnpm run ci:migrate
+        working-directory: packages/api
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Run | Upload green Worker version
+        id: upload
+        shell: bash
+        working-directory: packages/api
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          version_tag="main-${DEPLOY_SHA:0:12}"
+          echo "version_tag=$version_tag" >> "$GITHUB_OUTPUT"
+          pnpm exec wrangler versions upload src/index.ts \
+            --preview-alias candidate \
+            --tag "$version_tag" \
+            --message "main ${DEPLOY_SHA}" \
+            --minify
+          version_id=$(pnpm exec wrangler versions list --json | jq -er \
+            --arg tag "$version_tag" \
+            'map(select(.annotations["workers/tag"] == $tag)) | sort_by(.metadata.created_on) | last | .id')
+          echo "version_id=$version_id" >> "$GITHUB_OUTPUT"
+
+      - name: Verify | Candidate health
+        env:
+          CANDIDATE_URL: https://candidate-room-manager.${{ secrets.CLOUDFLARE_WORKERS_SUBDOMAIN }}.workers.dev/
+        run: curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 "$CANDIDATE_URL"
+
+      - name: Run | Promote green Worker to 100 percent
+        working-directory: packages/api
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          VERSION_ID: ${{ steps.upload.outputs.version_id }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: >-
+          pnpm exec wrangler versions deploy
+          --version-id "$VERSION_ID"
+          --percentage 100
+          --message "main ${DEPLOY_SHA}"
+          --yes
+
+      - name: Run | Reconcile Worker triggers
+        working-directory: packages/api
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm exec wrangler triggers deploy
+
+  promote-device-image:
+    name: Promote Raspberry Pi image
+    if: needs.deploy-api.result == 'success'
+    needs:
+      - deploy-api
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup | Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Run | Point main at the tested image
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: docker buildx imagetools create --tag "$IMAGE:main" "$IMAGE:sha-$DEPLOY_SHA"

@@ -2,12 +2,12 @@
 
 ## Snapshot
 
-- Date: 2026-09-24
+- Date: 2026-09-29
 - Version markers:
-  - root `package.json`: `0.3.0`
-  - `packages/api/package.json`: `0.3.0`
-  - `crates/app/Cargo.toml`: `0.3.0`
-  - `crates/pasori/Cargo.toml`: `0.3.0`
+  - root `package.json`: `0.3.1`
+  - `packages/api/package.json`: `0.3.1`
+  - `crates/app/Cargo.toml`: `0.3.1`
+  - `crates/pasori/Cargo.toml`: `0.3.1`
 
 ## What Exists Today
 
@@ -40,6 +40,14 @@
 - Rust 側に `TouchCardUseCase` 周辺のテストがある
 - GitHub Actions で Node / Rust の typecheck, lint, format, test, build が構成済み
 
+### Continuous Deployment
+
+- `main` の CI 成功後、検証済み SHA を使う CD workflow が構成済み
+- Workers API は D1 migration、candidate version upload、health check、100% promote の順で Blue/Green deploy される
+- Raspberry Pi 用 ARM64 OCI image は GHCR の `main` と commit SHA tag へ publish される
+- Raspberry Pi 側は Podman Quadlet の blue/green 2 slot、`podman auto-update`、共有 hardware lock、自動 rollback で更新される
+- 初期構築、秘密情報、監視、手動 rollback は `docs/DEPLOYMENT.md` に記載済み
+
 ## Current Constraints
 
 - 非 Raspberry Pi 環境では Noop runtime になるため、カード読取・音声・ドアロックは実動作しない
@@ -49,10 +57,13 @@
 - 未登録 NFC コードは 4 桁で、衝突時は最大 16 回までリトライする
 - 学生証 / Suica 読取は固定オフセットのバイト解析に依存する
 - Pasori の自動再接続は CI で論理部分を検証できるが、USB 抜き差しと複数台同時利用は Raspberry Pi 実機確認が必要
+- Blue/Green の候補 slot は物理デバイスの二重操作を避けるため standby 状態で検証し、実機初期化の確認は切替直後に行う
+- D1 migration は Worker version と一緒に rollback できないため、expand/contract 方式が必要
 
 ## Known Risks
 
 - 実機依存部は CI だけでは十分に担保できない
+- Raspberry Pi の container device mapping と Blue/Green 切替は実機での初回確認が必要
 - Cron による一括退出は運用ルール変更に弱い
 - 秘密情報の配置ルールが曖昧だとローカル開発と本番の差異を生みやすい
 
@@ -62,8 +73,8 @@
 
 1. `room-admin` の仕様を決め、実装するか削除するかを選ぶ
 2. Discord 通知失敗時の扱いを明文化する
-3. Raspberry Pi 実機セットアップ手順を必要なら追加文書へ切り出す
-4. スキーマ変更が入る開発では `docs/ARCHITECTURE.md` のデータモデル節を先に更新する
+3. Raspberry Pi 実機で Podman 初期構築と blue/green 切替を検証する
+4. スキーマ変更が入る開発では expand/contract を守り、`docs/ARCHITECTURE.md` のデータモデル節を先に更新する
 
 ## Files to Read First When Resuming
 
