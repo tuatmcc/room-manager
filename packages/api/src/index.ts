@@ -37,8 +37,17 @@ function createAppContext(env: Env, logger: AppLogger) {
   };
 }
 
+export async function checkDependencies(env: Env): Promise<void> {
+  const databaseResult = await env.DB.prepare("SELECT 1 AS ok").first<{ ok: number }>();
+  if (databaseResult?.ok !== 1) {
+    throw new Error("D1 health check returned an unexpected result");
+  }
+
+  await env.KV.get("__room_manager_healthcheck__");
+}
+
 function getRouteKind(path: string): string {
-  if (path === "/") return "health";
+  if (path === "/" || path === "/health") return "health";
   if (path.startsWith("/local-device")) return "local-device";
   if (path.startsWith("/interaction")) return "interaction";
   return "other";
@@ -98,6 +107,10 @@ const app = new Hono<AppEnv>()
     await next();
   })
   .get("/", (c) => {
+    return c.text("OK");
+  })
+  .get("/health", async (c) => {
+    await checkDependencies(c.get("env"));
     return c.text("OK");
   })
   .get("/local-device", (c) => {

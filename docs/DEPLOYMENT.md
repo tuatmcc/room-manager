@@ -5,7 +5,7 @@
 `main` の CI が成功すると `.github/workflows/cd.yml` が検証済みコミットを取得し、次の順序で自動配布する。
 
 1. Raspberry Pi アプリの ARM64 OCI image を immutable な `ghcr.io/tuatmcc/room-manager:sha-<commit>` 候補として build/publish する
-2. Workers API の新 version を候補として upload し、candidate URL の `GET /` が成功した後で 100% のトラフィックを新 version へ切り替える
+2. Workers API の新 version を候補として upload し、candidate URL の `GET /health` で Worker、D1、KV を確認した後で 100% のトラフィックを新 version へ切り替える
 3. API 切替成功後だけ、端末 image の `main` tag を検証済み `sha-<commit>` へ進める
 
 Raspberry Pi は外部から SSH されない。端末自身の `room-manager-deploy.timer` が 5 分ごとに registry を確認し、Podman Quadlet と `podman auto-update` で新 image を取得する pull 型 CD である。新 API は旧端末との後方互換を保つ前提とし、API の昇格に失敗した場合は端末の `main` tag を進めない。
@@ -19,7 +19,7 @@ API は Cloudflare Workers の D1、KV、scheduled handler、binding を直接�
 ### Workers API
 
 - DB migration を適用してから、green version を production traffic なしで upload する
-- `candidate-room-manager.<subdomain>.workers.dev` で health check する
+- `candidate-room-manager.<subdomain>.workers.dev/health` で D1 query と KV read を含む health check を行う
 - health check が成功した version tag だけを 100% へ promote する
 - upload または health check に失敗した場合、現在の version は変更しない
 - 直前の version は Cloudflare 上に残るため、Deployments から再度 100% に設定して rollback できる
@@ -32,8 +32,9 @@ D1 は Worker version に含まれず rollback されない。このため migra
 - `/var/lib/room-manager-deploy/active-color` と共有 `flock` により、Pasori、GPIO、音声を扱うアプリ本体は必ず片方だけで動く
 - 非稼働 slot のローカル image tag だけを更新する
 - `AutoUpdate=local` 用のローカル tag は slot ごとに分離し、非稼働 tag だけを変更して `podman auto-update` で候補だけを再生成する。`--filter` 対応Podmanではslot labelでも対象を限定する
-- standby health check 後に active color を atomic に切り替え、API・音声・reader・GPIO初期化後の readiness が得られなければ旧 slot へ自動 rollback する
+- standby health check 後に active color を atomic に切り替え、API・音声・GPIOと少なくとも1台のPasori readerの初期化後に readiness が得られなければ旧 slot へ自動 rollback する
 - active container は候補の準備中に再起動されない
+- controller 起動時に active slot が不健全なら、更新判定より先に健全な standby へ復旧し、不良 image digest を隔離する
 
 物理デバイスは同時に 2 プロセスから安全に検証できない。したがって候補 slot の事前 health check は container supervisor と image の起動性を確認し、実アプリの生存確認は共有ロックを渡した直後に行う。切替時には最大数秒のカード読取停止があり得るが、二重読取は発生させない。
 
@@ -50,7 +51,7 @@ Repository の Actions secrets に次を登録する。
 Workflow の `GITHUB_TOKEN` には `packages: write` だけを追加し、GHCR publish に利用する。GHCR package が private の場合は、Raspberry Pi 用に `read:packages` のみを持つ token を別途発行する。
 
 Branch protection では `main` への merge 前に `CI` を必須にする。CD は `CI` の `workflow_run` が `success` のときだけ、CI が検証した同じ SHA を配布する。
-複数の `main` CI が前後して完了した場合、CD は最新の成功runだけを採用し、古いSHAへの巻き戻しを防ぐ。
+CD は candidate publish、API準備、API昇格、端末image昇格の各境界で、対象SHAが現在の `main` HEADであり、そのSHAの最新CI runが成功済みであることを再検証する。途中で新しい `main` またはCI再実行が現れた古いdeliveryはproductionへ昇格しない。処理中のproduction変更を強制cancelせず、境界単位でlatest-onlyを保証する。
 
 ## Raspberry Pi initial setup
 
@@ -155,18 +156,20 @@ sudo /usr/local/libexec/room-manager-blue-green rollback
 sudo /usr/local/libexec/room-manager-blue-green status
 ```
 
-rollback 後は timer を一時停止しない限り、次回確認で registry の最新版を再試行する。障害調査中は次を使い、復旧後に timer を再開する。
+手動rollback後は timer を一時停止しない限り、次回確認で未隔離のregistry最新版を再試行する。自動rollbackした不良digestは `/var/lib/room-manager-deploy/failed-image` に記録され、`main` が別digestへ進むまで再試行しない。同じdigestを調査後に意図的に再試行する場合だけ、このファイルを削除して更新確認を起動する。
 
 ```sh
 sudo systemctl stop room-manager-deploy.timer
+sudo rm -f /var/lib/room-manager-deploy/failed-image
 sudo systemctl start room-manager-deploy.timer
 ```
 
 ## Failure handling
 
 - candidate pull / update 失敗: active slot は変更されない。registry 認証とネットワークを確認する
-- pre-cutover health 失敗: active slot は変更されない。candidate container log を確認する
-- post-cutover health 失敗: controller が active color を旧 slot に戻す
+- pre-cutover health 失敗: active slot は変更されず、不良digestを隔離する。candidate container log を確認する
+- post-cutover health 失敗: controller が active color を旧 slot に戻し、不良digestを隔離する
+- controller 中断後に active slot が不健全: 次回timer実行が更新判定前に健全なstandbyへ戻す
 - 自動 rollback も失敗: timer を停止し、両 service、`active-color`、デバイス node、container log を確認する
 - API candidate health 失敗: GitHub Actions は promote 前に失敗し、production Worker version は維持される
 - API promote 後の障害: Cloudflare Workers の Deployments で直前の version を 100% に戻す。D1 migration は戻さない

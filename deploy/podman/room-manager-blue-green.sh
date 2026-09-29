@@ -10,6 +10,7 @@ fi
 
 state_dir=${ROOM_MANAGER_STATE_DIR:-/var/lib/room-manager-deploy}
 active_file="$state_dir/active-color"
+failed_image_file="$state_dir/failed-image"
 source_image=${ROOM_MANAGER_SOURCE_IMAGE:?ROOM_MANAGER_SOURCE_IMAGE must be set}
 cutover_timeout=${ROOM_MANAGER_CUTOVER_TIMEOUT:-60}
 action=${1:-deploy}
@@ -31,6 +32,14 @@ set_active() {
     mv -f "$tmp" "$active_file"
 }
 
+record_failed_image() {
+    image_id=$1
+    tmp="$failed_image_file.$$"
+    printf '%s\n' "$image_id" >"$tmp"
+    chmod 0644 "$tmp"
+    mv -f "$tmp" "$failed_image_file"
+}
+
 container_image_id() {
     podman container inspect --format '{{.Image}}' "room-manager-$1"
 }
@@ -38,13 +47,15 @@ container_image_id() {
 wait_healthy() {
     color=$1
     deadline=$(( $(date +%s) + cutover_timeout ))
-    while [ "$(date +%s)" -lt "$deadline" ]; do
+    while :; do
         if podman healthcheck run "room-manager-$color" >/dev/null 2>&1; then
             return 0
         fi
+        if [ "$(date +%s)" -ge "$deadline" ]; then
+            return 1
+        fi
         sleep 2
     done
-    return 1
 }
 
 run_auto_update() {
@@ -79,6 +90,9 @@ case "$action" in
     status)
         printf 'active=%s image=%s\n' "$active" "$(container_image_id "$active")"
         printf 'standby=%s image=%s\n' "$candidate" "$(container_image_id "$candidate")"
+        if [ -r "$failed_image_file" ]; then
+            printf 'quarantined_image=%s\n' "$(cat "$failed_image_file")"
+        fi
         exit 0
         ;;
     rollback)
@@ -111,14 +125,41 @@ for color in blue green; do
     fi
 done
 
+if ! wait_healthy "$active"; then
+    failed_active_id=$(container_image_id "$active")
+    log "active slot $active is unhealthy; attempting recovery with $candidate"
+    if ! podman healthcheck run "room-manager-$candidate" >/dev/null; then
+        log "standby slot $candidate is also unhealthy; operator attention is required"
+        exit 1
+    fi
+
+    set_active "$candidate"
+    if wait_healthy "$candidate"; then
+        record_failed_image "$failed_active_id"
+        log "recovered active slot to $candidate; quarantined image=$failed_active_id"
+        exit 1
+    fi
+
+    log "standby recovery failed; restoring active marker to $active"
+    set_active "$active"
+    wait_healthy "$active" || true
+    exit 1
+fi
+
 log "checking $source_image for an update (active=$active candidate=$candidate)"
 podman pull --quiet "$source_image" >/dev/null
 source_id=$(podman image inspect --format '{{.Id}}' "$source_image")
 active_id=$(container_image_id "$active")
 
 if [ "$source_id" = "$active_id" ]; then
+    rm -f "$failed_image_file"
     log "active slot already runs $source_id"
     exit 0
+fi
+
+if [ -r "$failed_image_file" ] && [ "$(cat "$failed_image_file")" = "$source_id" ]; then
+    log "source image $source_id is quarantined after a failed cutover; waiting for a new image"
+    exit 1
 fi
 
 # Retag only the inactive slot. AutoUpdate=local then makes podman-auto-update
@@ -133,6 +174,7 @@ if [ "$candidate_id" != "$source_id" ]; then
 fi
 
 if ! podman healthcheck run "room-manager-$candidate" >/dev/null; then
+    record_failed_image "$source_id"
     log "candidate slot is unhealthy before cutover"
     exit 1
 fi
@@ -142,10 +184,12 @@ set_active "$candidate"
 
 if wait_healthy "$candidate"; then
     printf '%s\n' "$source_id" >"$state_dir/last-successful-image"
+    rm -f "$failed_image_file"
     log "deployment succeeded: active=$candidate image=$source_id"
     exit 0
 fi
 
+record_failed_image "$source_id"
 log "candidate failed after cutover; rolling back to $active"
 set_active "$active"
 if wait_healthy "$active"; then

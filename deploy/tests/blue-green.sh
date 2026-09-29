@@ -143,6 +143,25 @@ if run_controller deploy; then
     exit 1
 fi
 assert_active blue
+[ "$(cat "$mock_state/failed-image")" = newer ]
+
+if run_controller deploy; then
+    echo "expected the failed image to remain quarantined" >&2
+    exit 1
+fi
+assert_active blue
+
+# Simulate the controller being interrupted after switching the active marker.
+# The next timer run must recover the healthy standby before considering updates.
+printf 'green\n' >"$mock_state/active-color"
+printf 'old\n' >"$mock_state/image-blue"
+printf 'newer\n' >"$mock_state/image-green"
+if run_controller deploy; then
+    echo "expected interrupted-cutover recovery to report failure" >&2
+    exit 1
+fi
+assert_active blue
+[ "$(cat "$mock_state/failed-image")" = newer ]
 
 printf 'invalid\n' >"$mock_state/active-color"
 if run_controller deploy; then

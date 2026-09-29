@@ -67,7 +67,7 @@
 通常は手動実行しない。`main` の CI 成功後に CD workflow が次の順で実行する。
 
 1. `pnpm --dir packages/api ci:migrate`
-2. `wrangler versions upload` と candidate URL の health check
+2. `wrangler versions upload` と candidate URL の `GET /health`（D1/KVを含むhealth check）
 3. `wrangler versions deploy` で検証済み version を 100% promote
 4. Worker trigger の反映
 
@@ -81,7 +81,7 @@ GitHub secrets、candidate URL、rollback は `docs/DEPLOYMENT.md` を参照す�
 ### Preconditions
 
 - Linux on arm/aarch64
-- Pasori は起動前または起動後に接続（未接続の場合もアプリは接続を待機する）
+- Pasori は起動前または起動後に接続（未接続の場合もアプリは待機するが、本番readinessは少なくとも1台の初期化まで成功しない）
 - GPIO18 にサーボ接続済み
 - 必要な USB / GPIO 権限がある
 - `API_PATH` と `API_TOKEN` を環境変数として渡す
@@ -105,7 +105,7 @@ GitHub secrets、candidate URL、rollback は `docs/DEPLOYMENT.md` を参照す�
 
 ### Card Touch Fails
 
-- API 健康確認: `GET /` と `GET /local-device`
+- API 健康確認: process確認は `GET /`、D1/KVを含む確認は `GET /health`、端末経路は認証付き `GET /local-device`
 - `API_TOKEN` 不一致を確認
 - Discord 通知失敗がレスポンス失敗に波及していないかログを見る
 - D1 で対象ユーザー、カード、未退出ログの状態を確認する

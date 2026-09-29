@@ -1,9 +1,9 @@
-use futures_util::stream;
-use room_manager::domain::{Card, DoorLock, SoundEvent, SoundPlayer};
+use futures_util::{StreamExt as _, stream};
+use room_manager::domain::{DoorLock, SoundEvent, SoundPlayer};
 use tracing::warn;
 
 use crate::config::ServoDirection;
-use crate::runtime::CardStream;
+use crate::runtime::{ReaderEvent, ReaderStream};
 
 pub struct NoopSoundPlayer;
 
@@ -52,7 +52,10 @@ pub async fn spawn_door_lock(_servo_direction: ServoDirection) -> anyhow::Result
 }
 
 #[allow(clippy::unnecessary_wraps)]
-pub fn spawn_readers() -> anyhow::Result<CardStream> {
+pub fn spawn_readers() -> anyhow::Result<ReaderStream> {
     warn!("Running without Pasori readers on this platform; no card events will be produced");
-    Ok(Box::pin(stream::pending::<anyhow::Result<Card>>()))
+    Ok(Box::pin(
+        stream::once(async { Ok(ReaderEvent::Ready) })
+            .chain(stream::pending::<anyhow::Result<ReaderEvent>>()),
+    ))
 }

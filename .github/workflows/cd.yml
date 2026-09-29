@@ -11,6 +11,8 @@ on:
 
 concurrency:
   group: cd-main
+  # A running production mutation is not cancelled halfway through. Every
+  # promotion boundary below revalidates both main HEAD and its latest CI run.
   cancel-in-progress: false
 
 permissions:
@@ -26,23 +28,19 @@ jobs:
     outputs:
       is_latest: ${{ steps.latest.outputs.is_latest }}
     steps:
+      - name: Setup | Checkout tested revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
       - name: Verify | This is the newest successful main CI
         id: latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPOSITORY: ${{ github.repository }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
           TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
-        shell: bash
-        run: |
-          latest_run_id=$(gh api \
-            "repos/$REPOSITORY/actions/workflows/ci.yml/runs?branch=main&status=completed&per_page=20" \
-            --jq '[.workflow_runs[] | select(.conclusion == "success")][0].id')
-          if [[ "$latest_run_id" == "$TRIGGER_RUN_ID" ]]; then
-            echo 'is_latest=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'is_latest=false' >> "$GITHUB_OUTPUT"
-            echo "Skipping superseded CI run $TRIGGER_RUN_ID; latest is $latest_run_id"
-          fi
+        run: deploy/ci/check-latest-delivery.sh
 
   publish-device-candidate:
     name: Publish Raspberry Pi candidate image
@@ -50,13 +48,25 @@ jobs:
     needs:
       - verify-current-delivery
     runs-on: ubuntu-24.04-arm
+    outputs:
+      published: ${{ steps.publish.outcome == 'success' }}
     steps:
       - name: Setup | Checkout tested revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
+      - name: Verify | Delivery is still current before image publish
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: deploy/ci/check-latest-delivery.sh
+
       - name: Setup | Log in to GHCR
+        if: steps.latest.outputs.is_latest == 'true'
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
@@ -64,9 +74,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup | Buildx
+        if: steps.latest.outputs.is_latest == 'true'
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Run | Build and publish ARM64 candidate image
+        id: publish
+        if: steps.latest.outputs.is_latest == 'true'
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
@@ -82,20 +95,33 @@ jobs:
 
   deploy-api:
     name: Deploy Workers API (Blue/Green)
-    if: needs.publish-device-candidate.result == 'success'
+    if: needs.publish-device-candidate.outputs.published == 'true'
     needs:
       - publish-device-candidate
     runs-on: ubuntu-latest
+    outputs:
+      deployed: ${{ steps.triggers.outcome == 'success' && steps.after_promote.outputs.is_latest == 'true' }}
     steps:
       - name: Setup | Checkout tested revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
+      - name: Verify | Delivery is still current before API preparation
+        id: prepare
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: deploy/ci/check-latest-delivery.sh
+
       - name: Setup | Node.js development environment
+        if: steps.prepare.outputs.is_latest == 'true'
         uses: ./.github/actions/setup-node
 
       - name: Run | Apply backward-compatible migrations
+        if: steps.prepare.outputs.is_latest == 'true'
         run: pnpm run ci:migrate
         working-directory: packages/api
         env:
@@ -104,6 +130,7 @@ jobs:
 
       - name: Run | Upload green Worker version
         id: upload
+        if: steps.prepare.outputs.is_latest == 'true'
         shell: bash
         working-directory: packages/api
         env:
@@ -124,11 +151,24 @@ jobs:
           echo "version_id=$version_id" >> "$GITHUB_OUTPUT"
 
       - name: Verify | Candidate health
+        if: steps.prepare.outputs.is_latest == 'true'
         env:
-          CANDIDATE_URL: https://candidate-room-manager.${{ secrets.CLOUDFLARE_WORKERS_SUBDOMAIN }}.workers.dev/
+          CANDIDATE_URL: https://candidate-room-manager.${{ secrets.CLOUDFLARE_WORKERS_SUBDOMAIN }}.workers.dev/health
         run: curl --fail --silent --show-error --retry 5 --retry-all-errors --retry-delay 2 "$CANDIDATE_URL"
 
+      - name: Verify | Delivery is still current before API promotion
+        id: promote_check
+        if: steps.prepare.outputs.is_latest == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: deploy/ci/check-latest-delivery.sh
+
       - name: Run | Promote green Worker to 100 percent
+        id: promote
+        if: steps.promote_check.outputs.is_latest == 'true'
         working-directory: packages/api
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -142,7 +182,19 @@ jobs:
           --message "main ${DEPLOY_SHA}"
           --yes
 
+      - name: Verify | Delivery is still current after API promotion
+        id: after_promote
+        if: steps.promote.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: deploy/ci/check-latest-delivery.sh
+
       - name: Run | Reconcile Worker triggers
+        id: triggers
+        if: steps.after_promote.outputs.is_latest == 'true'
         working-directory: packages/api
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -151,11 +203,16 @@ jobs:
 
   promote-device-image:
     name: Promote Raspberry Pi image
-    if: needs.deploy-api.result == 'success'
+    if: needs.deploy-api.outputs.deployed == 'true'
     needs:
       - deploy-api
     runs-on: ubuntu-latest
     steps:
+      - name: Setup | Checkout tested revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
       - name: Setup | Log in to GHCR
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
@@ -166,7 +223,17 @@ jobs:
       - name: Setup | Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
+      - name: Verify | Delivery is still current before image promotion
+        id: latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: deploy/ci/check-latest-delivery.sh
+
       - name: Run | Point main at the tested image
+        if: steps.latest.outputs.is_latest == 'true'
         env:
           IMAGE: ghcr.io/${{ github.repository }}
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}

@@ -3,7 +3,12 @@ use std::pin::Pin;
 use futures_util::Stream;
 use room_manager::domain::Card;
 
-pub type CardStream = Pin<Box<dyn Stream<Item = anyhow::Result<Card>> + Send>>;
+pub enum ReaderEvent {
+    Ready,
+    Card(Card),
+}
+
+pub type ReaderStream = Pin<Box<dyn Stream<Item = anyhow::Result<ReaderEvent>> + Send>>;
 
 #[cfg(not(all(
     feature = "raspi-runtime",

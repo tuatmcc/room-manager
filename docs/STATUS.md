@@ -42,10 +42,10 @@
 
 ### Continuous Deployment
 
-- `main` の CI 成功後、検証済み SHA を使う CD workflow が構成済み
-- Workers API は D1 migration、candidate version upload、health check、100% promote の順で Blue/Green deploy される
+- `main` の CI 成功後、検証済み SHA を使い、各昇格境界で最新SHA/CI runを再確認するlatest-only CD workflowが構成済み
+- Workers API は D1 migration、candidate version upload、D1/KV dependency health check、100% promote の順で Blue/Green deploy される
 - Raspberry Pi 用 ARM64 OCI image は GHCR の `main` と commit SHA tag へ publish される
-- Raspberry Pi 側は Podman Quadlet の blue/green 2 slot、`podman auto-update`、共有 hardware lock、自動 rollback で更新される
+- Raspberry Pi 側は Podman Quadlet の blue/green 2 slot、`podman auto-update`、共有 hardware lock、自動 rollback、不健全activeの次回起動時復旧、不良digest隔離で更新される
 - 初期構築、秘密情報、監視、手動 rollback は `docs/DEPLOYMENT.md` に記載済み
 
 ## Current Constraints
@@ -57,7 +57,7 @@
 - 未登録 NFC コードは 4 桁で、衝突時は最大 16 回までリトライする
 - 学生証 / Suica 読取は固定オフセットのバイト解析に依存する
 - Pasori の自動再接続は CI で論理部分を検証できるが、USB 抜き差しと複数台同時利用は Raspberry Pi 実機確認が必要
-- Blue/Green の候補 slot は物理デバイスの二重操作を避けるため standby 状態で検証し、実機初期化の確認は切替直後に行う
+- Blue/Green の候補 slot は物理デバイスの二重操作を避けるため standby 状態で検証し、切替直後に少なくとも1台のPasori初期化を含む実機readinessを確認する
 - D1 migration は Worker version と一緒に rollback できないため、expand/contract 方式が必要
 
 ## Known Risks
