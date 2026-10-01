@@ -36,6 +36,19 @@ export const roomCommand = new SlashCommandBuilder()
       ),
   )
   .addSubcommand((subcommand) =>
+    subcommand
+      .setName("force-exit")
+      .setDescription("入室中メンバーを管理者権限で退出扱いにします。")
+      .addStringOption((option) =>
+        option
+          .setName("user")
+          .setNameLocalization("ja", "ユーザー")
+          .setDescription("退出扱いにするユーザー")
+          .setRequired(true)
+          .setAutocomplete(true),
+      ),
+  )
+  .addSubcommand((subcommand) =>
     subcommand.setName("list").setDescription("現在部室にいる人を表示します。"),
   );
 

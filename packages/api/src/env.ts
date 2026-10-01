@@ -13,6 +13,7 @@ export const EnvSchema = z.object({
   DISCORD_CHANNEL_ID: z.string(),
   DISCORD_ROOM_COMMAND_ID: z.string(),
   DISCORD_ROOM_ADMIN_COMMAND_ID: z.string(),
+  DISCORD_ADMIN_ROLE_ID: z.string().optional(),
   DB: z.custom<D1Database>(),
   KV: z.custom<KVNamespace>(),
 });
