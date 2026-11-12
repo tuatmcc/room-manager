@@ -15,8 +15,9 @@
 - `crates/pasori`: Pasori / FeliCa ライブラリ
 - `packages/api`: Cloudflare Workers API
 - `.github/workflows`: CI / release
-- `deploy/container`: Raspberry Pi OCI image 内の active/standby supervisor と health check
-- `deploy/podman`: Quadlet、Blue/Green controller、端末 installer
+- `deploy/ci`: CD workflow が使う最新性検証とバイナリ公開スクリプト
+- `deploy/native`: Raspberry Pi の更新スクリプト、systemd user unit、installer
+- `deploy/tests`: 上記スクリプトのテスト
 
 ## Rust App Design
 
@@ -186,17 +187,16 @@
 
 ## Important Decisions
 
-### Continuous Delivery and Blue/Green
+### Continuous Delivery
 
-- `main` の CI 成功を起点に、検証済み SHA から Workers version と ARM64 OCI image を生成する
+- `main` の CI 成功を起点に、検証済み SHA から Workers version と Raspberry Pi 用 ARM64 バイナリを生成する
 - 各production昇格境界で現在の `main` HEADとその最新CI runを再検証し、superseded deliveryは昇格しない
-- Workers は D1/KV binding のためコンテナ化せず、candidate version URL でD1/KVを検証後に 100% promote する
-- Raspberry Pi は `blue` / `green` のローカル image tag を分離し、controller が非稼働 tag だけを更新する
-- 各 Quadlet は `AutoUpdate=local` を持つ。controller は非稼働 slot のローカル tag だけを変更して `podman auto-update` を実行し、候補だけを再生成する。filter対応Podmanではslot labelでも対象を限定する
-- 共有 active-color と hardware lock により、2 container が存在しても物理デバイスを駆動するプロセスは 1 個に限定する
-- active app は API、音声、GPIO lockと少なくとも1台のPasori readerの初期化完了後に readiness marker を atomic に書き、controller はこの marker と process 生存を切替成功条件にする
-- controller は起動時にactive slotを再検証し、不健全ならstandbyへ復旧する。失敗したimage digestは隔離し、同一digestの反復切替を防ぐ
-- 旧バイナリからの初回移行は `migrate-legacy.sh` が同じdeploy lockを取得して行う。永続markerとsystemd drop-inで旧系と新系の起動を制御し、初期イメージ準備中は旧系、切替後は新系だけを起動可能にする。復旧時は新系の停止を確認するまで旧系を再開しない
+- Workers は D1/KV binding のため端末へ移さず、candidate version URL でD1/KVを検証後に 100% promote する
+- バイナリは端末と同じ Debian bookworm のコンテナで build し、API 昇格成功後にだけ Release `device-main` へ `room-manager-<sha>-aarch64` と `latest.txt`（sha / sha256）として公開する。manifest は必ずバイナリの後に更新する
+- Raspberry Pi は `room-manager` ユーザーの systemd user service。実機の Podman が古く OS 入れ替えも難しいため、コンテナは使わない。PipeWire のユーザーセッションを使う都合でも user service が自然である
+- 端末の timer が 5 分ごとに `latest.txt` を確認し、sha256 と起動確認を通ったバイナリを `releases/<sha>` へ置いて `current` symlink を切り替え、サービスを再起動する
+- アプリは API、音声、GPIO と少なくとも1台のPasori readerの初期化完了後に、自身の PID を `ROOM_MANAGER_READY_FILE` へ atomic に書く。更新スクリプトはこの PID が service の `MainPID` と一致し、その後も安定して動作することを成功条件にする
+- 成功条件を満たさなければ直前のバイナリへ戻し、失敗したコミットを `failed-sha` に隔離して同一コミットの反復切替を防ぐ
 - 詳細と障害対応は `docs/DEPLOYMENT.md` を正本とする
 
 ### D1 as Source of Truth

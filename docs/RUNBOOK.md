@@ -91,7 +91,7 @@ GitHub secrets、candidate URL、rollback は `docs/DEPLOYMENT.md` を参照す�
 
 - 開発時: `cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN>`
 - 開発時に逆方向のサーボを使う場合: `cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN> --servo-direction reverse`
-- 本番: `docs/DEPLOYMENT.md` に従い rootful Podman Quadlet の blue/green 2 系統で動かす
+- 本番: `docs/DEPLOYMENT.md` に従い systemd user service として動かし、timer による pull 型更新を使う
 
 ### Expected Behavior
 
@@ -126,6 +126,6 @@ GitHub secrets、candidate URL、rollback は `docs/DEPLOYMENT.md` を参照す�
 ## Release Expectations
 
 - CI では Node と Rust の lint / format / test / build が走る
-- CD workflow は CI 成功後、Workers API を Blue/Green deploy し、ARM64 image を GHCR へ publish する
-- Raspberry Pi は 5 分周期で image を pull し、非稼働 slot の更新後に active slot を切り替える
+- CD workflow は CI 成功後、Workers API を Blue/Green deploy し、成功後に ARM64 バイナリを Release `device-main` へ公開する
+- Raspberry Pi は 5 分周期で `device-main` を確認し、検証済みバイナリへ切り替える。readiness が得られなければ直前のバイナリへ自動 rollback する
 - release workflow は GitHub Release 用の ARM64 バイナリだけを生成し、本番 deploy は行わない

@@ -4,15 +4,19 @@
 
 `main` の CI が成功すると `.github/workflows/cd.yml` が検証済みコミットを取得し、次の順序で自動配布する。
 
-1. Raspberry Pi アプリの ARM64 OCI image を immutable な `ghcr.io/tuatmcc/room-manager:sha-<commit>` 候補として build/publish する
+1. Raspberry Pi 用の ARM64 バイナリを Debian bookworm コンテナで build し、workflow artifact として保持する（この時点では配布しない）
 2. Workers API の新 version を候補として upload し、candidate URL の `GET /health` で Worker、D1、KV を確認した後で 100% のトラフィックを新 version へ切り替える
-3. API 切替成功後だけ、端末 image の `main` tag を検証済み `sha-<commit>` へ進める
+3. API 切替成功後だけ、バイナリを GitHub Release `device-main` へ公開する
 
-Raspberry Pi は外部から SSH されない。端末自身の `room-manager-deploy.timer` が 5 分ごとに registry を確認し、Podman Quadlet と `podman auto-update` で新 image を取得する pull 型 CD である。新 API は旧端末との後方互換を保つ前提とし、API の昇格に失敗した場合は端末の `main` tag を進めない。
+Raspberry Pi は外部から SSH されない。端末自身の `room-manager-update.timer` が 5 分ごとに `device-main` の `latest.txt` を確認し、新しいコミットがあればバイナリを取得・検証して再起動する pull 型 CD である。新 API は旧端末との後方互換を保つ前提とし、API の昇格に失敗した場合はバイナリを公開しない。
 
-### Why the API is not in Podman
+### Why the API is not on the device
 
-API は Cloudflare Workers の D1、KV、scheduled handler、binding を直接利用するため、そのまま OCI container に移すことはできない。API は Cloudflare の version/deployment 機能で Blue/Green 配布し、物理端末だけを Podman 化する。API をコンテナ化するには D1/KV/scheduled event の互換実装への置換が必要で、現在のシステムとは別の設計変更になる。
+API は Cloudflare Workers の D1、KV、scheduled handler、binding を直接利用するため、端末へ移せない。API は Cloudflare の version/deployment 機能で Blue/Green 配布し、物理端末だけを pull 型で更新する。
+
+### Why a native binary
+
+端末は Pasori、GPIO、PipeWire のユーザーセッションを直接使い、既存の `room-manager` user service として動いている。実機は Debian 12 (Podman 4.3.1) で Quadlet が使えず、OS の入れ替えも難しいため、コンテナではなく単一バイナリと systemd user service で配布する。
 
 ## Blue/Green invariants
 
@@ -26,17 +30,18 @@ API は Cloudflare Workers の D1、KV、scheduled handler、binding を直接�
 
 D1 は Worker version に含まれず rollback されない。このため migration は、旧 API と新 API の双方から利用できる add-only の expand migration を先に行い、列削除や意味変更などの contract migration は全端末の更新確認後に別リリースで行う。
 
-### Raspberry Pi
+### Device binary
 
-- `room-manager-blue` と `room-manager-green` の Quadlet container を常時起動する
-- `/var/lib/room-manager-deploy/active-color` と共有 `flock` により、Pasori、GPIO、音声を扱うアプリ本体は必ず片方だけで動く
-- 非稼働 slot のローカル image tag だけを更新する
-- `AutoUpdate=local` 用のローカル tag は slot ごとに分離し、非稼働 tag だけを変更して `podman auto-update` で候補だけを再生成する。`--filter` 対応Podmanではslot labelでも対象を限定する
-- standby health check 後に active color を atomic に切り替え、API・音声・GPIOと少なくとも1台のPasori readerの初期化後に readiness が得られなければ旧 slot へ自動 rollback する
-- active container は候補の準備中に再起動されない
-- controller 起動時に active slot が不健全なら、更新判定より先に健全な standby へ復旧し、不良 image digest を隔離する
+- バイナリは `rust:1.94.0-bookworm` コンテナで build する。端末の Debian 12 と同じ glibc / 共有ライブラリにリンクされるため、ubuntu runner でそのまま build したバイナリは配布に使わない
+- Release `device-main`（prerelease、Latest ではない）に、コミットごとに不変の `room-manager-<sha>-aarch64` を置く。最新の 5 個だけを残し、古いものは削除する
+- `latest.txt`（`sha=<40桁>` と `sha256=<64桁>`）は必ずバイナリの upload 後に更新する。端末が存在しないバイナリを指す manifest を見ることはない
+- 各境界（API 準備、API 昇格、公開）で対象 SHA が現在の `main` HEAD であり、最新 CI run が成功済みであることを再検証する。途中で新しい `main` が現れた古い delivery は公開しない
+- 端末は sha256 検証と `room-manager --help` の起動確認が通ったバイナリだけを有効化する
+- 端末は切替後、アプリが readiness を報告するまで待つ。API・音声・GPIO と少なくとも 1 台の Pasori reader の初期化後に、アプリが自身の PID を ready file へ書く。この PID が service の `MainPID` と一致し、その後も安定して動作し続ければ成功とする
+- 失敗したら直前のバイナリへ戻して再起動し、失敗したコミットを `failed-sha` に記録する。`main` が別コミットへ進むまで同じコミットは再試行しない
+- 切替時にはサービスの再起動により数秒間カード読取が止まる。二重起動は発生しない（systemd が単一プロセスを管理する）
 
-物理デバイスは同時に 2 プロセスから安全に検証できない。したがって候補 slot の事前 health check は container supervisor と image の起動性を確認し、実アプリの生存確認は共有ロックを渡した直後に行う。切替時には最大数秒のカード読取停止があり得るが、二重読取は発生させない。
+Pasori が接続されていない端末では readiness が得られないため、更新は rollback される。物理確認のできる状態で配布する。
 
 ## GitHub setup
 
@@ -48,190 +53,126 @@ Repository の Actions secrets に次を登録する。
 | `CLOUDFLARE_API_TOKEN`         | D1 migration、version upload、deployment、trigger 更新                                              |
 | `CLOUDFLARE_WORKERS_SUBDOMAIN` | Worker 名を含む `workers.dev` ホスト名。`.workers.dev` は含めない（例: `room-manager.tuatmcc-com`） |
 
-Workflow の `GITHUB_TOKEN` には `packages: write` だけを追加し、GHCR publish に利用する。GHCR package が private の場合は、Raspberry Pi 用に `read:packages` のみを持つ token を別途発行する。
+バイナリの公開には、公開ジョブだけに付与した `contents: write` の `GITHUB_TOKEN` を使う（他の job は `contents: read`）。リポジトリは public のため、端末は認証なしで Release assets を取得できる。private にする場合は端末に `read` 権限の token を渡す仕組みが別途必要になる。
 
 Branch protection では `main` への merge 前に `CI` を必須にする。CD は `CI` の `workflow_run` が `success` のときだけ、CI が検証した同じ SHA を配布する。
-CD は candidate publish、API準備、API昇格、端末image昇格の各境界で、対象SHAが現在の `main` HEADであり、そのSHAの最新CI runが成功済みであることを再検証する。途中で新しい `main` またはCI再実行が現れた古いdeliveryはproductionへ昇格しない。処理中のproduction変更を強制cancelせず、境界単位でlatest-onlyを保証する。
 
-## Raspberry Pi initial setup
+## Raspberry Pi layout
+
+端末の `room-manager` ユーザー（lingering 有効）の user service として動かす。音声に PipeWire のユーザーセッションを使うため system service にはしない。
+
+```text
+~/.local/lib/room-manager/
+  bin/room-manager-update        更新スクリプト（deploy/native/room-manager-update.sh）
+  releases/<sha>/room-manager    取得済みバイナリ
+  current  -> releases/<sha>     稼働中（unit の ExecStart はここを指す）
+  previous -> releases/<sha>     直前のバイナリ（rollback 用）
+  failed-sha                     隔離中のコミット
+~/.config/systemd/user/
+  room-manager.service           アプリ本体
+  room-manager.env               API_PATH / API_TOKEN（既存、mode 0600）
+  room-manager-update.service    更新（oneshot）
+  room-manager-update.timer      5 分ごとに更新を確認
+~/.config/room-manager/
+  device.env                     SERVO_DIRECTION など端末固有の設定
+  update.env                     任意。ROOM_MANAGER_RELEASE_URL などの上書き
+```
+
+更新スクリプト自体は `device-main` では更新されない。スクリプトや unit を変えたときは、リポジトリを取得して `install.sh` を再実行する。
+
+## Raspberry Pi setup
 
 ### 1. Preconditions
 
-- 64-bit Raspberry Pi OS / Debian (`aarch64`)
-- systemd、cgroup v2、Podman 5.x、Quadlet、`flock`
-- `/dev/gpiomem` または `/dev/gpiomem0`、`/dev/gpiochip0`、`/dev/snd`、`/dev/bus/usb` が存在する
+- 64-bit Raspberry Pi OS / Debian 12 (`aarch64`)、systemd、`curl`、`flock`（util-linux）、`sha256sum`
+- `room-manager` ユーザーの lingering が有効（`loginctl show-user room-manager | grep Linger` が `yes`）
+- `room-manager` ユーザーが `audio`、`plugdev`、`gpio` グループに属している
+- `~/.config/systemd/user/room-manager.env` に `API_PATH` と `API_TOKEN` がある
 - GPIO18 にサーボを接続し、Pasori を USB 接続できる
-- API へ HTTPS で到達できる
+- API と GitHub（`github.com`）へ HTTPS で到達できる
 
-確認コマンド:
+### 2. Install (also migrates the existing user service)
 
-```sh
-uname -m
-podman --version
-podman info --format '{{.Host.CgroupsVersion}}'
-systemctl --version
-test -e /dev/gpiomem -o -e /dev/gpiomem0
-test -e /dev/gpiochip0 && test -d /dev/snd && test -d /dev/bus/usb
-```
-
-ディストリビューションの公式手順で Podman 5.x を導入する。古い Raspberry Pi OS の Podman は Quadlet の health / auto-update option が不足する場合があるため使わない。
-
-Podman 5.4〜5.8 の `podman auto-update` には container filter がないため、このcontrollerは全auto-update対象を確認する。room-managerのactive tagは変更しないのでactive slotは再起動されないが、同じ端末で別サービスに `io.containers.autoupdate` を設定すると、そのサービスも同じタイミングで更新され得る。物理端末はroom-manager専用にするか、別サービスではauto-update labelを使わない。filter対応版ではcontrollerがroom-managerの候補slotだけに限定する。
-
-### 2. Registry login
-
-GHCR package が private の場合だけ、`read:packages` token で rootful Podman を login する。token を shell history に残さない。
+リポジトリを取得するか `deploy/native` ディレクトリを端末へコピーし、`room-manager` ユーザーとして実行する（root では実行しない）。
 
 ```sh
-sudo install -d -m 0755 /etc/room-manager
-sudo podman login --authfile /etc/room-manager/registry-auth.json \
-  ghcr.io --username <github-user> --password-stdin
-sudo chmod 0600 /etc/room-manager/registry-auth.json
+sudo -iu room-manager
+./deploy/native/install.sh
 ```
 
-上のコマンドへ token を標準入力で渡す。Quadlet と更新 service は rootful Podman を使うため、一般ユーザー側の `podman login` では代用できない。`--authfile` を省略した既定の `/run` 配下は再起動時に失われるため、本番では使わない。
-private package を使う場合は、`deploy.env` の `REGISTRY_AUTH_FILE` コメントを外してこの authfile を指定する。
+`install.sh` は次を行う。
 
-### 3. Secrets and configuration
+- 既存の `~/room-manager` を最初の release（`releases/initial`）として取り込む。旧バイナリのファイル自体は削除しない
+- 既存 unit の `--servo-direction` を読み取り、`device.env` の `SERVO_DIRECTION` へ引き継ぐ。`SERVO_DIRECTION=reverse ./deploy/native/install.sh` で明示もできる
+- 旧 unit を `room-manager.service.pre-native` として退避し、新しい unit を配置してサービスを再起動する。数秒間カード読取が止まる。現地でドアを操作できる時間に実行する
+- 再起動後に readiness が得られなければ、退避した旧 unit を復元して旧構成で再起動し、エラーで終了する
 
-リポジトリを取得するか、`deploy/podman` ディレクトリを端末へコピーする。最初の installer 実行は秘密情報の雛形を作成して停止する。
+初回は物理デバイスの確認前に更新されないよう、更新 timer は有効化しない。カード、Discord 通知、音声、解錠、30 秒後の施錠、USB 再接続を確認してから有効化する。
 
 ```sh
-sudo ./deploy/podman/install.sh
-sudoedit /etc/room-manager/app.env
-sudoedit /etc/room-manager/deploy.env
-sudo chmod 0600 /etc/room-manager/app.env
+systemctl --user enable --now room-manager-update.timer
+systemctl --user list-timers room-manager-update.timer
 ```
 
-`app.env` の必須値:
+`./deploy/native/install.sh --enable-timer` で install と同時に有効化することもできる。
 
-```dotenv
-API_PATH=https://<production-worker-host>
-API_TOKEN=<local-device bearer token>
-SERVO_DIRECTION=normal
-```
-
-`deploy.env` の既定値は次の通り。fork や別 registry では image 名を変更する。
-
-```dotenv
-ROOM_MANAGER_SOURCE_IMAGE=ghcr.io/tuatmcc/room-manager:main
-# private GHCR package の場合だけ有効化する
-# REGISTRY_AUTH_FILE=/etc/room-manager/registry-auth.json
-ROOM_MANAGER_CUTOVER_TIMEOUT=60
-```
-
-### 4. Install and verify
-
-設定後に installer を再実行する。これは image を pull して blue/green の両ローカル tag を初期化し、Quadlet 2 系統を起動する。初回は物理デバイスの確認前に更新されないよう、更新 timer は有効化しない。
-
-```sh
-sudo ./deploy/podman/install.sh
-sudo systemctl status room-manager-blue.service room-manager-green.service
-sudo /usr/local/libexec/room-manager-blue-green status
-sudo podman ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
-```
-
-初期状態は `blue` が active、`green` が standby である。カードを 1 回タッチし、API、Discord 通知、音声、解錠、自動施錠までを実機確認する。
-
-実機確認が完了してから更新 timer を有効化する。
-
-```sh
-sudo systemctl enable --now room-manager-deploy.timer
-sudo systemctl status room-manager-deploy.timer
-```
-
-## Migrating an existing native service
-
-CD 導入前のコミットは `7dc63be`。現在の `main` の親を機械的に選ばず、実際に稼働している旧バイナリを復旧対象にする。リポジトリには旧 systemd unit の定義がないため、`migrate-legacy.sh` に実機の正規 service 名を明示する。
-
-このスクリプトは Raspberry Pi 上で実行する。対象は **systemd のシステムサービスとして稼働する旧アプリ1個**に限定する。user service、cron、手動起動、timer/socket起動には使用しない。起動元が複数ある場合は先に整理する。旧unitは `KillMode=control-group`、`RemainAfterExit=no` が必要で、alias名は受け付けない。
-
-1. 上の前提条件、registry login、`app.env` / `deploy.env` の準備を済ませる。移行前には通常の `install.sh` を実行しない（旧系と同時起動するため）。雛形は直接配置して編集する。既存ファイルは上書きしない。
-
-   ```sh
-   sudo install -d -m 0755 /etc/room-manager
-   sudo test -e /etc/room-manager/app.env || sudo install -m 0600 deploy/podman/app.env.example /etc/room-manager/app.env
-   sudo test -e /etc/room-manager/deploy.env || sudo install -m 0644 deploy/podman/deploy.env.example /etc/room-manager/deploy.env
-   sudoedit /etc/room-manager/app.env /etc/room-manager/deploy.env
-   ```
-
-2. 実機で旧service名と起動設定を確認し、旧バイナリ、unit、参照する環境ファイルを保全する。スクリプトはそれらを削除・置換せず、unitの表示結果だけをroot専用の移行記録に保存する。旧ソースから起動している場合も、そのcheckoutやビルド結果を移行中に書き換えない。新スクリプトは別checkoutへ配置する。
-
-3. CDが最後まで成功したコミットのSHA tagまたはdigestを指定する（可変の `:main` は拒否する）。以下の `旧service名.service` と `<CD成功コミットの40桁SHA>` を実際の値に置換して事前確認する。
-
-   ```sh
-   sudo ./deploy/podman/migrate-legacy.sh check 旧service名.service ghcr.io/tuatmcc/room-manager:sha-<CD成功コミットの40桁SHA>
-   ```
-
-   `check` はserviceを変更せず、旧起動設定、既存の新構成との衝突、本番APIの `/health` を確認する。Podman/deviceの詳細確認とimage pullは次の `apply` で、旧系が動いている間に実行する。API_PATHは引用符なしのHTTPS URLとし、tokenは端末の `app.env` に設定する。
-
-4. 現地でドアを操作できる保守時間に移行する。
-
-   ```sh
-   sudo ./deploy/podman/migrate-legacy.sh apply 旧service名.service ghcr.io/tuatmcc/room-manager:sha-<CD成功コミットの40桁SHA>
-   ```
-
-   新unitを起動抑止した状態で installer の `--prepare-only --image` を使い、pull・配置を済ませてから旧系の自動起動を無効化し、旧プロセスを停止する。旧系を再度起動できないよう永続drop-inを追加し、新コンテナのreadinessを最大90秒待つ。両slotは同じ指定imageで初期化する。新構成が既に存在するときは自動上書きせず停止する。
-
-   エラーや通常の終了シグナルでは新系を停止して旧serviceを復旧する。新系の停止を確認できない場合は旧系も起動せず `recovery-required` として停止する。電源断・SIGKILLをその場で復旧することはできないが、起動抑止markerは再起動後も残る。状態は `/var/lib/room-manager-migration/phase` で確認でき、復旧コマンドは中断後にも実行できる。
-
-5. `awaiting-verification` になったらカード、Discord通知、音声、解錠、30秒後の施錠、USB再接続を確認する。readiness成功だけではこれらの実機試験は完了しない。`deploy.env` の更新先が意図する `:main` であることも確認し、次を実行する。以降は新しいmain imageへ更新され得る。
-
-   ```sh
-   sudo ./deploy/podman/migrate-legacy.sh finalize --hardware-verified
-   ```
-
-初回に旧バイナリへ戻す場合（blue/green間のrollbackとは別）は次を実行する。新系を停止・起動抑止し、旧serviceの元のenabled状態を復元して起動する。API・D1は変更しない。
-
-```sh
-sudo ./deploy/podman/migrate-legacy.sh rollback
-```
-
-`rolled-back` 後も新系の起動抑止と移行記録を残す。再移行は状態と失敗原因を確認してから行い、移行記録やdrop-inを稼働中に削除しない。既存状態に対する `apply` の再実行は拒否する。`ConditionPathExists` のmarkerによる抑止は、このsystemd unit経由の起動に適用され、バイナリの直接起動や別の起動元には適用されない。
+初回の更新で CD の成功したバイナリへ切り替わる。`~/room-manager`（旧バイナリ）と `room-manager.service.pre-native` は、問題がなければ後から手動で削除してよい。
 
 ## Routine operations
 
-更新確認を即時実行する:
+更新確認を即時実行し、結果を見る:
 
 ```sh
-sudo systemctl start room-manager-deploy.service
-sudo journalctl -u room-manager-deploy.service -n 100 --no-pager
+systemctl --user start room-manager-update.service
+journalctl --user -u room-manager-update.service -n 100 --no-pager
 ```
 
-両 slot のログを見る:
+稼働中・直前・隔離中のバージョンを確認する:
 
 ```sh
-sudo journalctl -u room-manager-blue.service -u room-manager-green.service -f
+~/.local/lib/room-manager/bin/room-manager-update status
 ```
 
-直前の standby slot へ手動 rollback する:
+アプリのログを見る:
 
 ```sh
-sudo /usr/local/libexec/room-manager-blue-green rollback
-sudo /usr/local/libexec/room-manager-blue-green status
+journalctl --user -u room-manager.service -f
 ```
 
-手動rollback後は timer を一時停止しない限り、次回確認で未隔離のregistry最新版を再試行する。自動rollbackした不良digestは `/var/lib/room-manager-deploy/failed-image` に記録され、`main` が別digestへ進むまで再試行しない。同じdigestを調査後に意図的に再試行する場合だけ、このファイルを削除して更新確認を起動する。
+直前のバイナリへ手動 rollback する。稼働中だったコミットは隔離され、次に別のコミットが公開されるまで再配布されない。
 
 ```sh
-sudo systemctl stop room-manager-deploy.timer
-sudo rm -f /var/lib/room-manager-deploy/failed-image
-sudo systemctl start room-manager-deploy.timer
+~/.local/lib/room-manager/bin/room-manager-update rollback
 ```
+
+隔離したコミットを調査後に意図的に再試行する場合だけ、`failed-sha` を削除して更新を起動する。
+
+```sh
+rm ~/.local/lib/room-manager/failed-sha
+systemctl --user start room-manager-update.service
+```
+
+更新を一時的に止める場合は timer を停止する。
+
+```sh
+systemctl --user stop room-manager-update.timer
+```
+
+ssh 経由で実行する場合は `XDG_RUNTIME_DIR=/run/user/$(id -u)` を設定する（`sudo -iu room-manager` では通常設定される）。
 
 ## Failure handling
 
-- candidate pull / update 失敗: active slot は変更されない。registry 認証とネットワークを確認する
-- pre-cutover health 失敗: active slot は変更されず、不良digestを隔離する。candidate container log を確認する
-- post-cutover health 失敗: controller が active color を旧 slot に戻し、不良digestを隔離する
-- controller 中断後に active slot が不健全: 次回timer実行が更新判定前に健全なstandbyへ戻す
-- 自動 rollback も失敗: timer を停止し、両 service、`active-color`、デバイス node、container log を確認する
-- API candidate health 失敗: GitHub Actions は promote 前に失敗し、production Worker version は維持される
+- `latest.txt` の取得失敗: 何も変更されない。ネットワークと Release `device-main` の存在を確認する。次回 timer で再試行される
+- sha256 不一致 / 起動確認失敗: そのバイナリは有効化されず、稼働中のバージョンは変わらない。CD の build と publish を確認する
+- 切替後に readiness が得られない: 自動で直前のバイナリへ戻り、失敗したコミットは `failed-sha` に隔離される。`journalctl --user -u room-manager.service` で原因を確認する。Pasori が接続されているかも確認する
+- rollback 後も readiness が得られない: update service が失敗として終了する。timer を停止し、`journalctl`、Pasori・GPIO・音声デバイスの状態、`room-manager.env` を確認する。`room-manager.service.pre-native` と `~/room-manager` が残っていれば旧構成へ戻せる
+- API candidate health 失敗: GitHub Actions は promote 前に失敗し、production Worker version は維持され、バイナリも公開されない
 - API promote 後の障害: Cloudflare Workers の Deployments で直前の version を 100% に戻す。D1 migration は戻さない
+- 公開済みバイナリに問題がある場合: 修正を `main` へ入れて新しいコミットを配布する。急ぐ場合は端末で `rollback` を実行する。`device-main` の assets を手で削除しない
 
 ## Security notes
 
-- API token は `/etc/room-manager/app.env` (mode `0600`) にだけ置く
-- GHCR token は `/etc/room-manager/registry-auth.json` (mode `0600`) にだけ置き、リポジトリへ保存しない
-- container には USB bus、ALSA device、RPPAL が必要とする `gpiomem` / `gpiochip` device のみを渡し、`--privileged` は使わない
-- `/var/lib/room-manager-deploy` は root のみが更新できるよう mode `0700` とする
+- API token は `~/.config/systemd/user/room-manager.env`（mode `0600`）にだけ置く
+- 配布物の完全性は HTTPS と `latest.txt` の sha256 で検証する。`latest.txt` と binary は同じ Release に置かれるため、Release を書き換えられる権限（リポジトリの write 権限）を持つ者は任意のバイナリを配布できる。公開できるのは CD workflow の `GITHUB_TOKEN` に限るよう、リポジトリの権限と Release の編集を管理する
+- `latest.txt` の `sha` と `sha256` は厳密な 16 進文字列としてのみ受け付け、URL とパスの生成に使う
+- 更新はアプリと同じ非特権ユーザーで行い、root 権限や sudo は不要
