@@ -105,7 +105,8 @@ sudo -iu room-manager
 - 既存の `~/room-manager` を最初の release（`releases/initial`）として取り込む。旧バイナリのファイル自体は削除しない
 - 既存 unit の `--servo-direction` を読み取り、`device.env` の `SERVO_DIRECTION` へ引き継ぐ。`SERVO_DIRECTION=reverse ./deploy/native/install.sh` で明示もできる
 - 旧 unit を `room-manager.service.pre-native` として退避し、新しい unit を配置してサービスを再起動する。数秒間カード読取が止まる。現地でドアを操作できる時間に実行する
-- 再起動後に readiness が得られなければ、退避した旧 unit を復元して旧構成で再起動し、エラーで終了する
+- 再起動後、サービスが 10 秒間動き続けるかを確認する。取り込んだ旧バイナリは readiness 通知を持たない場合があるため、この時点では readiness を要求しない。停止していれば、退避した旧 unit を復元して旧構成で再起動し、エラーで終了する
+- 続けて更新を 1 回実行し、`device-main` の最新バイナリへ切り替える。readiness が得られなければ取り込んだ旧バイナリへ自動で戻り、警告を表示する
 
 初回は物理デバイスの確認前に更新されないよう、更新 timer は有効化しない。カード、Discord 通知、音声、解錠、30 秒後の施錠、USB 再接続を確認してから有効化する。
 
@@ -116,7 +117,7 @@ systemctl --user list-timers room-manager-update.timer
 
 `./deploy/native/install.sh --enable-timer` で install と同時に有効化することもできる。
 
-初回の更新で CD の成功したバイナリへ切り替わる。`~/room-manager`（旧バイナリ）と `room-manager.service.pre-native` は、問題がなければ後から手動で削除してよい。
+`install.sh` の更新で、CD の成功したバイナリへ切り替わる。`~/room-manager`（旧バイナリ）と `room-manager.service.pre-native` は、問題がなければ後から手動で削除してよい。
 
 ## Routine operations
 

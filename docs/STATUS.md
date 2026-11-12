@@ -48,7 +48,7 @@
 - Workers API は D1 migration、candidate version upload、D1/KV dependency health check、100% promote の順で Blue/Green deploy される
 - Raspberry Pi 用 ARM64 バイナリは Debian bookworm コンテナで build され、API 昇格成功後に Release `device-main` へ `room-manager-<sha>-aarch64` と `latest.txt`（sha / sha256）として公開される
 - Raspberry Pi 側は `room-manager` ユーザーの user service と `room-manager-update.timer`（5 分周期）で更新される。sha256 検証、起動確認、readiness 確認、`current` / `previous` symlink による自動 rollback、失敗コミットの隔離（`failed-sha`）、手動 `rollback` に対応する
-- `deploy/native/install.sh` は既存の `~/room-manager` と user service を新構成へ移行し、旧 unit を `room-manager.service.pre-native` に退避する。readiness に失敗した場合は旧 unit を復元する。更新 timer は実機確認後に有効化する
+- `deploy/native/install.sh` は既存の `~/room-manager` と user service を新構成へ移行し、旧 unit を `room-manager.service.pre-native` に退避する。移行後の起動を確認できなければ旧 unit を復元し、続けて最新バイナリへ更新する（readiness に失敗したら移行したバイナリへ戻る）。更新 timer は実機確認後に有効化する
 - 初期構築、秘密情報、監視、手動 rollback は `docs/DEPLOYMENT.md` に記載済み
 - Podman Quadlet による blue/green 構成は、実機が Debian 12 (Podman 4.3.1) で Quadlet を使えないため廃止した
 
@@ -69,7 +69,7 @@
 - 実機依存部は CI だけでは十分に担保できない
 - `device-main` Release は CD が初めて成功するまで存在しない。それ以前は端末の更新が `latest.txt` の取得失敗で何もせず終わる
 - 配布物の完全性は HTTPS と同一 Release 上の sha256 に依存する。リポジトリの write 権限を持つ者は端末へバイナリを配布できる
-- 実機でのネイティブ配布の初回移行と、更新・rollback の動作確認は未実施
+- 実機で `install.sh` による移行と最新バイナリへの更新は成功した（2026-11-12）。カード・音声・解錠・施錠・USB 再接続の実機確認と、更新 timer の有効化、timer 経由の更新、自動 rollback の実機確認は未完了
 - 更新スクリプトと unit は `device-main` では更新されないため、変更時は端末で `install.sh` を再実行する
 - `release.yml` が生成する GitHub Release 用バイナリは ubuntu runner で build されており、Debian 12 の端末では動作しない可能性がある（端末配布には使わない）
 - Cron による一括退出は運用ルール変更に弱い
