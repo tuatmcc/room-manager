@@ -158,12 +158,12 @@ jobs:
 
       - name: Run | Validate shell syntax
         run: |
-          for script in deploy/ci/*.sh deploy/container/*.sh deploy/podman/*.sh deploy/tests/*.sh; do
+          for script in deploy/ci/*.sh deploy/native/*.sh deploy/tests/*.sh; do
             sh -n "$script"
           done
 
       - name: Run | Lint shell scripts
-        run: shellcheck deploy/ci/*.sh deploy/container/*.sh deploy/podman/*.sh deploy/tests/*.sh
+        run: shellcheck deploy/ci/*.sh deploy/native/*.sh deploy/tests/*.sh
 
       - name: Run | Test deployment scripts
         run: |

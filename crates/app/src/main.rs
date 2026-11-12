@@ -12,7 +12,7 @@ use runtime::{ReaderEvent, new_sound_player, spawn_door_lock, spawn_readers};
 use std::{env, fs, path::PathBuf};
 use tracing::{error, info};
 
-fn signal_container_ready() -> anyhow::Result<()> {
+fn signal_ready() -> anyhow::Result<()> {
     let Some(ready_file) = env::var_os("ROOM_MANAGER_READY_FILE") else {
         return Ok(());
     };
@@ -21,7 +21,7 @@ fn signal_container_ready() -> anyhow::Result<()> {
     let temporary_file = ready_file.with_extension(format!("{}.tmp", std::process::id()));
     fs::write(&temporary_file, format!("{}\n", std::process::id()))?;
     fs::rename(temporary_file, ready_file)?;
-    info!("signaled container readiness");
+    info!("signaled readiness");
 
     Ok(())
 }
@@ -65,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
         }
         None => anyhow::bail!("card reader stream ended before initialization completed"),
     }
-    signal_container_ready()?;
+    signal_ready()?;
     info!("starting card reader loop");
     while let Some(event) = readers.next().await {
         let ReaderEvent::Card(card) = event? else {

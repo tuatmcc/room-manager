@@ -18,7 +18,6 @@ concurrency:
 permissions:
   actions: read
   contents: read
-  packages: write
 
 jobs:
   verify-current-delivery:
@@ -42,62 +41,59 @@ jobs:
           TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         run: deploy/ci/check-latest-delivery.sh
 
-  publish-device-candidate:
-    name: Publish Raspberry Pi candidate image
+  build-device-binary:
+    name: Build Raspberry Pi binary
     if: needs.verify-current-delivery.outputs.is_latest == 'true'
     needs:
       - verify-current-delivery
     runs-on: ubuntu-24.04-arm
+    # Build on the same Debian release as the device so the binary only links
+    # against the glibc and shared libraries that exist there.
+    container:
+      image: docker.io/library/rust:1.94.0-bookworm
     outputs:
-      published: ${{ steps.publish.outcome == 'success' }}
+      built: ${{ steps.build.outcome == 'success' }}
     steps:
       - name: Setup | Checkout tested revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Verify | Delivery is still current before image publish
-        id: latest
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPOSITORY: ${{ github.repository }}
-          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
-          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
-        run: deploy/ci/check-latest-delivery.sh
+      - name: Setup | Install build dependencies
+        run: |
+          apt-get update
+          apt-get install --yes --no-install-recommends libasound2-dev libusb-1.0-0-dev
 
-      - name: Setup | Log in to GHCR
-        if: steps.latest.outputs.is_latest == 'true'
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+      - name: Setup | Cache cargo store
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          path: |
+            /usr/local/cargo/registry
+            target/
+          key: device-binary-${{ runner.arch }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            device-binary-${{ runner.arch }}-
 
-      - name: Setup | Buildx
-        if: steps.latest.outputs.is_latest == 'true'
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Run | Build ARM64 binary
+        id: build
+        run: cargo build --locked --release --package room-manager
 
-      - name: Run | Build and publish ARM64 candidate image
-        id: publish
-        if: steps.latest.outputs.is_latest == 'true'
-        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+      - name: Verify | Binary starts
+        run: ./target/release/room-manager --help > /dev/null
+
+      - name: Upload | Binary candidate
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
-          context: .
-          file: Containerfile
-          platforms: linux/arm64
-          push: true
-          tags: ghcr.io/${{ github.repository }}:sha-${{ github.event.workflow_run.head_sha }}
-          labels: |
-            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          name: device-binary
+          path: target/release/room-manager
+          if-no-files-found: error
+          retention-days: 7
 
   deploy-api:
     name: Deploy Workers API (Blue/Green)
-    if: needs.publish-device-candidate.outputs.published == 'true'
+    if: needs.build-device-binary.outputs.built == 'true'
     needs:
-      - publish-device-candidate
+      - build-device-binary
     runs-on: ubuntu-latest
     outputs:
       deployed: ${{ steps.triggers.outcome == 'success' && steps.after_promote.outputs.is_latest == 'true' }}
@@ -201,29 +197,22 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: pnpm exec wrangler triggers deploy
 
-  promote-device-image:
-    name: Promote Raspberry Pi image
+  publish-device-binary:
+    name: Publish Raspberry Pi binary
     if: needs.deploy-api.outputs.deployed == 'true'
     needs:
       - deploy-api
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
     steps:
       - name: Setup | Checkout tested revision
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Setup | Log in to GHCR
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup | Buildx
-        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
-
-      - name: Verify | Delivery is still current before image promotion
+      - name: Verify | Delivery is still current before device publish
         id: latest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -232,9 +221,18 @@ jobs:
           TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
         run: deploy/ci/check-latest-delivery.sh
 
-      - name: Run | Point main at the tested image
+      - name: Setup | Download binary candidate
+        if: steps.latest.outputs.is_latest == 'true'
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: device-binary
+          path: device-binary
+
+      - name: Run | Publish binary to the device-main release
         if: steps.latest.outputs.is_latest == 'true'
         env:
-          IMAGE: ghcr.io/${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: docker buildx imagetools create --tag "$IMAGE:main" "$IMAGE:sha-$DEPLOY_SHA"
+          BINARY_PATH: device-binary/room-manager
+        run: deploy/ci/publish-device-binary.sh
