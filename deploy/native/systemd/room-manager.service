@@ -1,0 +1,22 @@
+[Unit]
+Description=Room Manager
+After=pipewire.socket wireplumber.service
+Wants=pipewire.socket wireplumber.service
+
+[Service]
+Type=simple
+# The app writes its PID to the ready file once the API client, sound player,
+# door lock and at least one Pasori reader are initialized. The updater uses it
+# to decide whether a freshly deployed binary is healthy.
+RuntimeDirectory=room-manager
+Environment="XDG_RUNTIME_DIR=/run/user/%U"
+Environment="ROOM_MANAGER_READY_FILE=%t/room-manager/ready"
+# API_PATH / API_TOKEN. Created before the native deployment was introduced.
+EnvironmentFile=%h/.config/systemd/user/room-manager.env
+# SERVO_DIRECTION and other per-device settings written by install.sh.
+EnvironmentFile=-%h/.config/room-manager/device.env
+ExecStart=%h/.local/lib/room-manager/current/room-manager
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

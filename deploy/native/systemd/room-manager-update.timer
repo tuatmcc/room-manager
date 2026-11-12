@@ -1,0 +1,12 @@
+[Unit]
+Description=Check for room-manager updates
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30s
+Persistent=true
+Unit=room-manager-update.service
+
+[Install]
+WantedBy=timers.target

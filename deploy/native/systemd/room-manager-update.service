@@ -1,0 +1,8 @@
+[Unit]
+Description=Update room-manager to the latest device release
+
+[Service]
+Type=oneshot
+EnvironmentFile=-%h/.config/room-manager/update.env
+ExecStart=%h/.local/lib/room-manager/bin/room-manager-update update
+TimeoutStartSec=10min
