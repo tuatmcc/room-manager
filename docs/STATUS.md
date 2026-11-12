@@ -39,17 +39,18 @@
 - API 側にユースケース、ハンドラ、ユーティリティのテストがある
 - Rust 側に `TouchCardUseCase` 周辺のテストがある
 - `ReaderEvent::Card` は Raspberry Pi runtime でのみ生成され、portable runtime では platform-specific な dead-code lint を抑制している
-- Raspberry Pi の初回 installer は Quadlet サービスを起動するが、実機確認が済むまで更新 timer を有効化しない
+- Raspberry Pi の初回 installer は user service を新構成へ移行するが、実機確認が済むまで更新 timer を有効化しない
 - GitHub Actions で Node / Rust の typecheck, lint, format, test, build が構成済み
 
 ### Continuous Deployment
 
 - `main` の CI 成功後、検証済み SHA を使い、各昇格境界で最新SHA/CI runを再確認するlatest-only CD workflowが構成済み
 - Workers API は D1 migration、candidate version upload、D1/KV dependency health check、100% promote の順で Blue/Green deploy される
-- Raspberry Pi 用 ARM64 OCI image は GHCR の `main` と commit SHA tag へ publish される
-- Raspberry Pi 側は Podman Quadlet の blue/green 2 slot、`podman auto-update`、共有 hardware lock、自動 rollback、不健全activeの次回起動時復旧、不良digest隔離で更新される
+- Raspberry Pi 用 ARM64 バイナリは Debian bookworm コンテナで build され、API 昇格成功後に Release `device-main` へ `room-manager-<sha>-aarch64` と `latest.txt`（sha / sha256）として公開される
+- Raspberry Pi 側は `room-manager` ユーザーの user service と `room-manager-update.timer`（5 分周期）で更新される。sha256 検証、起動確認、readiness 確認、`current` / `previous` symlink による自動 rollback、失敗コミットの隔離（`failed-sha`）、手動 `rollback` に対応する
+- `deploy/native/install.sh` は既存の `~/room-manager` と user service を新構成へ移行し、旧 unit を `room-manager.service.pre-native` に退避する。readiness に失敗した場合は旧 unit を復元する。更新 timer は実機確認後に有効化する
 - 初期構築、秘密情報、監視、手動 rollback は `docs/DEPLOYMENT.md` に記載済み
-- `deploy/podman/migrate-legacy.sh` は明示した旧 systemd システムサービスからの初回移行に対応し、旧系停止前の候補準備、再起動を跨ぐ起動抑止、readiness失敗時の旧系復旧、実機確認後のtimer有効化を行う。旧バイナリ・設定は変更しない
+- Podman Quadlet による blue/green 構成は、実機が Debian 12 (Podman 4.3.1) で Quadlet を使えないため廃止した
 
 ## Current Constraints
 
@@ -60,14 +61,17 @@
 - 未登録 NFC コードは 4 桁で、衝突時は最大 16 回までリトライする
 - 学生証 / Suica 読取は固定オフセットのバイト解析に依存する
 - Pasori の自動再接続は CI で論理部分を検証できるが、USB 抜き差しと複数台同時利用は Raspberry Pi 実機確認が必要
-- Blue/Green の候補 slot は物理デバイスの二重操作を避けるため standby 状態で検証し、切替直後に少なくとも1台のPasori初期化を含む実機readinessを確認する
+- 端末の更新はサービスの再起動を伴うため、切替時に数秒間カード読取が止まる。切替後に少なくとも1台のPasori初期化を含む readiness を確認し、Pasori 未接続の端末では更新が rollback される
 - D1 migration は Worker version と一緒に rollback できないため、expand/contract 方式が必要
 
 ## Known Risks
 
 - 実機依存部は CI だけでは十分に担保できない
-- Raspberry Pi の container device mapping と Blue/Green 切替は実機での初回確認が必要
-- 旧方式の systemd unit はリポジトリに含まれないため、移行時に実機の正規 service 名を指定する。user service、cron、手動起動、timer/socket起動の移行は自動化対象外
+- `device-main` Release は CD が初めて成功するまで存在しない。それ以前は端末の更新が `latest.txt` の取得失敗で何もせず終わる
+- 配布物の完全性は HTTPS と同一 Release 上の sha256 に依存する。リポジトリの write 権限を持つ者は端末へバイナリを配布できる
+- 実機でのネイティブ配布の初回移行と、更新・rollback の動作確認は未実施
+- 更新スクリプトと unit は `device-main` では更新されないため、変更時は端末で `install.sh` を再実行する
+- `release.yml` が生成する GitHub Release 用バイナリは ubuntu runner で build されており、Debian 12 の端末では動作しない可能性がある（端末配布には使わない）
 - Cron による一括退出は運用ルール変更に弱い
 - 秘密情報の配置ルールが曖昧だとローカル開発と本番の差異を生みやすい
 
@@ -77,7 +81,7 @@
 
 1. `room-admin` の仕様を決め、実装するか削除するかを選ぶ
 2. Discord 通知失敗時の扱いを明文化する
-3. Raspberry Pi 実機で Podman 初期構築と blue/green 切替を検証する
+3. Raspberry Pi 実機でネイティブ配布の移行（`install.sh`）、更新、rollback を検証し、更新 timer を有効化する
 4. スキーマ変更が入る開発では expand/contract を守り、`docs/ARCHITECTURE.md` のデータモデル節を先に更新する
 
 ## Files to Read First When Resuming

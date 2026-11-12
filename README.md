@@ -23,7 +23,7 @@ cargo fetch
 - `packages/api/.dev.vars`
 
 詳細な前提条件と運用ルールは [docs/RUNBOOK.md](docs/RUNBOOK.md) を参照してください。
-`main` からの自動デプロイと Raspberry Pi の Podman Blue/Green セットアップは [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) を参照してください。
+`main` からの自動デプロイと Raspberry Pi のセットアップは [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) を参照してください。
 
 ## Common Commands
 
@@ -50,4 +50,4 @@ cargo run -p room-manager -- --api-path <API_URL> --api-token <TOKEN>
 
 非 Raspberry Pi 環境では Rust アプリは Noop runtime で起動し、カードイベントは発生しません。
 
-本番 Raspberry Pi ではバイナリを直接起動せず、2 系統の Podman Quadlet と `podman-auto-update` を使います。API は D1/KV binding の制約から Cloudflare Workers のまま、version upload と candidate health check を経由して Blue/Green 配布します。
+本番 Raspberry Pi では systemd user service として動かし、`main` の CD が公開する ARM64 バイナリを端末の timer が自動で取得・検証・再起動します（失敗時は直前のバイナリへ自動 rollback）。API は D1/KV binding の制約から Cloudflare Workers のまま、version upload と candidate health check を経由して Blue/Green 配布します。
