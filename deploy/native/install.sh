@@ -4,7 +4,8 @@
 # Run as the user that owns the room-manager systemd user service (not root),
 # from a checkout or a copy of deploy/native. An existing ~/room-manager binary
 # and user service are migrated in place; the previous unit is kept as
-# room-manager.service.pre-native.
+# room-manager.service.pre-native. The latest binary published by the CD workflow
+# is then deployed, with automatic rollback to the migrated binary.
 #
 # Usage: install.sh [--binary PATH] [--enable-timer]
 #   --binary PATH   initial binary (default: ~/room-manager)
@@ -85,10 +86,13 @@ done
 systemctl --user daemon-reload
 systemctl --user enable room-manager.service
 
+# The binary being migrated may predate the readiness signal, so it can only be
+# checked for staying up. Readiness is enforced by the update below.
 printf 'restarting room-manager.service on the native layout\n'
 systemctl --user restart room-manager.service
-if ! "$base_dir/bin/room-manager-update" wait-ready; then
-    printf 'room-manager did not become ready; restoring the previous unit\n' >&2
+sleep 10
+if ! systemctl --user is-active --quiet room-manager.service; then
+    printf 'room-manager.service is not running; restoring the previous unit\n' >&2
     if [ "$had_service" = true ]; then
         cp -p "$unit_dir/room-manager.service.pre-native" "$unit_dir/room-manager.service"
         systemctl --user daemon-reload
@@ -97,6 +101,13 @@ if ! "$base_dir/bin/room-manager-update" wait-ready; then
         systemctl --user stop room-manager.service
     fi
     die "installation rolled back"
+fi
+
+# Switch to the latest published binary. It reports readiness, and the update
+# restores the migrated binary if it does not become ready.
+printf 'deploying the latest published binary\n'
+if ! "$base_dir/bin/room-manager-update" update; then
+    printf 'warning: the update failed; the migrated binary is still in use. See: journalctl --user -u room-manager.service\n' >&2
 fi
 
 if [ "$enable_timer" = true ]; then
