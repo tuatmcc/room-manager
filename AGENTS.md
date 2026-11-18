@@ -52,7 +52,7 @@
 - Dry-run build: `pnpm --dir packages/api build`
 - Local migration: `pnpm --dir packages/api dev:migrate`
 - Remote migration: `pnpm --dir packages/api ci:migrate`
-- Deploy: `main` の CI 成功後に `.github/workflows/cd.yml` が実行する（運用手順は `docs/DEPLOYMENT.md`）
+- Deploy: release-please の Release PR を merge すると `.github/workflows/release-please.yml` が `.github/workflows/cd.yml` を呼ぶ。`main` への merge だけでは配布されない（運用手順は `docs/DEPLOYMENT.md`）
 - Register slash commands: `pnpm --dir packages/api register`
 
 ## Working Agreement

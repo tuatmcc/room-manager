@@ -97,7 +97,7 @@
 - サーボの回転方向は `SERVO_DIRECTION` で `normal` または `reverse` に設定でき、既定値は `normal` とする
 - 非 Raspberry Pi 環境では Noop runtime で起動できるが、カードイベントは発生しない
 - 入退出の重複更新に対しては DB 制約とリトライで整合性を保つ
-- `main` の CI 成功後、Workers API と Raspberry Pi 用 ARM64 バイナリを自動配布する
+- release-please の Release（`vX.Y.Z`）作成を起点に、Workers API と Raspberry Pi 用 ARM64 バイナリを自動配布する。`main` への merge だけでは本番へ配布しない
 - Workers API は未配布 version の health check 後に production traffic を切り替える
 - Raspberry Pi は公開されたバイナリを自動で取得・検証して切り替え、起動確認に失敗した場合は直前のバイナリへ戻す
 - Raspberry Pi 上で Pasori、GPIO、音声を操作するアプリプロセスは常に 1 個だけとする（systemd user service が単一プロセスを管理する）

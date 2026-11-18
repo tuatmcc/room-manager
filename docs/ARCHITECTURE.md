@@ -189,8 +189,9 @@
 
 ### Continuous Delivery
 
-- `main` の CI 成功を起点に、検証済み SHA から Workers version と Raspberry Pi 用 ARM64 バイナリを生成する
-- 各production昇格境界で現在の `main` HEADとその最新CI runを再検証し、superseded deliveryは昇格しない
+- 本番配布の起点は release-please の Release（`vX.Y.Z`）とする。Release PR の merge を明示的な配布承認とみなし、ドキュメントだけの変更などで端末が再起動されることを防ぐ。`main` への merge だけでは配布しない
+- `release-please.yml` が Release 作成時に `cd.yml` を `workflow_call` で呼ぶ。CD はタグのコミットの CI 完了を待ち、成功したときだけ Workers version と Raspberry Pi 用 ARM64 バイナリを生成する
+- 各 production 昇格境界で、タグが最新 Release でありコミットが `main` 上にあって CI が成功していることを再検証し、新しい Release に追い越された配布は昇格しない
 - Workers は D1/KV binding のため端末へ移さず、candidate version URL でD1/KVを検証後に 100% promote する
 - バイナリは端末と同じ Debian bookworm のコンテナで build し、API 昇格成功後にだけ Release `device-main` へ `room-manager-<sha>-aarch64` と `latest.txt`（sha / sha256）として公開する。manifest は必ずバイナリの後に更新する
 - Raspberry Pi は `room-manager` ユーザーの systemd user service。実機の Podman が古く OS 入れ替えも難しいため、コンテナは使わない。PipeWire のユーザーセッションを使う都合でも user service が自然である
