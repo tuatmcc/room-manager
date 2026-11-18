@@ -115,11 +115,25 @@ systemctl --user enable --now room-manager-update.timer
 systemctl --user list-timers room-manager-update.timer
 ```
 
-`./deploy/native/install.sh --enable-timer` で install と同時に有効化することもできる。
+`./deploy/native/install.sh --enable-timer` で install と同時に有効化することもできる。`room-manager` ユーザーのシェルで user bus に接続できない場合は、下記「Routine operations」の `-M room-manager@` を使った方法で有効化する。
 
 `install.sh` の更新で、CD の成功したバイナリへ切り替わる。`~/room-manager`（旧バイナリ）と `room-manager.service.pre-native` は、問題がなければ後から手動で削除してよい。
 
 ## Routine operations
+
+以下のコマンドは `room-manager` ユーザーの user systemd に対して実行する。`systemctl --user` は実行したユーザーの unit しか見ないため、管理用ユーザー（例: `mcc`）のまま実行すると `Unit room-manager-update.service not found.` になる。
+
+`sudo -iu room-manager` で切り替えた場合、端末によっては user bus に接続できず `Failed to connect to bus: No medium found` になる。そのときは管理用ユーザーから `-M room-manager@` でユーザーのサービスマネージャを直接指定する（実機ではこの方法で操作している）。
+
+```sh
+sudo systemctl --user -M room-manager@ list-unit-files 'room-manager*'
+sudo systemctl --user -M room-manager@ enable --now room-manager-update.timer
+sudo systemctl --user -M room-manager@ list-timers room-manager-update.timer --no-pager
+sudo systemctl --user -M room-manager@ start room-manager-update.service
+sudo journalctl --user-unit room-manager-update.service -n 100 --no-pager
+```
+
+`room-manager` ユーザーのシェルで直接操作する場合は、`XDG_RUNTIME_DIR=/run/user/$(id -u)` を設定してから `systemctl --user` を使う。いずれの方法でも、lingering（`loginctl show-user room-manager | grep Linger` が `yes`）が前提となる。`WARNING: terminal is not fully functional` はページャの警告なので、`--no-pager` を付ければ表示されない。
 
 更新確認を即時実行し、結果を見る:
 
@@ -159,7 +173,7 @@ systemctl --user start room-manager-update.service
 systemctl --user stop room-manager-update.timer
 ```
 
-ssh 経由で実行する場合は `XDG_RUNTIME_DIR=/run/user/$(id -u)` を設定する（`sudo -iu room-manager` では通常設定される）。
+ssh や `sudo -iu room-manager` で `Failed to connect to bus` になる場合は、この節の冒頭のとおり `XDG_RUNTIME_DIR` を設定するか、`sudo systemctl --user -M room-manager@ ...` を使う。
 
 ## Failure handling
 
