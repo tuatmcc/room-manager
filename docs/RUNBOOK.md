@@ -64,7 +64,7 @@
 
 ### Deployment
 
-通常は手動実行しない。`main` の CI 成功後に CD workflow が次の順で実行する。
+通常は手動実行しない。release-please の Release PR を merge して Release（`vX.Y.Z`）が作成されると、CD workflow がそのコミットの CI 成功を待ってから次の順で実行する。`main` への通常の merge では本番へ配布されない。
 
 1. `pnpm --dir packages/api ci:migrate`
 2. `wrangler versions upload` と candidate URL の `GET /health`（D1/KVを含むhealth check）
@@ -126,6 +126,6 @@ GitHub secrets、candidate URL、rollback は `docs/DEPLOYMENT.md` を参照す�
 ## Release Expectations
 
 - CI では Node と Rust の lint / format / test / build が走る
-- CD workflow は CI 成功後、Workers API を Blue/Green deploy し、成功後に ARM64 バイナリを Release `device-main` へ公開する
+- 本番配布は release-please の Release PR の merge で行う。CD workflow は Release のコミットの CI 成功後、Workers API を Blue/Green deploy し、成功後に ARM64 バイナリを Release `device-main` とバージョンの Release へ公開する
 - Raspberry Pi は 5 分周期で `device-main` を確認し、検証済みバイナリへ切り替える。readiness が得られなければ直前のバイナリへ自動 rollback する
-- release workflow は GitHub Release 用の ARM64 バイナリだけを生成し、本番 deploy は行わない
+- 旧 `release.yml`（ubuntu runner で build した GitHub Release 用バイナリ）は廃止した。バージョンの Release に添付するバイナリも CD が Debian bookworm で build したものを使う

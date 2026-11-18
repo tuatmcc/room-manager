@@ -2,11 +2,17 @@
 
 ## Delivery model
 
-`main` の CI が成功すると `.github/workflows/cd.yml` が検証済みコミットを取得し、次の順序で自動配布する。
+本番配布の起点は release-please の Release（`vX.Y.Z`）である。`main` への merge だけでは Workers API も端末も更新されない。
+
+1. `main` への merge ごとに release-please が Release PR（`chore: release X.Y.Z`）を更新する
+2. 配布したい時点で Release PR を merge すると、release-please がタグと Release を作成し、`.github/workflows/release-please.yml` から `.github/workflows/cd.yml` を呼ぶ
+3. CD はタグのコミットの CI（同じ push で並行して走る）の完了を最大 60 分待つ。成功しなければ配布しない
+
+CI 成功後、CD は次の順序で配布する。
 
 1. Raspberry Pi 用の ARM64 バイナリを Debian bookworm コンテナで build し、workflow artifact として保持する（この時点では配布しない）
 2. Workers API の新 version を候補として upload し、candidate URL の `GET /health` で Worker、D1、KV を確認した後で 100% のトラフィックを新 version へ切り替える
-3. API 切替成功後だけ、バイナリを GitHub Release `device-main` へ公開する
+3. API 切替成功後だけ、バイナリをバージョンの Release（`room-manager` asset）と GitHub Release `device-main` へ公開する
 
 Raspberry Pi は外部から SSH されない。端末自身の `room-manager-update.timer` が 5 分ごとに `device-main` の `latest.txt` を確認し、新しいコミットがあればバイナリを取得・検証して再起動する pull 型 CD である。新 API は旧端末との後方互換を保つ前提とし、API の昇格に失敗した場合はバイナリを公開しない。
 
@@ -35,10 +41,10 @@ D1 は Worker version に含まれず rollback されない。このため migra
 - バイナリは `rust:1.94.0-bookworm` コンテナで build する。端末の Debian 12 と同じ glibc / 共有ライブラリにリンクされるため、ubuntu runner でそのまま build したバイナリは配布に使わない
 - Release `device-main`（prerelease、Latest ではない）に、コミットごとに不変の `room-manager-<sha>-aarch64` を置く。最新の 5 個だけを残し、古いものは削除する
 - `latest.txt`（`sha=<40桁>` と `sha256=<64桁>`）は必ずバイナリの upload 後に更新する。端末が存在しないバイナリを指す manifest を見ることはない
-- 各境界（API 準備、API 昇格、公開）で対象 SHA が現在の `main` HEAD であり、最新 CI run が成功済みであることを再検証する。途中で新しい `main` が現れた古い delivery は公開しない
+- 各境界（API 準備、API 昇格、公開）で、対象タグが最新の Release であり、タグのコミットが `main` 上にあり、その CI run が成功済みであることを再検証する。途中で新しい Release が作られた古い delivery は公開しない（`deploy/ci/check-release-delivery.sh`）
 - 端末は sha256 検証と `room-manager --help` の起動確認が通ったバイナリだけを有効化する
 - 端末は切替後、アプリが readiness を報告するまで待つ。API・音声・GPIO と少なくとも 1 台の Pasori reader の初期化後に、アプリが自身の PID を ready file へ書く。この PID が service の `MainPID` と一致し、その後も安定して動作し続ければ成功とする
-- 失敗したら直前のバイナリへ戻して再起動し、失敗したコミットを `failed-sha` に記録する。`main` が別コミットへ進むまで同じコミットは再試行しない
+- 失敗したら直前のバイナリへ戻して再起動し、失敗したコミットを `failed-sha` に記録する。別のコミットの Release が公開されるまで同じコミットは再試行しない
 - 切替時にはサービスの再起動により数秒間カード読取が止まる。二重起動は発生しない（systemd が単一プロセスを管理する）
 
 Pasori が接続されていない端末では readiness が得られないため、更新は rollback される。物理確認のできる状態で配布する。
@@ -55,7 +61,13 @@ Repository の Actions secrets に次を登録する。
 
 バイナリの公開には、公開ジョブだけに付与した `contents: write` の `GITHUB_TOKEN` を使う（他の job は `contents: read`）。リポジトリは public のため、端末は認証なしで Release assets を取得できる。private にする場合は端末に `read` 権限の token を渡す仕組みが別途必要になる。
 
-Branch protection では `main` への merge 前に `CI` を必須にする。CD は `CI` の `workflow_run` が `success` のときだけ、CI が検証した同じ SHA を配布する。
+Branch protection では `main` への merge 前に `CI` を必須にする。CD はタグのコミットに対する `main` の push CI が `success` のときだけ、その SHA を配布する。
+
+release-please は `MCC_BOT_APP_ID` / `MCC_BOT_PRIVATE_KEY` の GitHub App token で Release PR とタグを作る。CD は `release-please.yml` から `secrets: inherit` で呼ばれ、呼び出し側で `actions: read` と `contents: write` を許可している。
+
+### Manual re-run
+
+Release 作成時の CD が一時的な障害で失敗した場合は、Actions の `CD` を `workflow_dispatch` で実行し、`tag_name` に最新の Release タグ（例: `v0.4.0`）を指定する。最新ではないタグは配布されない。古いバージョンへ戻す場合は再配布ではなく、Cloudflare の Deployments と端末の `rollback` を使う（「Failure handling」参照）。
 
 ## Raspberry Pi layout
 
@@ -183,7 +195,7 @@ ssh や `sudo -iu room-manager` で `Failed to connect to bus` になる場合�
 - rollback 後も readiness が得られない: update service が失敗として終了する。timer を停止し、`journalctl`、Pasori・GPIO・音声デバイスの状態、`room-manager.env` を確認する。`room-manager.service.pre-native` と `~/room-manager` が残っていれば旧構成へ戻せる
 - API candidate health 失敗: GitHub Actions は promote 前に失敗し、production Worker version は維持され、バイナリも公開されない
 - API promote 後の障害: Cloudflare Workers の Deployments で直前の version を 100% に戻す。D1 migration は戻さない
-- 公開済みバイナリに問題がある場合: 修正を `main` へ入れて新しいコミットを配布する。急ぐ場合は端末で `rollback` を実行する。`device-main` の assets を手で削除しない
+- 公開済みバイナリに問題がある場合: 修正を `main` へ入れ、Release PR を merge して新しい Release として配布する。急ぐ場合は端末で `rollback` を実行する。`device-main` の assets を手で削除しない
 
 ## Security notes
 
