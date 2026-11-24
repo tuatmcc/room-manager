@@ -91,12 +91,15 @@
 - `GET /health`: CD candidate 用の D1/KV dependency health check
 - `GET /local-device`: health check
 - `POST /local-device/touch-card`: 端末用カードタッチ受付
+- `GET /display/:token`: DPT-S1 向け入室人数ページ(トークン認証、人数のみ)
+- `GET /display/:token/count`: 同ページが 5 秒ごとに呼ぶ人数 JSON
 - `POST /interaction`: Discord Interaction
 - `scheduled`: 日次自動退出
 
 ### Middleware
 
 - `/local-device/*`: `Authorization: Bearer <API_TOKEN>` を検証
+- `/display/*`: URL の `:token` を `DISPLAY_TOKEN` と SHA-256 経由の定数時間比較で検証。不一致は 404
 - `/interaction`: Discord 署名を検証
 
 ### Internal Composition
@@ -142,6 +145,14 @@
   - guild member 情報取得
   - channel への embed 投稿
   - 12 時間 TTL の KV キャッシュ
+
+### Occupancy Display
+
+- `packages/api/src/handlers/display`: `DisplayHandler`(認証と人数取得)、`page.ts`(HTML 生成)、`token.ts`(定数時間比較)
+- 人数は `ListEntryUsersUseCase` の結果の件数だけを使い、Discord API は呼ばない
+- DPT-S1 は 2.4GHz の Wi-Fi と TLS 1.0 までの HTTPS しか扱えないため、Cloudflare の既定(TLS 1.2 以上)では接続できない。workers.dev は HTTP でも応答し(実機の DPT-S1 で確認済み)、ゾーン設定も不要なため、既存の `room-manager` Worker の `/display/:token` を HTTP で提供する方針とする
+- 日本語ラベルは M PLUS Rounded 1c、数字は Electrolize。端末は外部の HTTPS(Google Fonts)を読み込めないため、必要な文字だけを抜き出した TrueType を `fonts.ts` に base64 で埋め込み、外部通信しない(どちらも SIL OFL 1.1)。表示文言を変えて未収録の文字を使う場合はサブセットを作り直す
+- 端末の Wi-Fi は学内ネットワークで IP とサブネットが再起動のたびに変わり得るため、Raspberry Pi の LAN 内配信は採用しない
 
 ## Data Model
 
