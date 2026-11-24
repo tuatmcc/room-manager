@@ -7,6 +7,8 @@ import type { UseCases } from "./usecase";
 
 export const EnvSchema = z.object({
   API_TOKEN: z.string(),
+  // 入室人数表示ページ(/display/:token)の URL トークン。未設定ならページは無効(404)
+  DISPLAY_TOKEN: z.string().min(8).optional(),
   DISCORD_PUBLIC_KEY: z.string(),
   DISCORD_BOT_TOKEN: z.string(),
   DISCORD_GUILD_ID: z.string(),

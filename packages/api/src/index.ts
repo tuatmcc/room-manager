@@ -14,6 +14,7 @@ import { createDatabase } from "./database";
 import { interactionVerifier } from "./discord";
 import type { AppEnv, Env } from "./env";
 import { EnvSchema } from "./env";
+import { createDisplayHandler } from "./handlers/display";
 import { createLocalDeviceHandlers } from "./handlers/local-device";
 import { createScheduledHandlers } from "./handlers/scheduled";
 import { createSlashCommandHandlers, handleSlashCommand } from "./handlers/slash-command";
@@ -49,6 +50,7 @@ export async function checkDependencies(env: Env): Promise<void> {
 function getRouteKind(path: string): string {
   if (path === "/" || path === "/health") return "health";
   if (path.startsWith("/local-device")) return "local-device";
+  if (path.startsWith("/display")) return "display";
   if (path.startsWith("/interaction")) return "interaction";
   return "other";
 }
@@ -125,6 +127,22 @@ const app = new Hono<AppEnv>()
 
     const res = await localDeviceHandlers.touchCard.handle(c);
     return res;
+  })
+  .get("/display/:token", async (c) => {
+    const handler = createDisplayHandler(
+      c.get("usecases").listEntryUsers,
+      c.get("env"),
+      c.get("logger"),
+    );
+    return await handler.handlePage(c);
+  })
+  .get("/display/:token/count", async (c) => {
+    const handler = createDisplayHandler(
+      c.get("usecases").listEntryUsers,
+      c.get("env"),
+      c.get("logger"),
+    );
+    return await handler.handleCount(c);
   })
   .post("/interaction", interactionVerifier, async (c) => {
     const usecases = c.get("usecases");

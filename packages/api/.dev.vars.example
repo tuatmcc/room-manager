@@ -1,5 +1,10 @@
 # API認証用のランダムなトークン(`openssl rand -hex 32`などで生成してください)
 API_TOKEN=
+# 入室人数表示ページ(/display/<token>)用の URL トークン(8文字以上)。端末のキーボードで入力するため短くしている
+# 紛らわしい文字(0 o 1 i l)を除いた英小文字と数字で生成する:
+#   LC_ALL=C tr -dc 'a-hjkmnp-z2-9' </dev/urandom | head -c 8
+# 未設定の場合、表示ページは無効(404)になる。API_TOKEN とは別の値にすること
+DISPLAY_TOKEN=
 # DiscordのPublic Key
 DISCORD_PUBLIC_KEY=
 # DiscordのBotトークン

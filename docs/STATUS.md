@@ -29,6 +29,13 @@
 - 未実装:
   - `/room-admin setting register`
 
+### Room Occupancy Display
+
+- `GET /display/:token`(入室人数のみ、5 秒ごとに更新)を実装済み。**未デプロイ**
+- 既存の `room-manager` Worker の一部として配布する(`http://room-manager.tuatmcc-com.workers.dev/display/<token>`)。専用ドメインや別 Worker、`routes` の追加は不要。配布は通常どおり Release 経由
+- 本番で有効にするには Workers secret `DISPLAY_TOKEN`(8 文字以上)の登録が必要。未登録でも表示ページが 404 になるだけで他の機能には影響しない
+- DPT-S1 実機で `http://room-manager.tuatmcc-com.workers.dev/` が HTTP で開けること(本文 `OK`)は確認済み(2026-11-24)。表示ページ自体の実機確認は配布後
+
 ### Batch Job
 
 - 毎日 20:15 JST 相当で未退出ユーザーを自動退出させる cron が設定済み
