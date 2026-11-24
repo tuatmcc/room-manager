@@ -7,8 +7,8 @@ export const DISPLAY_REFRESH_SECONDS = 5;
 export interface DisplaySnapshot {
   /** 現在の入室人数 */
   count: number;
-  /** 表示用の更新時刻(JST, HH:MM:SS) */
-  updatedAt: string;
+  /** サーバーの現在時刻(UNIX エポックミリ秒)。端末の時計がずれていても正しい時刻を表示するために使う */
+  serverTime: number;
 }
 
 const clockFormatter = new Intl.DateTimeFormat("ja-JP", {
@@ -33,11 +33,13 @@ export function formatClock(date: Date): string {
  * - 白地に黒のみ。階調・影・アニメーション・透過を使わない
  * - 古い WebKit でも動くよう ES5 の XMLHttpRequest だけを使う
  * - 値が変わったときだけ DOM を書き換え、不要な再描画(ゴースト・フラッシュ)を避ける
+ * - 時計は毎秒進める。端末の時計や時刻帯の設定に頼らず、サーバー時刻との差分から JST を計算する
  * - JavaScript が無効でも meta refresh で更新される
  */
 export function renderDisplayPage(snapshot: DisplaySnapshot, countPath: string): string {
   const countUrl = JSON.stringify(countPath).replaceAll("<", "\\u003c");
   const interval = DISPLAY_REFRESH_SECONDS;
+  const serverTime = Math.floor(snapshot.serverTime);
 
   return `<!doctype html>
 <html lang="ja">
@@ -119,7 +121,7 @@ body {
 <p class="lead">ただいま</p>
 <p class="value"><span id="count" class="number">${snapshot.count}</span></p>
 <p class="unit">人が入室中</p>
-<p class="clock" id="clock">${snapshot.updatedAt}</p>
+<p class="clock" id="clock">${formatClock(new Date(serverTime))}</p>
 <p class="stale" id="stale"></p>
 </main>
 <script>
@@ -129,6 +131,21 @@ body {
   var countEl = document.getElementById("count");
   var clockEl = document.getElementById("clock");
   var staleEl = document.getElementById("stale");
+  var JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  // サーバー時刻 - 端末時刻。取得のたびに補正する
+  var skew = ${serverTime} - new Date().getTime();
+
+  function pad(n) {
+    return n < 10 ? "0" + n : String(n);
+  }
+
+  function tick() {
+    var jst = new Date(new Date().getTime() + skew + JST_OFFSET_MS);
+    setText(clockEl, pad(jst.getUTCHours()) + ":" + pad(jst.getUTCMinutes()) + ":" + pad(jst.getUTCSeconds()));
+    // 次の秒の境目に合わせて更新する
+    var now = new Date().getTime() + skew;
+    setTimeout(tick, 1000 - (now % 1000) + 20);
+  }
 
   function setText(el, text) {
     if (el.firstChild && el.firstChild.nodeValue === text) return;
@@ -150,7 +167,7 @@ body {
         if (xhr.status !== 200) throw new Error("status " + xhr.status);
         var data = JSON.parse(xhr.responseText);
         setText(countEl, String(data.count));
-        setText(clockEl, data.updatedAt);
+        if (typeof data.serverTime === "number") skew = data.serverTime - new Date().getTime();
         setText(staleEl, "");
       } catch (e) {
         setText(staleEl, "(更新できません)");
@@ -160,6 +177,7 @@ body {
     xhr.send();
   }
 
+  tick();
   schedule();
 })();
 </script>

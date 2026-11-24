@@ -6,7 +6,7 @@ import { noopLogger } from "@/logger";
 import type { ListEntryUsersUseCase } from "@/usecase/ListEntryUsers";
 
 import type { DisplaySnapshot } from "./page";
-import { formatClock, renderDisplayPage } from "./page";
+import { renderDisplayPage } from "./page";
 import { isValidDisplayToken } from "./token";
 
 const COMMON_HEADERS = {
@@ -68,7 +68,7 @@ export class DisplayHandler {
       throw result.error;
     }
 
-    return { count: result.value.users.length, updatedAt: formatClock(this.now()) };
+    return { count: result.value.users.length, serverTime: this.now().getTime() };
   }
 }
 

@@ -38,12 +38,12 @@ describe("DisplayHandler", () => {
     expect(body).toContain(`/display/${TOKEN}/count`);
   });
 
-  it("JSON エンドポイントが人数と更新時刻を返す", async () => {
+  it("JSON エンドポイントが人数とサーバー時刻を返す", async () => {
     const execute = vi.fn().mockResolvedValue(ok(users(0)));
     const res = await createApp(execute, TOKEN).request(`/display/${TOKEN}/count`);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ count: 0, updatedAt: "12:04:05" });
+    expect(await res.json()).toEqual({ count: 0, serverTime: Date.parse("2026-11-24T03:04:05Z") });
   });
 
   it("誤ったトークンは 404 で、データを取得しない", async () => {

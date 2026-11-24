@@ -10,9 +10,12 @@ describe("formatClock", () => {
 });
 
 describe("renderDisplayPage", () => {
-  const html = renderDisplayPage({ count: 3, updatedAt: "12:34:56" }, "/display/abc/count");
+  const html = renderDisplayPage(
+    { count: 3, serverTime: Date.parse("2026-11-24T03:34:56Z") },
+    "/display/abc/count",
+  );
 
-  it("入室人数と更新時刻を初期描画に含める", () => {
+  it("入室人数と JST の現在時刻を初期描画に含める", () => {
     expect(html).toContain('<span id="count" class="number">3</span>');
     expect(html).toContain('<p class="clock" id="clock">12:34:56</p>');
   });
@@ -28,6 +31,12 @@ describe("renderDisplayPage", () => {
     expect(html).not.toMatch(/https?:\/\//);
   });
 
+  it("サーバー時刻を時計の基準として埋め込む", () => {
+    expect(html).toContain(
+      `var skew = ${Date.parse("2026-11-24T03:34:56Z")} - new Date().getTime();`,
+    );
+  });
+
   it("ロゴを data URI の画像として埋め込む", () => {
     expect(html).toMatch(
       /<img src="data:image\/png;base64,[A-Za-z0-9+/=]+" width="\d+" height="\d+" alt="MCC">/,
@@ -39,7 +48,7 @@ describe("renderDisplayPage", () => {
   });
 
   it("取得先 URL を JSON 文字列として埋め込み、スクリプトを閉じられない", () => {
-    const evil = renderDisplayPage({ count: 0, updatedAt: "00:00" }, "/x</script><b>");
+    const evil = renderDisplayPage({ count: 0, serverTime: 0 }, "/x</script><b>");
     expect(evil).not.toContain("</script><b>");
     expect(evil).toContain("\\u003c/script>");
   });
