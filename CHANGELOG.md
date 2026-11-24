@@ -1,5 +1,12 @@
 # room-manager
 
+## [0.5.0](https://github.com/tuatmcc/room-manager/compare/v0.4.0...v0.5.0) (2026-11-24)
+
+
+### Features
+
+* DPT-S1向けの入室人数表示ページを追加する ([#110](https://github.com/tuatmcc/room-manager/issues/110)) ([e1811ba](https://github.com/tuatmcc/room-manager/commit/e1811ba456eae41e4413e4134cb1e2df6ebdc4b9))
+
 ## [0.4.0](https://github.com/tuatmcc/room-manager/compare/v0.3.1...v0.4.0) (2026-11-18)
 
 
