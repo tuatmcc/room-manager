@@ -6,7 +6,7 @@ import { noopLogger } from "@/logger";
 import type { ListEntryUsersUseCase } from "@/usecase/ListEntryUsers";
 
 import type { DisplaySnapshot } from "./page";
-import { formatClock, renderDisplayPage } from "./page";
+import { renderDisplayPage } from "./page";
 import { isValidDisplayToken } from "./token";
 
 const COMMON_HEADERS = {
@@ -39,7 +39,7 @@ export class DisplayHandler {
     return c.html(html, 200, {
       ...COMMON_HEADERS,
       "Content-Security-Policy":
-        "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; connect-src 'self'",
+        "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; img-src data:; connect-src 'self'",
     });
   }
 
@@ -68,7 +68,7 @@ export class DisplayHandler {
       throw result.error;
     }
 
-    return { count: result.value.users.length, updatedAt: formatClock(this.now()) };
+    return { count: result.value.users.length, serverTime: this.now().getTime() };
   }
 }
 

@@ -1,4 +1,5 @@
 import { MPLUS_ROUNDED_BASE64, ELECTROLIZE_DIGITS_BASE64 } from "./fonts";
+import { MCC_LOGO_HEIGHT, MCC_LOGO_PNG_BASE64, MCC_LOGO_WIDTH } from "./logo";
 
 /** ページを再取得する間隔(秒)。入退室から表示までの遅延を 10 秒以内に収める。 */
 export const DISPLAY_REFRESH_SECONDS = 5;
@@ -6,23 +7,24 @@ export const DISPLAY_REFRESH_SECONDS = 5;
 export interface DisplaySnapshot {
   /** 現在の入室人数 */
   count: number;
-  /** 表示用の更新時刻(JST, HH:MM) */
-  updatedAt: string;
+  /** サーバーの現在時刻(UNIX エポックミリ秒)。端末の時計がずれていても正しい時刻を表示するために使う */
+  serverTime: number;
 }
 
 const clockFormatter = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo",
   hour: "2-digit",
   minute: "2-digit",
+  second: "2-digit",
   hour12: false,
 });
 
 export function formatClock(date: Date): string {
-  // ja-JP は "09:05" 形式で返す。環境差を避けるため数字部分だけ取り出して整形する
+  // ja-JP は "09:05:07" 形式で返す。環境差を避けるため数字部分だけ取り出して整形する
   const parts = clockFormatter.formatToParts(date);
-  const hour = parts.find((part) => part.type === "hour")?.value ?? "00";
-  const minute = parts.find((part) => part.type === "minute")?.value ?? "00";
-  return `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    (parts.find((part) => part.type === type)?.value ?? "00").padStart(2, "0");
+  return `${pick("hour")}:${pick("minute")}:${pick("second")}`;
 }
 
 /**
@@ -31,11 +33,13 @@ export function formatClock(date: Date): string {
  * - 白地に黒のみ。階調・影・アニメーション・透過を使わない
  * - 古い WebKit でも動くよう ES5 の XMLHttpRequest だけを使う
  * - 値が変わったときだけ DOM を書き換え、不要な再描画(ゴースト・フラッシュ)を避ける
+ * - 時計は毎秒進める。端末の時計や時刻帯の設定に頼らず、サーバー時刻との差分から JST を計算する
  * - JavaScript が無効でも meta refresh で更新される
  */
 export function renderDisplayPage(snapshot: DisplaySnapshot, countPath: string): string {
   const countUrl = JSON.stringify(countPath).replaceAll("<", "\\u003c");
   const interval = DISPLAY_REFRESH_SECONDS;
+  const serverTime = Math.floor(snapshot.serverTime);
 
   return `<!doctype html>
 <html lang="ja">
@@ -60,52 +64,65 @@ html, body { margin: 0; padding: 0; background: #fff; color: #000; }
 body {
   font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Noto Sans JP", sans-serif;
   font-weight: 500;
-  min-height: 100%;
 }
 .sheet {
   box-sizing: border-box;
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 64px 32px;
-  text-align: center;
+  padding: 56px 48px;
+  padding: 5vw 6vw;
 }
-.label {
+.logo { margin: 0; text-align: center; }
+.logo img { width: 60%; height: auto; }
+.lead {
   margin: 0;
-  padding: 0 0 28px;
-  font-size: 36px;
-  font-weight: 500;
-  letter-spacing: 0.3em;
-  text-indent: 0.3em;
-  border-bottom: 2px solid #000;
+  padding-top: 64px;
+  padding-top: 8vw;
+  font-size: 56px;
+  font-size: 6vw;
+  letter-spacing: 0.1em;
 }
 .value {
   margin: 0;
-  padding: 96px 0 80px;
-  border-bottom: 1px solid #000;
+  text-align: center;
   line-height: 1;
   white-space: nowrap;
 }
 .number {
   font-family: "Electrolize", "M PLUS Rounded 1c", sans-serif;
-  font-size: 280px;
-  font-size: 34vw;
+  font-size: 360px;
+  font-size: 40vw;
   font-weight: 400;
 }
-.unit { font-size: 56px; padding-left: 20px; }
-.foot {
+.unit {
   margin: 0;
-  padding-top: 28px;
-  font-size: 26px;
+  text-align: right;
+  font-size: 56px;
+  font-size: 6vw;
   letter-spacing: 0.1em;
 }
-.stale { font-weight: 500; }
+.clock {
+  margin: 0;
+  padding-top: 48px;
+  padding-top: 6vw;
+  text-align: center;
+  font-family: "Electrolize", "M PLUS Rounded 1c", sans-serif;
+  font-size: 88px;
+  font-size: 10vw;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+.stale { margin: 0; padding-top: 16px; text-align: center; font-size: 28px; font-size: 3vw; }
 </style>
 </head>
 <body>
 <main class="sheet">
-<h1 class="label">入室人数</h1>
-<p class="value"><span id="count" class="number">${snapshot.count}</span><span class="unit">人</span></p>
-<p class="foot">更新 <span id="clock">${snapshot.updatedAt}</span><span id="stale" class="stale"></span></p>
+<h1 class="logo"><img src="data:image/png;base64,${MCC_LOGO_PNG_BASE64}" width="${MCC_LOGO_WIDTH}" height="${MCC_LOGO_HEIGHT}" alt="MCC"></h1>
+<p class="lead">ただいま</p>
+<p class="value"><span id="count" class="number">${snapshot.count}</span></p>
+<p class="unit">人が入室中</p>
+<p class="clock" id="clock">${formatClock(new Date(serverTime))}</p>
+<p class="stale" id="stale"></p>
 </main>
 <script>
 (function () {
@@ -114,6 +131,21 @@ body {
   var countEl = document.getElementById("count");
   var clockEl = document.getElementById("clock");
   var staleEl = document.getElementById("stale");
+  var JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+  // サーバー時刻 - 端末時刻。取得のたびに補正する
+  var skew = ${serverTime} - new Date().getTime();
+
+  function pad(n) {
+    return n < 10 ? "0" + n : String(n);
+  }
+
+  function tick() {
+    var jst = new Date(new Date().getTime() + skew + JST_OFFSET_MS);
+    setText(clockEl, pad(jst.getUTCHours()) + ":" + pad(jst.getUTCMinutes()) + ":" + pad(jst.getUTCSeconds()));
+    // 次の秒の境目に合わせて更新する
+    var now = new Date().getTime() + skew;
+    setTimeout(tick, 1000 - (now % 1000) + 20);
+  }
 
   function setText(el, text) {
     if (el.firstChild && el.firstChild.nodeValue === text) return;
@@ -135,7 +167,7 @@ body {
         if (xhr.status !== 200) throw new Error("status " + xhr.status);
         var data = JSON.parse(xhr.responseText);
         setText(countEl, String(data.count));
-        setText(clockEl, data.updatedAt);
+        if (typeof data.serverTime === "number") skew = data.serverTime - new Date().getTime();
         setText(staleEl, "");
       } catch (e) {
         setText(staleEl, "(更新できません)");
@@ -145,6 +177,7 @@ body {
     xhr.send();
   }
 
+  tick();
   schedule();
 })();
 </script>
