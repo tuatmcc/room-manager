@@ -39,7 +39,7 @@ export class DisplayHandler {
     return c.html(html, 200, {
       ...COMMON_HEADERS,
       "Content-Security-Policy":
-        "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; connect-src 'self'",
+        "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; img-src data:; connect-src 'self'",
     });
   }
 

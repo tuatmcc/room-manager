@@ -1,4 +1,5 @@
 import { MPLUS_ROUNDED_BASE64, ELECTROLIZE_DIGITS_BASE64 } from "./fonts";
+import { MCC_LOGO_HEIGHT, MCC_LOGO_PNG_BASE64, MCC_LOGO_WIDTH } from "./logo";
 
 /** ページを再取得する間隔(秒)。入退室から表示までの遅延を 10 秒以内に収める。 */
 export const DISPLAY_REFRESH_SECONDS = 5;
@@ -6,7 +7,7 @@ export const DISPLAY_REFRESH_SECONDS = 5;
 export interface DisplaySnapshot {
   /** 現在の入室人数 */
   count: number;
-  /** 表示用の更新時刻(JST, HH:MM) */
+  /** 表示用の更新時刻(JST, HH:MM:SS) */
   updatedAt: string;
 }
 
@@ -14,15 +15,16 @@ const clockFormatter = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo",
   hour: "2-digit",
   minute: "2-digit",
+  second: "2-digit",
   hour12: false,
 });
 
 export function formatClock(date: Date): string {
-  // ja-JP は "09:05" 形式で返す。環境差を避けるため数字部分だけ取り出して整形する
+  // ja-JP は "09:05:07" 形式で返す。環境差を避けるため数字部分だけ取り出して整形する
   const parts = clockFormatter.formatToParts(date);
-  const hour = parts.find((part) => part.type === "hour")?.value ?? "00";
-  const minute = parts.find((part) => part.type === "minute")?.value ?? "00";
-  return `${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`;
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    (parts.find((part) => part.type === type)?.value ?? "00").padStart(2, "0");
+  return `${pick("hour")}:${pick("minute")}:${pick("second")}`;
 }
 
 /**
@@ -60,52 +62,65 @@ html, body { margin: 0; padding: 0; background: #fff; color: #000; }
 body {
   font-family: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Noto Sans JP", sans-serif;
   font-weight: 500;
-  min-height: 100%;
 }
 .sheet {
   box-sizing: border-box;
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 64px 32px;
-  text-align: center;
+  padding: 56px 48px;
+  padding: 5vw 6vw;
 }
-.label {
+.logo { margin: 0; text-align: center; }
+.logo img { width: 60%; height: auto; }
+.lead {
   margin: 0;
-  padding: 0 0 28px;
-  font-size: 36px;
-  font-weight: 500;
-  letter-spacing: 0.3em;
-  text-indent: 0.3em;
-  border-bottom: 2px solid #000;
+  padding-top: 64px;
+  padding-top: 8vw;
+  font-size: 56px;
+  font-size: 6vw;
+  letter-spacing: 0.1em;
 }
 .value {
   margin: 0;
-  padding: 96px 0 80px;
-  border-bottom: 1px solid #000;
+  text-align: center;
   line-height: 1;
   white-space: nowrap;
 }
 .number {
   font-family: "Electrolize", "M PLUS Rounded 1c", sans-serif;
-  font-size: 280px;
-  font-size: 34vw;
+  font-size: 360px;
+  font-size: 40vw;
   font-weight: 400;
 }
-.unit { font-size: 56px; padding-left: 20px; }
-.foot {
+.unit {
   margin: 0;
-  padding-top: 28px;
-  font-size: 26px;
+  text-align: right;
+  font-size: 56px;
+  font-size: 6vw;
   letter-spacing: 0.1em;
 }
-.stale { font-weight: 500; }
+.clock {
+  margin: 0;
+  padding-top: 48px;
+  padding-top: 6vw;
+  text-align: center;
+  font-family: "Electrolize", "M PLUS Rounded 1c", sans-serif;
+  font-size: 88px;
+  font-size: 10vw;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+.stale { margin: 0; padding-top: 16px; text-align: center; font-size: 28px; font-size: 3vw; }
 </style>
 </head>
 <body>
 <main class="sheet">
-<h1 class="label">入室人数</h1>
-<p class="value"><span id="count" class="number">${snapshot.count}</span><span class="unit">人</span></p>
-<p class="foot">更新 <span id="clock">${snapshot.updatedAt}</span><span id="stale" class="stale"></span></p>
+<h1 class="logo"><img src="data:image/png;base64,${MCC_LOGO_PNG_BASE64}" width="${MCC_LOGO_WIDTH}" height="${MCC_LOGO_HEIGHT}" alt="MCC"></h1>
+<p class="lead">ただいま</p>
+<p class="value"><span id="count" class="number">${snapshot.count}</span></p>
+<p class="unit">人が入室中</p>
+<p class="clock" id="clock">${snapshot.updatedAt}</p>
+<p class="stale" id="stale"></p>
 </main>
 <script>
 (function () {

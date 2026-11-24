@@ -3,18 +3,18 @@ import { describe, expect, it } from "vitest";
 import { formatClock, renderDisplayPage } from "./page";
 
 describe("formatClock", () => {
-  it("JST の HH:MM に整形する", () => {
-    expect(formatClock(new Date("2026-11-24T00:05:00Z"))).toBe("09:05");
-    expect(formatClock(new Date("2026-11-24T15:00:00Z"))).toBe("00:00");
+  it("JST の HH:MM:SS に整形する", () => {
+    expect(formatClock(new Date("2026-11-24T00:05:07Z"))).toBe("09:05:07");
+    expect(formatClock(new Date("2026-11-24T15:00:00Z"))).toBe("00:00:00");
   });
 });
 
 describe("renderDisplayPage", () => {
-  const html = renderDisplayPage({ count: 3, updatedAt: "12:34" }, "/display/abc/count");
+  const html = renderDisplayPage({ count: 3, updatedAt: "12:34:56" }, "/display/abc/count");
 
   it("入室人数と更新時刻を初期描画に含める", () => {
     expect(html).toContain('<span id="count" class="number">3</span>');
-    expect(html).toContain('<span id="clock">12:34</span>');
+    expect(html).toContain('<p class="clock" id="clock">12:34:56</p>');
   });
 
   it("ハンドルネームなど人数以外の情報を含めない", () => {
@@ -26,6 +26,12 @@ describe("renderDisplayPage", () => {
     expect(html).toContain('font-family: "M PLUS Rounded 1c"');
     expect(html).toContain("url(data:font/ttf;base64,");
     expect(html).not.toMatch(/https?:\/\//);
+  });
+
+  it("ロゴを data URI の画像として埋め込む", () => {
+    expect(html).toMatch(
+      /<img src="data:image\/png;base64,[A-Za-z0-9+/=]+" width="\d+" height="\d+" alt="MCC">/,
+    );
   });
 
   it("JavaScript 無効時の meta refresh を持つ", () => {
