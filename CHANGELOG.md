@@ -1,5 +1,12 @@
 # room-manager
 
+## [0.7.0](https://github.com/tuatmcc/room-manager/compare/v0.6.0...v0.7.0) (2026-11-24)
+
+
+### Features
+
+* 入室人数表示ページをMCCロゴ付きのレイアウトにし、時計を毎秒進める ([#114](https://github.com/tuatmcc/room-manager/issues/114)) ([52ab5c7](https://github.com/tuatmcc/room-manager/commit/52ab5c73ca924383543b98da19679e3e1ce9afb0))
+
 ## [0.6.0](https://github.com/tuatmcc/room-manager/compare/v0.5.0...v0.6.0) (2026-11-24)
 
 

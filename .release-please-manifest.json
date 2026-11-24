@@ -1,6 +1,6 @@
 {
-	".": "0.6.0",
-	"packages/api": "0.6.0",
+	".": "0.7.0",
+	"packages/api": "0.7.0",
 	"crates/app": "0.4.0",
 	"crates/pasori": "0.3.1"
 }
