@@ -2,7 +2,8 @@ import type { Context } from "hono";
 
 import type { AppEnv, Env } from "@/env";
 import type { AppLogger } from "@/logger";
-import { noopLogger } from "@/logger";
+import { noopLogger, serializeError } from "@/logger";
+import type { DisplayMessageService } from "@/services/DisplayMessageService";
 import type { ListEntryUsersUseCase } from "@/usecase/ListEntryUsers";
 
 import type { DisplaySnapshot } from "./page";
@@ -20,14 +21,15 @@ const COMMON_HEADERS = {
  * 部室の入室人数を電子ペーパー端末(DPT-S1)向けに表示するハンドラ。
  *
  * 端末のブラウザは TLS 1.0 までしか話せないため HTTP で提供される。
- * 平文になるのでトークン(URL)を秘密情報として扱い、表示する情報は入室人数だけに限る。
+ * 平文になるのでトークン(URL)を秘密情報として扱い、表示する情報は入室人数と
+ * `/room display` で登録された文字列だけに限る。
  */
 export class DisplayHandler {
   constructor(
     private readonly usecase: ListEntryUsersUseCase,
+    private readonly displayMessage: Pick<DisplayMessageService, "get">,
     private readonly expectedToken: Env["DISPLAY_TOKEN"],
     private readonly logger: AppLogger = noopLogger,
-    private readonly now: () => Date = () => new Date(),
   ) {}
 
   async handlePage(c: Context<AppEnv>): Promise<Response> {
@@ -68,14 +70,30 @@ export class DisplayHandler {
       throw result.error;
     }
 
-    return { count: result.value.users.length, serverTime: this.now().getTime() };
+    return { count: result.value.users.length, message: await this.loadMessage() };
+  }
+
+  private async loadMessage(): Promise<string> {
+    try {
+      return await this.displayMessage.get();
+    } catch (error) {
+      // 文字列は補助的な情報なので、取得に失敗しても人数の表示は止めない
+      this.logger.warn("Failed to load display message", serializeError(error));
+      return "";
+    }
   }
 }
 
 export function createDisplayHandler(
   usecase: ListEntryUsersUseCase,
+  displayMessage: DisplayMessageService,
   env: Env,
   logger: AppLogger,
 ): DisplayHandler {
-  return new DisplayHandler(usecase, env.DISPLAY_TOKEN, logger.child({ tag: "display" }));
+  return new DisplayHandler(
+    usecase,
+    displayMessage,
+    env.DISPLAY_TOKEN,
+    logger.child({ tag: "display" }),
+  );
 }

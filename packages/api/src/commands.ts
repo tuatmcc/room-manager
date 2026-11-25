@@ -1,5 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 
+import { DISPLAY_MESSAGE_MAX_LENGTH } from "./services/DisplayMessageService";
+
 export const pingCommand = new SlashCommandBuilder()
   .setName("ping")
   .setDescription("pingをBotに送ります。");
@@ -37,6 +39,18 @@ export const roomCommand = new SlashCommandBuilder()
   )
   .addSubcommand((subcommand) =>
     subcommand.setName("list").setDescription("現在部室にいる人を表示します。"),
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("display")
+      .setDescription("入室人数表示ページに出す文字列を登録します。省略すると消します。")
+      .addStringOption((option) =>
+        option
+          .setName("message")
+          .setNameLocalization("ja", "文字列")
+          .setDescription("表示したい文字列")
+          .setMaxLength(DISPLAY_MESSAGE_MAX_LENGTH),
+      ),
   );
 
 export const roomAdminCommand = new SlashCommandBuilder()

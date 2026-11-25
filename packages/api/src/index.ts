@@ -131,6 +131,7 @@ const app = new Hono<AppEnv>()
   .get("/display/:token", async (c) => {
     const handler = createDisplayHandler(
       c.get("usecases").listEntryUsers,
+      c.get("services").displayMessage,
       c.get("env"),
       c.get("logger"),
     );
@@ -139,6 +140,7 @@ const app = new Hono<AppEnv>()
   .get("/display/:token/count", async (c) => {
     const handler = createDisplayHandler(
       c.get("usecases").listEntryUsers,
+      c.get("services").displayMessage,
       c.get("env"),
       c.get("logger"),
     );

@@ -1,23 +1,24 @@
 import { describe, expect, it } from "vitest";
 
-import { formatClock, renderDisplayPage } from "./page";
-
-describe("formatClock", () => {
-  it("JST の HH:MM:SS に整形する", () => {
-    expect(formatClock(new Date("2026-11-24T00:05:07Z"))).toBe("09:05:07");
-    expect(formatClock(new Date("2026-11-24T15:00:00Z"))).toBe("00:00:00");
-  });
-});
+import { renderDisplayPage } from "./page";
 
 describe("renderDisplayPage", () => {
-  const html = renderDisplayPage(
-    { count: 3, serverTime: Date.parse("2026-11-24T03:34:56Z") },
-    "/display/abc/count",
-  );
+  const html = renderDisplayPage({ count: 3, message: "合宿中" }, "/display/abc/count");
 
-  it("入室人数と JST の現在時刻を初期描画に含める", () => {
+  it("入室人数を初期描画に含める", () => {
     expect(html).toContain('<span id="count" class="number">3</span>');
-    expect(html).toContain('<p class="clock" id="clock">12:34:56</p>');
+  });
+
+  it("登録された文字列を人数の下に表示し、時計は表示しない", () => {
+    expect(html).toContain('<p class="message" id="message">合宿中</p>');
+    expect(html.indexOf('id="message"')).toBeGreaterThan(html.indexOf("人が入室中"));
+    expect(html).not.toContain('id="clock"');
+  });
+
+  it("登録された文字列を HTML としてエスケープする", () => {
+    const evil = renderDisplayPage({ count: 0, message: '<img src=x onerror="a">&' }, "/x");
+    expect(evil).toContain("&lt;img src=x onerror=&quot;a&quot;&gt;&amp;");
+    expect(evil).not.toContain("<img src=x");
   });
 
   it("ハンドルネームなど人数以外の情報を含めない", () => {
@@ -31,12 +32,6 @@ describe("renderDisplayPage", () => {
     expect(html).not.toMatch(/https?:\/\//);
   });
 
-  it("サーバー時刻を時計の基準として埋め込む", () => {
-    expect(html).toContain(
-      `var skew = ${Date.parse("2026-11-24T03:34:56Z")} - new Date().getTime();`,
-    );
-  });
-
   it("ロゴを data URI の画像として埋め込む", () => {
     expect(html).toMatch(
       /<img src="data:image\/png;base64,[A-Za-z0-9+/=]+" width="\d+" height="\d+" alt="MCC">/,
@@ -48,7 +43,7 @@ describe("renderDisplayPage", () => {
   });
 
   it("取得先 URL を JSON 文字列として埋め込み、スクリプトを閉じられない", () => {
-    const evil = renderDisplayPage({ count: 0, serverTime: 0 }, "/x</script><b>");
+    const evil = renderDisplayPage({ count: 0, message: "" }, "/x</script><b>");
     expect(evil).not.toContain("</script><b>");
     expect(evil).toContain("\\u003c/script>");
   });
