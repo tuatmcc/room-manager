@@ -1,5 +1,12 @@
 # room-manager
 
+## [0.8.0](https://github.com/tuatmcc/room-manager/compare/v0.7.0...v0.8.0) (2026-11-25)
+
+
+### Features
+
+* 表示ページの時計を削除し、/room display で任意の文字列を表示する ([#116](https://github.com/tuatmcc/room-manager/issues/116)) ([e833e10](https://github.com/tuatmcc/room-manager/commit/e833e103d945b862e5dc13b1903f8bca1b45ce99))
+
 ## [0.7.0](https://github.com/tuatmcc/room-manager/compare/v0.6.0...v0.7.0) (2026-11-24)
 
 
