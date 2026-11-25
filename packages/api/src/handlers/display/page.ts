@@ -7,24 +7,6 @@ export const DISPLAY_REFRESH_SECONDS = 5;
 export interface DisplaySnapshot {
   /** 現在の入室人数 */
   count: number;
-  /** サーバーの現在時刻(UNIX エポックミリ秒)。端末の時計がずれていても正しい時刻を表示するために使う */
-  serverTime: number;
-}
-
-const clockFormatter = new Intl.DateTimeFormat("ja-JP", {
-  timeZone: "Asia/Tokyo",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hour12: false,
-});
-
-export function formatClock(date: Date): string {
-  // ja-JP は "09:05:07" 形式で返す。環境差を避けるため数字部分だけ取り出して整形する
-  const parts = clockFormatter.formatToParts(date);
-  const pick = (type: Intl.DateTimeFormatPartTypes) =>
-    (parts.find((part) => part.type === type)?.value ?? "00").padStart(2, "0");
-  return `${pick("hour")}:${pick("minute")}:${pick("second")}`;
 }
 
 /**
@@ -33,13 +15,11 @@ export function formatClock(date: Date): string {
  * - 白地に黒のみ。階調・影・アニメーション・透過を使わない
  * - 古い WebKit でも動くよう ES5 の XMLHttpRequest だけを使う
  * - 値が変わったときだけ DOM を書き換え、不要な再描画(ゴースト・フラッシュ)を避ける
- * - 時計は毎秒進める。端末の時計や時刻帯の設定に頼らず、サーバー時刻との差分から JST を計算する
  * - JavaScript が無効でも meta refresh で更新される
  */
 export function renderDisplayPage(snapshot: DisplaySnapshot, countPath: string): string {
   const countUrl = JSON.stringify(countPath).replaceAll("<", "\\u003c");
   const interval = DISPLAY_REFRESH_SECONDS;
-  const serverTime = Math.floor(snapshot.serverTime);
 
   return `<!doctype html>
 <html lang="ja">
@@ -101,17 +81,6 @@ body {
   font-size: 6vw;
   letter-spacing: 0.1em;
 }
-.clock {
-  margin: 0;
-  padding-top: 48px;
-  padding-top: 6vw;
-  text-align: center;
-  font-family: "Electrolize", "M PLUS Rounded 1c", sans-serif;
-  font-size: 88px;
-  font-size: 10vw;
-  font-weight: 400;
-  letter-spacing: 0.05em;
-}
 .stale { margin: 0; padding-top: 16px; text-align: center; font-size: 28px; font-size: 3vw; }
 </style>
 </head>
@@ -121,7 +90,6 @@ body {
 <p class="lead">ただいま</p>
 <p class="value"><span id="count" class="number">${snapshot.count}</span></p>
 <p class="unit">人が入室中</p>
-<p class="clock" id="clock">${formatClock(new Date(serverTime))}</p>
 <p class="stale" id="stale"></p>
 </main>
 <script>
@@ -129,23 +97,7 @@ body {
   var url = ${countUrl};
   var interval = ${interval * 1000};
   var countEl = document.getElementById("count");
-  var clockEl = document.getElementById("clock");
   var staleEl = document.getElementById("stale");
-  var JST_OFFSET_MS = 9 * 60 * 60 * 1000;
-  // サーバー時刻 - 端末時刻。取得のたびに補正する
-  var skew = ${serverTime} - new Date().getTime();
-
-  function pad(n) {
-    return n < 10 ? "0" + n : String(n);
-  }
-
-  function tick() {
-    var jst = new Date(new Date().getTime() + skew + JST_OFFSET_MS);
-    setText(clockEl, pad(jst.getUTCHours()) + ":" + pad(jst.getUTCMinutes()) + ":" + pad(jst.getUTCSeconds()));
-    // 次の秒の境目に合わせて更新する
-    var now = new Date().getTime() + skew;
-    setTimeout(tick, 1000 - (now % 1000) + 20);
-  }
 
   function setText(el, text) {
     if (el.firstChild && el.firstChild.nodeValue === text) return;
@@ -167,7 +119,6 @@ body {
         if (xhr.status !== 200) throw new Error("status " + xhr.status);
         var data = JSON.parse(xhr.responseText);
         setText(countEl, String(data.count));
-        if (typeof data.serverTime === "number") skew = data.serverTime - new Date().getTime();
         setText(staleEl, "");
       } catch (e) {
         setText(staleEl, "(更新できません)");
@@ -177,7 +128,6 @@ body {
     xhr.send();
   }
 
-  tick();
   schedule();
 })();
 </script>

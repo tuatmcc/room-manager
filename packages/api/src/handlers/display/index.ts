@@ -27,7 +27,6 @@ export class DisplayHandler {
     private readonly usecase: ListEntryUsersUseCase,
     private readonly expectedToken: Env["DISPLAY_TOKEN"],
     private readonly logger: AppLogger = noopLogger,
-    private readonly now: () => Date = () => new Date(),
   ) {}
 
   async handlePage(c: Context<AppEnv>): Promise<Response> {
@@ -68,7 +67,7 @@ export class DisplayHandler {
       throw result.error;
     }
 
-    return { count: result.value.users.length, serverTime: this.now().getTime() };
+    return { count: result.value.users.length };
   }
 }
 

@@ -70,13 +70,12 @@
 ### 6. Room Occupancy Display
 
 - `GET /display/:token` は現在の入室人数だけを表示する HTML を返す。ハンドルネームなど人数以外の情報は表示しない
-- 表示先は DPT-S1 の内蔵ブラウザで、TLS 1.0 までしか話せないため HTTP で提供する(`http://room-manager.tuatmcc-com.workers.dev/display/<token>`。workers.dev が HTTP を許すことは実機で確認済み)。平文になるため、表示内容は人数と現在時刻に限る
+- 表示先は DPT-S1 の内蔵ブラウザで、TLS 1.0 までしか話せないため HTTP で提供する(`http://room-manager.tuatmcc-com.workers.dev/display/<token>`。workers.dev が HTTP を許すことは実機で確認済み)。平文になるため、表示内容は人数に限る
 - トークンは端末のキーボードで入力するため 8 文字とする(紛らわしい文字を除いた英小文字と数字なら約 8.5×10^11 通り)。短い分だけ総当たりに弱く、workers.dev には WAF の rate limiting を置けない。人数だけの低機微な情報であることを前提に許容し、漏洩や疑いがあれば `DISPLAY_TOKEN` を差し替える
-- ページは 5 秒ごとに `GET /display/:token/count`(`{ count, serverTime }`。`serverTime` は UNIX エポックミリ秒)を取得して人数を差し替える。入退室から表示までの遅延は 10 秒以内を目標とする
+- ページは 5 秒ごとに `GET /display/:token/count`(`{ count }`)を取得して人数を差し替える。入退室から表示までの遅延は 10 秒以内を目標とする
 - `:token` は `DISPLAY_TOKEN`(8 文字以上)と定数時間で比較する。不一致、または `DISPLAY_TOKEN` 未設定の場合は存在を隠すため `404` を返す。`API_TOKEN` とは別の値にする
 - 在室者の取得に失敗したときは `0 人` と誤表示せず、`500` を返す。ページ側は「(更新できません)」を表示する
-- 画面は上から MCC ロゴ、「ただいま」、入室人数(大きな数字)、「人が入室中」、現在時刻(JST, `HH:MM:SS`)の順に並べる
-- 時計は毎秒進める。端末の時計や時刻帯の設定に頼らず、`serverTime` と端末時刻の差分で補正して JST を計算する
+- 画面は上から MCC ロゴ、「ただいま」、入室人数(大きな数字)、「人が入室中」の順に並べる。現在時刻は表示しない
 - 電子ペーパー向けに白地・グレースケールのみ・アニメーションなしで描画し、値が変わったときだけ DOM を書き換える
 
 ## External Interfaces
