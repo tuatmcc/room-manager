@@ -16,11 +16,14 @@ import { ListUsersHandler } from "./list-users";
 import { PingHandler } from "./ping";
 import { RegisterNfcCardHandler } from "./register-nfc-card";
 import { RegisterStudentCardHandler } from "./register-student-card";
+import { SetDisplayMessageHandler } from "./set-display-message";
+
 export interface SlashCommandHandlers {
   ping: PingHandler;
   listUsers: ListUsersHandler;
   registerStudentCard: RegisterStudentCardHandler;
   registerNfcCard: RegisterNfcCardHandler;
+  setDisplayMessage: SetDisplayMessageHandler;
 }
 
 export function createSlashCommandHandlers(
@@ -42,6 +45,10 @@ export function createSlashCommandHandlers(
     registerNfcCard: new RegisterNfcCardHandler(
       usecases.registerNfcCard,
       logger.child({ tag: "register-nfc-card" }),
+    ),
+    setDisplayMessage: new SetDisplayMessageHandler(
+      services.displayMessage,
+      logger.child({ tag: "set-display-message" }),
     ),
   };
 }
@@ -112,6 +119,13 @@ export async function handleSlashCommand(
       async ({ code, name }) => await handlers.registerNfcCard.handle(discordId, code, name),
     )
     .with({ commands: ["room", "list"] }, async () => await handlers.listUsers.handle())
+    .with(
+      {
+        commands: ["room", "display"],
+        options: P.select({ message: P.string.optional() }),
+      },
+      async ({ message }) => await handlers.setDisplayMessage.handle(discordId, message),
+    )
     .with(
       {
         commands: ["room-admin", "setting", "register"],

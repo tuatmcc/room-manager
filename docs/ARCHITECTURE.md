@@ -105,7 +105,7 @@
 ### Internal Composition
 
 - `repositories`: D1 を使うデータアクセス層
-- `services`: Discord REST と KV キャッシュ
+- `services`: Discord REST と KV キャッシュ、表示ページ用文字列の KV 保存(`DisplayMessageService`、キー `display:message`)
 - `usecase`: 業務ロジック
 - `handlers`: HTTP / Interaction / cron 入出力の境界
 
@@ -134,7 +134,7 @@
   - presenter で Discord embed と API response を生成
   - Discord へ通知
 - `slash-command/*`
-  - `/ping`, `/room register student-card`, `/room register nfc-card`, `/room list`
+  - `/ping`, `/room register student-card`, `/room register nfc-card`, `/room list`, `/room display`
   - `/room-admin` は未実装扱い
 - `scheduled/exit-all-entry-users`
   - 一括退室と Discord 通知
@@ -150,6 +150,7 @@
 
 - `packages/api/src/handlers/display`: `DisplayHandler`(認証と人数取得)、`page.ts`(HTML 生成)、`token.ts`(定数時間比較)、`logo.ts`(MCC ロゴ)
 - 人数は `ListEntryUsersUseCase` の結果の件数だけを使い、Discord API は呼ばない
+- `/room display` の文字列は `DisplayMessageService` で KV から読む。ページ表示と 5 秒ごとの JSON 取得のたびに KV を 1 回読む
 - DPT-S1 は 2.4GHz の Wi-Fi と TLS 1.0 までの HTTPS しか扱えないため、Cloudflare の既定(TLS 1.2 以上)では接続できない。workers.dev は HTTP でも応答し(実機の DPT-S1 で確認済み)、ゾーン設定も不要なため、既存の `room-manager` Worker の `/display/:token` を HTTP で提供する方針とする
 - 日本語ラベルは M PLUS Rounded 1c、数字は Electrolize。端末は外部の HTTPS(Google Fonts)を読み込めないため、必要な文字だけを抜き出した TrueType を `fonts.ts` に base64 で埋め込み、外部通信しない(どちらも SIL OFL 1.1)。表示文言を変えて未収録の文字を使う場合はサブセットを作り直す
 - MCC ロゴも同じ理由で外部から読み込まず、幅 720px・16 階調のグレースケール PNG を `logo.ts` に base64 で埋め込む。CSP は `img-src data:` だけを許可する

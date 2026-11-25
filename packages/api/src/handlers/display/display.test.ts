@@ -10,9 +10,14 @@ import { DisplayHandler } from ".";
 
 const TOKEN = "t".repeat(40);
 
-function createApp(execute: ReturnType<typeof vi.fn>, expectedToken: string | undefined) {
+function createApp(
+  execute: ReturnType<typeof vi.fn>,
+  expectedToken: string | undefined,
+  getMessage: () => Promise<string> = () => Promise.resolve("今日は 18 時まで"),
+) {
   const handler = new DisplayHandler(
     { execute } as unknown as ListEntryUsersUseCase,
+    { get: getMessage },
     expectedToken,
   );
   return new Hono<AppEnv>()
@@ -32,15 +37,16 @@ describe("DisplayHandler", () => {
     expect(res.headers.get("referrer-policy")).toBe("no-referrer");
     const body = await res.text();
     expect(body).toContain('class="number">4</span>');
+    expect(body).toContain('<p class="message" id="message">今日は 18 時まで</p>');
     expect(body).toContain(`/display/${TOKEN}/count`);
   });
 
-  it("JSON エンドポイントが人数を返す", async () => {
+  it("JSON エンドポイントが人数と登録された文字列を返す", async () => {
     const execute = vi.fn().mockResolvedValue(ok(users(0)));
     const res = await createApp(execute, TOKEN).request(`/display/${TOKEN}/count`);
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ count: 0 });
+    expect(await res.json()).toEqual({ count: 0, message: "今日は 18 時まで" });
   });
 
   it("誤ったトークンは 404 で、データを取得しない", async () => {
@@ -58,6 +64,16 @@ describe("DisplayHandler", () => {
 
     expect(res.status).toBe(404);
     expect(execute).not.toHaveBeenCalled();
+  });
+
+  it("文字列の取得に失敗しても人数は返す", async () => {
+    const execute = vi.fn().mockResolvedValue(ok(users(2)));
+    const res = await createApp(execute, TOKEN, () => Promise.reject(new Error("kv"))).request(
+      `/display/${TOKEN}/count`,
+    );
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ count: 2, message: "" });
   });
 
   it("取得失敗時は 0 人と誤表示せずエラーにする", async () => {

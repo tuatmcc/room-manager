@@ -2,9 +2,11 @@ import type { Env } from "@/env";
 import type { AppLogger } from "@/logger";
 
 import { DiscordService } from "./DiscordService";
+import { DisplayMessageService } from "./DisplayMessageService";
 
 export interface Services {
   discord: DiscordService;
+  displayMessage: DisplayMessageService;
 }
 
 export function createServices(env: Env, logger: AppLogger): Services {
@@ -16,5 +18,6 @@ export function createServices(env: Env, logger: AppLogger): Services {
       env.DISCORD_CHANNEL_ID,
       logger.child({ tag: "discord" }),
     ),
+    displayMessage: new DisplayMessageService(env.KV, logger.child({ tag: "display-message" })),
   };
 }

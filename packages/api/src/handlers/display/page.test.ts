@@ -3,14 +3,22 @@ import { describe, expect, it } from "vitest";
 import { renderDisplayPage } from "./page";
 
 describe("renderDisplayPage", () => {
-  const html = renderDisplayPage({ count: 3 }, "/display/abc/count");
+  const html = renderDisplayPage({ count: 3, message: "合宿中" }, "/display/abc/count");
 
   it("入室人数を初期描画に含める", () => {
     expect(html).toContain('<span id="count" class="number">3</span>');
   });
 
-  it("時計を表示しない", () => {
+  it("登録された文字列を人数の下に表示し、時計は表示しない", () => {
+    expect(html).toContain('<p class="message" id="message">合宿中</p>');
+    expect(html.indexOf('id="message"')).toBeGreaterThan(html.indexOf("人が入室中"));
     expect(html).not.toContain('id="clock"');
+  });
+
+  it("登録された文字列を HTML としてエスケープする", () => {
+    const evil = renderDisplayPage({ count: 0, message: '<img src=x onerror="a">&' }, "/x");
+    expect(evil).toContain("&lt;img src=x onerror=&quot;a&quot;&gt;&amp;");
+    expect(evil).not.toContain("<img src=x");
   });
 
   it("ハンドルネームなど人数以外の情報を含めない", () => {
@@ -35,7 +43,7 @@ describe("renderDisplayPage", () => {
   });
 
   it("取得先 URL を JSON 文字列として埋め込み、スクリプトを閉じられない", () => {
-    const evil = renderDisplayPage({ count: 0 }, "/x</script><b>");
+    const evil = renderDisplayPage({ count: 0, message: "" }, "/x</script><b>");
     expect(evil).not.toContain("</script><b>");
     expect(evil).toContain("\\u003c/script>");
   });
